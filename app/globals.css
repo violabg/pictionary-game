@@ -175,6 +175,14 @@
   }
 }
 
+@utility gradient-hover {
+  background-image: linear-gradient(
+    to right,
+    var(--gradient-from),
+    var(--gradient-from)
+  ) !important;
+}
+
 .gradient-text {
   background-clip: text;
   -webkit-background-clip: text;
