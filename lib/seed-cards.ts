@@ -39,7 +39,7 @@ export async function seedCardsForGame(
     const supabase = getSupabaseServerClient();
     // Calculate number of cards: 2 per player
     const numCards = Math.max(2, playersCount * 2);
-    const prompt = `Sei un generatore di carte per un gioco Pictionary. Genera un array JSON di ${numCards} oggetti, ognuno con un titolo e una descrizione, per la categoria \"${category}\" e difficoltà \"${difficulty}\". Ogni oggetto deve avere la forma: { \"title\": string, \"description\": string }. Scrivi tutto in italiano. Nessun testo extra, solo l'array.`;
+    const prompt = `Sei un generatore di carte per un gioco Pictionary. Genera un array JSON di ${numCards} oggetti, ognuno con un titolo e una descrizione, per la categoria \"${category}\" e difficoltà \"${difficulty}\". Ogni oggetto deve avere la forma: { \"title\": string, \"description\": string }. Scrivi tutto in italiano. Nessun testo extra, se la difficoltà è random scegli a caso tra facile, medio e difficile. Non usare mai la parola "carta".`;
     const schema = z.object({
       title: z.string(),
       description: z.string(),

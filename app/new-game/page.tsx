@@ -46,10 +46,10 @@ const categories = [
   "Art",
 ];
 const difficulties = [
-  { value: "easy", label: "Easy" },
-  { value: "medium", label: "Medium" },
-  { value: "hard", label: "Hard" },
-  { value: "mixed", label: "Mixed" },
+  { value: "facile", label: "Facile" },
+  { value: "medio", label: "Medio" },
+  { value: "difficile", label: "Difficile" },
+  { value: "random", label: "Random" },
 ];
 
 const schema = z.object({
@@ -70,14 +70,12 @@ export default function NewGamePage() {
     defaultValues: {
       username: "",
       category: "",
-      difficulty: "medium",
+      difficulty: "medio",
     },
   });
 
   const {
     handleSubmit,
-    setValue,
-    watch,
     formState: { isSubmitting },
   } = methods;
 
@@ -221,13 +219,13 @@ export default function NewGamePage() {
                         </Select>
                       </FormControl>
                       <p className="text-muted-foreground text-sm">
-                        {field.value === "easy"
-                          ? "Simple words that are easy to draw and guess"
-                          : field.value === "medium"
-                          ? "Moderate difficulty words for a balanced game"
-                          : field.value === "hard"
-                          ? "Challenging words that are harder to draw and guess"
-                          : "Random selection from all difficulty levels"}
+                        {field.value === "facile"
+                          ? "Parole semplici facili da disegnare e indovinare"
+                          : field.value === "media"
+                          ? "Parole di difficoltà moderata per un gioco equilibrato"
+                          : field.value === "difficile"
+                          ? "Parole impegnative più difficili da disegnare e indovinare"
+                          : "Selezione casuale da tutti i livelli di difficoltà"}
                       </p>
                       <FormMessage />
                     </FormItem>
