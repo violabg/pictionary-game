@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,11 +26,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createGame } from "@/lib/game-actions";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
 const categories = [
   "Animals",
@@ -45,59 +52,59 @@ const difficulties = [
   { value: "mixed", label: "Mixed" },
 ];
 
+const schema = z.object({
+  username: z.string().min(2, "Username is required"),
+  category: z.string().min(1, "Category is required"),
+  difficulty: z.string().min(1, "Difficulty is required"),
+});
+
+type FormValues = z.infer<typeof schema>;
+
 export default function NewGamePage() {
-  const [username, setUsername] = useState("");
-  const [category, setCategory] = useState("");
-  const [difficulty, setDifficulty] = useState("medium");
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsSetup, setNeedsSetup] = useState(false);
   const router = useRouter();
 
-  const handleCreateGame = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const methods = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      username: "",
+      category: "",
+      difficulty: "medium",
+    },
+  });
+
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { isSubmitting },
+  } = methods;
+
+  const onSubmit = async (data: FormValues) => {
     setError(null);
     setNeedsSetup(false);
-
-    if (!username || !category) {
-      toast.error("Missing information", {
-        description: "Please provide your username and select a category",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
     try {
-      const gameId = await createGame(username, category, difficulty);
-      if (!gameId) {
-        throw new Error("No game ID returned");
-      }
-
-      // Store player ID in localStorage as well for client-side access
+      const gameId = await createGame(
+        data.username,
+        data.category,
+        data.difficulty
+      );
+      if (!gameId) throw new Error("No game ID returned");
       const playerId = document.cookie
         .split("; ")
         .find((row) => row.startsWith("playerId="))
         ?.split("=")[1];
-
-      if (playerId) {
-        localStorage.setItem("playerId", playerId);
-      }
-
+      if (playerId) localStorage.setItem("playerId", playerId);
       router.push(`/game/${gameId}`);
     } catch (err: any) {
       console.error("Error creating game:", err);
-
-      // Check if the error is related to missing tables
-      if (err.message && err.message.includes("tables not set up")) {
+      if (err.message && err.message.includes("tables not set up"))
         setNeedsSetup(true);
-      }
-
       setError(err.message || "Failed to create game. Please try again.");
       toast.error("Error", {
         description: err.message || "Failed to create game. Please try again.",
       });
-      setIsLoading(false);
     }
   };
 
@@ -110,7 +117,6 @@ export default function NewGamePage() {
             Back to Home
           </Button>
         </Link>
-
         <Card className="gradient-border w-full glass-card">
           <CardHeader>
             <CardTitle>Create New Game</CardTitle>
@@ -142,77 +148,104 @@ export default function NewGamePage() {
               </Alert>
             </div>
           )}
-          <form onSubmit={handleCreateGame}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Your Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="glass-card"
+          <FormProvider {...methods}>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <CardContent className="space-y-4">
+                <FormField
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Your Username</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter your username"
+                          {...field}
+                          className="glass-card"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select value={category} onValueChange={setCategory} required>
-                  <SelectTrigger id="category" className="glass-card">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-sm">
-                  Cards will be generated based on this category
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="difficulty">Difficulty</Label>
-                <Select
-                  value={difficulty}
-                  onValueChange={setDifficulty}
-                  required
+                <FormField
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          required
+                        >
+                          <SelectTrigger id="category" className="glass-card">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <p className="text-muted-foreground text-sm">
+                        Cards will be generated based on this category
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  name="difficulty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Difficulty</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          required
+                        >
+                          <SelectTrigger id="difficulty" className="glass-card">
+                            <SelectValue placeholder="Select difficulty" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {difficulties.map((diff) => (
+                              <SelectItem key={diff.value} value={diff.value}>
+                                {diff.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <p className="text-muted-foreground text-sm">
+                        {field.value === "easy"
+                          ? "Simple words that are easy to draw and guess"
+                          : field.value === "medium"
+                          ? "Moderate difficulty words for a balanced game"
+                          : field.value === "hard"
+                          ? "Challenging words that are harder to draw and guess"
+                          : "Random selection from all difficulty levels"}
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="mt-4">
+                <Button
+                  type="submit"
+                  variant="gradient"
+                  className="w-full"
+                  disabled={isSubmitting}
                 >
-                  <SelectTrigger id="difficulty" className="glass-card">
-                    <SelectValue placeholder="Select difficulty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {difficulties.map((diff) => (
-                      <SelectItem key={diff.value} value={diff.value}>
-                        {diff.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-sm">
-                  {difficulty === "easy"
-                    ? "Simple words that are easy to draw and guess"
-                    : difficulty === "medium"
-                    ? "Moderate difficulty words for a balanced game"
-                    : difficulty === "hard"
-                    ? "Challenging words that are harder to draw and guess"
-                    : "Random selection from all difficulty levels"}
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button
-                type="submit"
-                variant="gradient"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating Game..." : "Create Game"}
-              </Button>
-            </CardFooter>
-          </form>
+                  {isSubmitting ? "Creating Game..." : "Create Game"}
+                </Button>
+              </CardFooter>
+            </form>
+          </FormProvider>
         </Card>
       </div>
     </div>
