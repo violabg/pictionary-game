@@ -1,44 +1,60 @@
-"use server"
+"use server";
 
-import { createClient } from "@supabase/supabase-js"
-import type { Game, Player, Card } from "./types"
-import { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import type { Card, Game, Player } from "./types";
 
 // Initialize Supabase client for server-side operations
 const getSupabaseServerClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl) {
-    throw new Error("Supabase URL is missing")
+    throw new Error("Supabase URL is missing");
   }
 
   if (!supabaseKey) {
-    throw new Error("Supabase key is missing")
+    throw new Error("Supabase key is missing");
   }
 
-  console.log("Initializing Supabase client with URL:", supabaseUrl.substring(0, 20) + "...")
+  console.log(
+    "Initializing Supabase client with URL:",
+    supabaseUrl.substring(0, 20) + "..."
+  );
 
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
     },
-  })
-}
+  });
+};
 
 // Create a new game
-export async function createGame(username: string, category: string, difficulty = "medium"): Promise<string> {
+export async function createGame(
+  username: string,
+  category: string,
+  difficulty = "medium"
+): Promise<string> {
   try {
-    console.log("Creating game with username:", username, "category:", category, "and difficulty:", difficulty)
+    console.log(
+      "Creating game with username:",
+      username,
+      "category:",
+      category,
+      "and difficulty:",
+      difficulty
+    );
 
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Create a unique game ID
-    const gameId = crypto.randomUUID()
-    console.log("Generated game ID:", gameId)
+    const gameId = crypto.randomUUID();
+    console.log("Generated game ID:", gameId);
 
     // Create game with direct insert
-    console.log("Inserting game into database...")
+    console.log("Inserting game into database...");
     try {
       const { data: gameData, error: gameError } = await supabase
         .from("games")
@@ -49,31 +65,41 @@ export async function createGame(username: string, category: string, difficulty 
           cards_generated: false,
           difficulty: difficulty, // Store the difficulty level
         })
-        .select()
+        .select();
 
       if (gameError) {
-        console.error("Error creating game:", gameError)
-        console.error("Error details:", JSON.stringify(gameError))
+        console.error("Error creating game:", gameError);
+        console.error("Error details:", JSON.stringify(gameError));
 
         // If the error is because the table doesn't exist, provide a helpful message
         if (gameError.code === "42P01") {
-          throw new Error("Database tables not set up. Please run the setup SQL script first.")
+          throw new Error(
+            "Database tables not set up. Please run the setup SQL script first."
+          );
         }
 
-        throw new Error(`Failed to create game: ${gameError.message || JSON.stringify(gameError)}`)
+        throw new Error(
+          `Failed to create game: ${
+            gameError.message || JSON.stringify(gameError)
+          }`
+        );
       }
 
-      console.log("Game created successfully:", gameData)
+      console.log("Game created successfully:", gameData);
     } catch (insertError: any) {
-      console.error("Game insert error caught:", insertError)
-      throw new Error(`Failed to create game: ${insertError.message || JSON.stringify(insertError)}`)
+      console.error("Game insert error caught:", insertError);
+      throw new Error(
+        `Failed to create game: ${
+          insertError.message || JSON.stringify(insertError)
+        }`
+      );
     }
 
     // Create player with direct insert
-    const playerId = crypto.randomUUID()
-    console.log("Generated player ID:", playerId)
+    const playerId = crypto.randomUUID();
+    console.log("Generated player ID:", playerId);
 
-    console.log("Inserting player into database...")
+    console.log("Inserting player into database...");
     try {
       const { data: playerData, error: playerError } = await supabase
         .from("players")
@@ -84,18 +110,26 @@ export async function createGame(username: string, category: string, difficulty 
           score: 0,
           order_index: 0,
         })
-        .select()
+        .select();
 
       if (playerError) {
-        console.error("Error creating player:", playerError)
-        console.error("Error details:", JSON.stringify(playerError))
-        throw new Error(`Failed to create player: ${playerError.message || JSON.stringify(playerError)}`)
+        console.error("Error creating player:", playerError);
+        console.error("Error details:", JSON.stringify(playerError));
+        throw new Error(
+          `Failed to create player: ${
+            playerError.message || JSON.stringify(playerError)
+          }`
+        );
       }
 
-      console.log("Player created successfully:", playerData)
+      console.log("Player created successfully:", playerData);
     } catch (insertError: any) {
-      console.error("Player insert error caught:", insertError)
-      throw new Error(`Failed to create player: ${insertError.message || JSON.stringify(insertError)}`)
+      console.error("Player insert error caught:", insertError);
+      throw new Error(
+        `Failed to create player: ${
+          insertError.message || JSON.stringify(insertError)
+        }`
+      );
     }
 
     // Store player ID in cookies for identification
@@ -103,37 +137,41 @@ export async function createGame(username: string, category: string, difficulty 
       path: "/",
       maxAge: 60 * 60 * 24, // 1 day
       sameSite: "strict",
-    })
+    });
 
-    console.log("Player ID stored in cookies")
-    console.log("Returning game ID:", gameId)
+    console.log("Player ID stored in cookies");
+    console.log("Returning game ID:", gameId);
 
-    return gameId
+    return gameId;
   } catch (error: any) {
-    console.error("Error in createGame:", error)
-    console.error("Error stack:", error.stack)
-    throw new Error(error.message || "Failed to create game")
+    console.error("Error in createGame:", error);
+    console.error("Error stack:", error.stack);
+    throw new Error(error.message || "Failed to create game");
   }
 }
 
 // Join an existing game
 export async function joinGame(
   username: string,
-  gameId: string,
+  gameId: string
 ): Promise<{ success: boolean; message?: string; gameStatus?: string }> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Check if game exists and is in waiting status
-    const { data: game, error: gameError } = await supabase.from("games").select("status").eq("id", gameId).single()
+    const { data: game, error: gameError } = await supabase
+      .from("games")
+      .select("status")
+      .eq("id", gameId)
+      .single();
 
     if (gameError) {
-      console.error("Error finding game:", gameError)
-      return { success: false, message: "Game not found" }
+      console.error("Error finding game:", gameError);
+      return { success: false, message: "Game not found" };
     }
 
     if (!game) {
-      return { success: false, message: "Game not found" }
+      return { success: false, message: "Game not found" };
     }
 
     if (game.status !== "waiting") {
@@ -142,7 +180,7 @@ export async function joinGame(
         success: false,
         message: "Game has already started",
         gameStatus: game.status,
-      }
+      };
     }
 
     // Check if username is already taken in this game
@@ -151,40 +189,50 @@ export async function joinGame(
       .select("id")
       .eq("game_id", gameId)
       .eq("username", username)
-      .maybeSingle()
+      .maybeSingle();
 
     if (usernameError) {
-      console.error("Error checking username:", usernameError)
-      return { success: false, message: "Failed to check username availability" }
+      console.error("Error checking username:", usernameError);
+      return {
+        success: false,
+        message: "Failed to check username availability",
+      };
     }
 
     if (existingPlayer) {
-      return { success: false, message: "Username already taken in this game. Please choose another username." }
+      return {
+        success: false,
+        message:
+          "Username already taken in this game. Please choose another username.",
+      };
     }
 
     // Get current player count for order_index
-    const { data: players, error: countError } = await supabase.from("players").select("id").eq("game_id", gameId)
+    const { data: players, error: countError } = await supabase
+      .from("players")
+      .select("id")
+      .eq("game_id", gameId);
 
     if (countError) {
-      console.error("Error counting players:", countError)
-      return { success: false, message: "Failed to join game" }
+      console.error("Error counting players:", countError);
+      return { success: false, message: "Failed to join game" };
     }
 
-    const count = players?.length || 0
+    const count = players?.length || 0;
 
     // Create player with direct insert
-    const playerId = crypto.randomUUID()
+    const playerId = crypto.randomUUID();
     const { error: playerError } = await supabase.from("players").insert({
       id: playerId,
       game_id: gameId,
       username,
       score: 0,
       order_index: count,
-    })
+    });
 
     if (playerError) {
-      console.error("Error creating player:", playerError)
-      return { success: false, message: "Failed to join game" }
+      console.error("Error creating player:", playerError);
+      return { success: false, message: "Failed to join game" };
     }
 
     // Store player ID in cookies for identification
@@ -192,103 +240,111 @@ export async function joinGame(
       path: "/",
       maxAge: 60 * 60 * 24, // 1 day
       sameSite: "strict",
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error: any) {
-    console.error("Error in joinGame:", error)
-    return { success: false, message: error.message || "Failed to join game" }
+    console.error("Error in joinGame:", error);
+    return { success: false, message: error.message || "Failed to join game" };
   }
 }
 
 // Get game data
 export async function getGame(gameId: string): Promise<Game> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
-    const { data, error } = await supabase.from("games").select("*").eq("id", gameId).single()
+    const { data, error } = await supabase
+      .from("games")
+      .select("*")
+      .eq("id", gameId)
+      .single();
 
     if (error) {
-      console.error("Error getting game:", error)
-      throw new Error("Game not found")
+      console.error("Error getting game:", error);
+      throw new Error("Game not found");
     }
 
     if (!data) {
-      throw new Error("Game not found")
+      throw new Error("Game not found");
     }
 
-    return data as Game
+    return data as Game;
   } catch (error: any) {
-    console.error("Error in getGame:", error)
-    throw new Error(error.message || "Failed to get game")
+    console.error("Error in getGame:", error);
+    throw new Error(error.message || "Failed to get game");
   }
 }
 
 // Get players in a game
 export async function getPlayers(gameId: string): Promise<Player[]> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("players")
       .select("*")
       .eq("game_id", gameId)
-      .order("order_index", { ascending: true })
+      .order("order_index", { ascending: true });
 
     if (error) {
-      console.error("Error getting players:", error)
-      throw new Error("Failed to get players")
+      console.error("Error getting players:", error);
+      throw new Error("Failed to get players");
     }
 
-    return (data as Player[]) || []
+    return (data as Player[]) || [];
   } catch (error: any) {
-    console.error("Error in getPlayers:", error)
-    throw new Error(error.message || "Failed to get players")
+    console.error("Error in getPlayers:", error);
+    throw new Error(error.message || "Failed to get players");
   }
 }
 
 // Get a specific card
 export async function getCard(cardId: string): Promise<Card> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
-    const { data, error } = await supabase.from("cards").select("*").eq("id", cardId).single()
+    const { data, error } = await supabase
+      .from("cards")
+      .select("*")
+      .eq("id", cardId)
+      .single();
 
     if (error) {
-      console.error("Error getting card:", error)
-      throw new Error("Card not found")
+      console.error("Error getting card:", error);
+      throw new Error("Card not found");
     }
 
     if (!data) {
-      throw new Error("Card not found")
+      throw new Error("Card not found");
     }
 
-    return data as Card
+    return data as Card;
   } catch (error: any) {
-    console.error("Error in getCard:", error)
-    throw new Error(error.message || "Failed to get card")
+    console.error("Error in getCard:", error);
+    throw new Error(error.message || "Failed to get card");
   }
 }
 
 // Start the game
 export async function startGame(gameId: string): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Get players
     const { data: players, error: playersError } = await supabase
       .from("players")
       .select("id")
       .eq("game_id", gameId)
-      .order("order_index", { ascending: true })
+      .order("order_index", { ascending: true });
 
     if (playersError) {
-      console.error("Error getting players:", playersError)
-      throw new Error("Failed to get players")
+      console.error("Error getting players:", playersError);
+      throw new Error("Failed to get players");
     }
 
     if (!players || players.length < 2) {
-      throw new Error("Not enough players to start the game")
+      throw new Error("Not enough players to start the game");
     }
 
     // Get an unused card
@@ -297,15 +353,15 @@ export async function startGame(gameId: string): Promise<void> {
       .select("id")
       .eq("game_id", gameId)
       .eq("used", false)
-      .limit(1)
+      .limit(1);
 
     if (cardsError) {
-      console.error("Error getting card:", cardsError)
-      throw new Error("Failed to get card")
+      console.error("Error getting card:", cardsError);
+      throw new Error("Failed to get card");
     }
 
     if (!cards || cards.length === 0) {
-      throw new Error("No cards available")
+      throw new Error("No cards available");
     }
 
     // Update game status - don't set timer_end yet
@@ -317,43 +373,58 @@ export async function startGame(gameId: string): Promise<void> {
         current_card_id: cards[0].id,
         timer_end: null, // Don't set timer_end until drawer starts their turn
       })
-      .eq("id", gameId)
+      .eq("id", gameId);
 
     if (updateError) {
-      console.error("Error updating game:", updateError)
-      throw new Error("Failed to start game")
+      console.error("Error updating game:", updateError);
+      throw new Error("Failed to start game");
     }
 
     // Mark card as used
-    await supabase.from("cards").update({ used: true }).eq("id", cards[0].id)
+    await supabase.from("cards").update({ used: true }).eq("id", cards[0].id);
   } catch (error: any) {
-    console.error("Error in startGame:", error)
-    throw new Error(error.message || "Failed to start game")
+    console.error("Error in startGame:", error);
+    throw new Error(error.message || "Failed to start game");
   }
 }
 
 // Generate cards for a game
-export async function generateCards(gameId: string, category: string, playerCount: number): Promise<void> {
+export async function generateCards(
+  gameId: string,
+  category: string,
+  playerCount: number
+): Promise<void> {
   try {
     // Get the game to determine the difficulty
-    const supabase = getSupabaseServerClient()
-    const { data: game, error: gameError } = await supabase.from("games").select("difficulty").eq("id", gameId).single()
+    const supabase = getSupabaseServerClient();
+    const { data: game, error: gameError } = await supabase
+      .from("games")
+      .select("difficulty")
+      .eq("id", gameId)
+      .single();
 
     if (gameError) {
-      console.error("Error getting game difficulty:", gameError)
-      throw new Error("Failed to get game difficulty")
+      console.error("Error getting game difficulty:", gameError);
+      throw new Error("Failed to get game difficulty");
     }
 
     // Use the seed cards function with the appropriate difficulty
-    const { seedCardsForGame } = await import("./seed-cards")
-    await seedCardsForGame(gameId, category, game?.difficulty || "medium")
+    const { seedCardsForGame } = await import("./seed-cards");
+    await seedCardsForGame(
+      gameId,
+      category,
+      game?.difficulty || "medium",
+      playerCount
+    );
 
     console.log(
-      `Successfully generated cards for game ${gameId} using seed data with difficulty ${game?.difficulty || "medium"}`,
-    )
+      `Successfully generated cards for game ${gameId} using seed data with difficulty ${
+        game?.difficulty || "medium"
+      }`
+    );
   } catch (error: any) {
-    console.error("Error in generateCards:", error)
-    throw new Error(error.message || "Failed to generate cards")
+    console.error("Error in generateCards:", error);
+    throw new Error(error.message || "Failed to generate cards");
   }
 }
 
@@ -362,25 +433,25 @@ export async function submitGuess(
   gameId: string,
   playerId: string,
   guessText: string,
-  timeRemaining: number,
+  timeRemaining: number
 ): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Get current card
     const { data: game, error: gameError } = await supabase
       .from("games")
       .select("current_card_id")
       .eq("id", gameId)
-      .single()
+      .single();
 
     if (gameError) {
-      console.error("Error getting current card:", gameError)
-      throw new Error("Failed to get current card")
+      console.error("Error getting current card:", gameError);
+      throw new Error("Failed to get current card");
     }
 
     if (!game || !game.current_card_id) {
-      throw new Error("No active card found")
+      throw new Error("No active card found");
     }
 
     // Get the card to check if guess is correct
@@ -388,19 +459,19 @@ export async function submitGuess(
       .from("cards")
       .select("title")
       .eq("id", game.current_card_id)
-      .single()
+      .single();
 
     if (cardError) {
-      console.error("Error getting card:", cardError)
-      throw new Error("Failed to get card")
+      console.error("Error getting card:", cardError);
+      throw new Error("Failed to get card");
     }
 
     if (!card) {
-      throw new Error("Card not found")
+      throw new Error("Card not found");
     }
 
     // Check if guess is correct (case insensitive)
-    const isCorrect = guessText.toLowerCase() === card.title.toLowerCase()
+    const isCorrect = guessText.toLowerCase() === card.title.toLowerCase();
 
     // Insert guess
     const { error: insertError } = await supabase.from("guesses").insert({
@@ -409,11 +480,11 @@ export async function submitGuess(
       player_id: playerId,
       guess_text: guessText,
       is_correct: isCorrect,
-    })
+    });
 
     if (insertError) {
-      console.error("Error inserting guess:", insertError)
-      throw new Error("Failed to submit guess")
+      console.error("Error inserting guess:", insertError);
+      throw new Error("Failed to submit guess");
     }
 
     // If the guess is correct, automatically award points
@@ -423,15 +494,15 @@ export async function submitGuess(
         .from("players")
         .select("score")
         .eq("id", playerId)
-        .single()
+        .single();
 
       if (playerError) {
-        console.error("Error getting player score:", playerError)
-        throw new Error("Failed to get player score")
+        console.error("Error getting player score:", playerError);
+        throw new Error("Failed to get player score");
       }
 
       if (!player) {
-        throw new Error("Player not found")
+        throw new Error("Player not found");
       }
 
       // Update player score
@@ -440,38 +511,42 @@ export async function submitGuess(
         .update({
           score: player.score + timeRemaining,
         })
-        .eq("id", playerId)
+        .eq("id", playerId);
 
       if (updateError) {
-        console.error("Error updating score:", updateError)
-        throw new Error("Failed to update score")
+        console.error("Error updating score:", updateError);
+        throw new Error("Failed to update score");
       }
     }
   } catch (error: any) {
-    console.error("Error in submitGuess:", error)
-    throw new Error(error.message || "Failed to submit guess")
+    console.error("Error in submitGuess:", error);
+    throw new Error(error.message || "Failed to submit guess");
   }
 }
 
 // Select a winner for a correct guess
-export async function selectWinner(gameId: string, winnerId: string, timeRemaining: number): Promise<void> {
+export async function selectWinner(
+  gameId: string,
+  winnerId: string,
+  timeRemaining: number
+): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Get current score
     const { data: player, error: playerError } = await supabase
       .from("players")
       .select("score")
       .eq("id", winnerId)
-      .single()
+      .single();
 
     if (playerError) {
-      console.error("Error getting player score:", playerError)
-      throw new Error("Failed to get player score")
+      console.error("Error getting player score:", playerError);
+      throw new Error("Failed to get player score");
     }
 
     if (!player) {
-      throw new Error("Player not found")
+      throw new Error("Player not found");
     }
 
     // Update player score
@@ -480,40 +555,40 @@ export async function selectWinner(gameId: string, winnerId: string, timeRemaini
       .update({
         score: player.score + timeRemaining,
       })
-      .eq("id", winnerId)
+      .eq("id", winnerId);
 
     if (updateError) {
-      console.error("Error updating score:", updateError)
-      throw new Error("Failed to update score")
+      console.error("Error updating score:", updateError);
+      throw new Error("Failed to update score");
     }
 
     // Move to next turn
-    await nextTurn(gameId)
+    await nextTurn(gameId);
   } catch (error: any) {
-    console.error("Error in selectWinner:", error)
-    throw new Error(error.message || "Failed to select winner")
+    console.error("Error in selectWinner:", error);
+    throw new Error(error.message || "Failed to select winner");
   }
 }
 
 // Move to the next turn
 export async function nextTurn(gameId: string): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Get current game state
     const { data: game, error: gameError } = await supabase
       .from("games")
       .select("current_drawer_id")
       .eq("id", gameId)
-      .single()
+      .single();
 
     if (gameError) {
-      console.error("Error getting game:", gameError)
-      throw new Error("Failed to get game")
+      console.error("Error getting game:", gameError);
+      throw new Error("Failed to get game");
     }
 
     if (!game) {
-      throw new Error("Game not found")
+      throw new Error("Game not found");
     }
 
     // Get all players ordered by order_index
@@ -521,23 +596,25 @@ export async function nextTurn(gameId: string): Promise<void> {
       .from("players")
       .select("id, order_index")
       .eq("game_id", gameId)
-      .order("order_index", { ascending: true })
+      .order("order_index", { ascending: true });
 
     if (playersError) {
-      console.error("Error getting players:", playersError)
-      throw new Error("Failed to get players")
+      console.error("Error getting players:", playersError);
+      throw new Error("Failed to get players");
     }
 
     if (!players || players.length === 0) {
-      throw new Error("No players found")
+      throw new Error("No players found");
     }
 
     // Find the index of the current drawer
-    const currentDrawerIndex = players.findIndex((p) => p.id === game.current_drawer_id)
+    const currentDrawerIndex = players.findIndex(
+      (p) => p.id === game.current_drawer_id
+    );
 
     // Calculate the next drawer index
-    const nextDrawerIndex = (currentDrawerIndex + 1) % players.length
-    const nextDrawerId = players[nextDrawerIndex].id
+    const nextDrawerIndex = (currentDrawerIndex + 1) % players.length;
+    const nextDrawerId = players[nextDrawerIndex].id;
 
     // Get an unused card
     const { data: cards, error: cardsError } = await supabase
@@ -545,11 +622,11 @@ export async function nextTurn(gameId: string): Promise<void> {
       .select("id")
       .eq("game_id", gameId)
       .eq("used", false)
-      .limit(1)
+      .limit(1);
 
     if (cardsError) {
-      console.error("Error getting card:", cardsError)
-      throw new Error("Failed to get next card")
+      console.error("Error getting card:", cardsError);
+      throw new Error("Failed to get next card");
     }
 
     // If no more cards, end the game
@@ -562,14 +639,14 @@ export async function nextTurn(gameId: string): Promise<void> {
           current_card_id: null,
           timer_end: null,
         })
-        .eq("id", gameId)
+        .eq("id", gameId);
 
       if (endError) {
-        console.error("Error ending game:", endError)
-        throw new Error("Failed to end game")
+        console.error("Error ending game:", endError);
+        throw new Error("Failed to end game");
       }
 
-      return
+      return;
     }
 
     // Update game for next turn - don't set timer_end yet
@@ -580,29 +657,29 @@ export async function nextTurn(gameId: string): Promise<void> {
         current_card_id: cards[0].id,
         timer_end: null, // Don't set timer_end until drawer starts their turn
       })
-      .eq("id", gameId)
+      .eq("id", gameId);
 
     if (updateError) {
-      console.error("Error updating game:", updateError)
-      throw new Error("Failed to move to next turn")
+      console.error("Error updating game:", updateError);
+      throw new Error("Failed to move to next turn");
     }
 
     // Mark card as used
-    await supabase.from("cards").update({ used: true }).eq("id", cards[0].id)
+    await supabase.from("cards").update({ used: true }).eq("id", cards[0].id);
   } catch (error: any) {
-    console.error("Error in nextTurn:", error)
-    throw new Error(error.message || "Failed to move to next turn")
+    console.error("Error in nextTurn:", error);
+    throw new Error(error.message || "Failed to move to next turn");
   }
 }
 
 // Start the current turn
 export async function startTurn(gameId: string): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     // Set timer end (2 minutes from now)
-    const timerEnd = new Date()
-    timerEnd.setMinutes(timerEnd.getMinutes() + 2)
+    const timerEnd = new Date();
+    timerEnd.setMinutes(timerEnd.getMinutes() + 2);
 
     // Update game with timer_end to indicate turn has started
     const { error: updateError } = await supabase
@@ -610,44 +687,52 @@ export async function startTurn(gameId: string): Promise<void> {
       .update({
         timer_end: timerEnd.toISOString(),
       })
-      .eq("id", gameId)
+      .eq("id", gameId);
 
     if (updateError) {
-      console.error("Error starting turn:", updateError)
-      throw new Error("Failed to start turn")
+      console.error("Error starting turn:", updateError);
+      throw new Error("Failed to start turn");
     }
   } catch (error: any) {
-    console.error("Error in startTurn:", error)
-    throw new Error(error.message || "Failed to start turn")
+    console.error("Error in startTurn:", error);
+    throw new Error(error.message || "Failed to start turn");
   }
 }
 
 // Check if username is available in a game
 export async function checkUsernameAvailability(
   username: string,
-  gameId: string,
+  gameId: string
 ): Promise<{ available: boolean; message?: string }> {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = getSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("players")
       .select("id")
       .eq("game_id", gameId)
       .eq("username", username)
-      .maybeSingle()
+      .maybeSingle();
 
     if (error) {
-      console.error("Error checking username:", error)
-      return { available: false, message: "Failed to check username availability" }
+      console.error("Error checking username:", error);
+      return {
+        available: false,
+        message: "Failed to check username availability",
+      };
     }
 
     return {
       available: !data,
-      message: data ? "Username already taken in this game. Please choose another username." : undefined,
-    }
+      message: data
+        ? "Username already taken in this game. Please choose another username."
+        : undefined,
+    };
   } catch (error: any) {
-    console.error("Error in checkUsernameAvailability:", error)
-    return { available: false, message: error.message || "Failed to check username availability" }
+    console.error("Error in checkUsernameAvailability:", error);
+    return {
+      available: false,
+      message: error.message || "Failed to check username availability",
+    };
   }
 }
