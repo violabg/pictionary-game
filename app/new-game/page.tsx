@@ -60,10 +60,8 @@ export default function NewGamePage() {
     setNeedsSetup(false);
 
     if (!username || !category) {
-      toast({
-        title: "Missing information",
+      toast.error("Missing information", {
         description: "Please provide your username and select a category",
-        variant: "destructive",
       });
       return;
     }
