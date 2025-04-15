@@ -1,137 +1,146 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
-import type { Game, Player } from "@/lib/types"
-import { startGame } from "@/lib/game-actions"
-import { useSupabase } from "./supabase-provider"
-import { Copy } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { startGame } from "@/lib/game-actions";
+import type { Game, Player } from "@/lib/types";
+import { Copy } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface WaitingRoomProps {
-  game: Game
-  players: Player[]
+  game: Game;
+  players: Player[];
 }
 
 export default function WaitingRoom({ game, players }: WaitingRoomProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const { supabase } = useSupabase()
-  const [isStarting, setIsStarting] = useState(false)
-  const [isGeneratingCards, setIsGeneratingCards] = useState(false)
+  const [isStarting, setIsStarting] = useState(false);
+  const [isGeneratingCards, setIsGeneratingCards] = useState(false);
 
-  const isCreator = players.length > 0 && players[0].id === localStorage.getItem("playerId")
+  const isCreator =
+    players.length > 0 && players[0].id === localStorage.getItem("playerId");
 
   const handleStartGame = async () => {
     if (players.length < 2) {
-      toast({
-        title: "Not enough players",
+      toast.warning("Not enough players", {
         description: "You need at least 2 players to start the game",
-        variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsStarting(true)
+    setIsStarting(true);
 
     try {
       // First generate cards if not already done
       if (!game.cards_generated) {
-        setIsGeneratingCards(true)
-        await generateCards(game.id, game.category, players.length)
-        setIsGeneratingCards(false)
+        setIsGeneratingCards(true);
+        await generateCards(game.id, game.category, players.length);
+        setIsGeneratingCards(false);
       }
 
       // Then start the game
-      await startGame(game.id)
+      await startGame(game.id);
     } catch (error) {
-      console.error("Error starting game:", error)
-      toast({
-        title: "Error",
+      console.error("Error starting game:", error);
+      toast.error("Error", {
         description: "Failed to start game. Please try again.",
-        variant: "destructive",
-      })
-      setIsStarting(false)
+      });
+      setIsStarting(false);
     }
-  }
+  };
 
-  const generateCards = async (gameId: string, category: string, playerCount: number) => {
+  const generateCards = async (
+    gameId: string,
+    category: string,
+    playerCount: number
+  ) => {
     try {
       // Import the seedCardsForGame function dynamically to avoid server/client mismatch
-      const { generateCards } = await import("@/lib/game-actions")
-      await generateCards(gameId, category, playerCount)
-      return true
+      const { generateCards } = await import("@/lib/game-actions");
+      await generateCards(gameId, category, playerCount);
+      return true;
     } catch (error) {
-      console.error("Error generating cards:", error)
-      toast({
-        title: "Error",
+      console.error("Error generating cards:", error);
+      toast.error("Error", {
         description: "Failed to generate cards. Please try again.",
-        variant: "destructive",
-      })
-      return false
+      });
+      return false;
     }
-  }
+  };
 
   const copyGameId = () => {
-    navigator.clipboard.writeText(game.id)
-    toast({
-      title: "Game ID copied",
+    navigator.clipboard.writeText(game.id);
+    toast.success("Game ID copied", {
       description: "The game ID has been copied to your clipboard",
-    })
-  }
+    });
+  };
 
   // Format difficulty for display
   const formatDifficulty = (difficulty: string) => {
-    if (!difficulty) return "Medium"
-    return difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-  }
+    if (!difficulty) return "Medium";
+    return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+  };
 
   return (
-    <div className="container flex items-center justify-center min-h-screen py-12">
-      <Card className="w-full max-w-2xl glass-card gradient-border">
+    <div className="flex justify-center items-center py-12 min-h-screen container">
+      <Card className="gradient-border w-full max-w-2xl glass-card">
         <CardHeader>
           <CardTitle className="gradient-text">Waiting Room</CardTitle>
-          <CardDescription>Waiting for players to join the game</CardDescription>
+          <CardDescription>
+            Waiting for players to join the game
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-4 glass-card rounded-md">
+          <div className="flex justify-between items-center p-4 rounded-md glass-card">
             <div>
-              <p className="text-sm font-medium">Game ID</p>
-              <p className="text-lg font-mono">{game.id}</p>
+              <p className="font-medium text-sm">Game ID</p>
+              <p className="font-mono text-lg">{game.id}</p>
             </div>
             <Button variant="glass" size="icon" onClick={copyGameId}>
-              <Copy className="h-4 w-4" />
+              <Copy className="w-4 h-4" />
             </Button>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-medium mb-2 gradient-text">Game Settings</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 glass-card rounded-md">
-                <p className="text-sm font-medium">Category</p>
+            <h3 className="mb-2 font-medium text-lg gradient-text">
+              Game Settings
+            </h3>
+            <div className="gap-4 grid grid-cols-2">
+              <div className="p-4 rounded-md glass-card">
+                <p className="font-medium text-sm">Category</p>
                 <p className="text-lg">{game.category}</p>
               </div>
-              <div className="p-4 glass-card rounded-md">
-                <p className="text-sm font-medium">Difficulty</p>
+              <div className="p-4 rounded-md glass-card">
+                <p className="font-medium text-sm">Difficulty</p>
                 <p className="text-lg">{formatDifficulty(game.difficulty)}</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-lg font-medium mb-2 gradient-text">Players</h3>
+            <h3 className="mb-2 font-medium text-lg gradient-text">Players</h3>
             <div className="border rounded-md glass-card">
-              <div className="p-4 border-b border-white/10">
+              <div className="p-4 border-white/10 border-b">
                 <h4 className="font-medium">Players ({players.length})</h4>
               </div>
               <ul className="divide-y divide-white/10">
                 {players.map((player) => (
-                  <li key={player.id} className="p-4 flex items-center justify-between">
+                  <li
+                    key={player.id}
+                    className="flex justify-between items-center p-4"
+                  >
                     <span>{player.username}</span>
                     {player.id === players[0].id && (
-                      <span className="text-xs gradient-bg px-2 py-1 rounded-full">Host</span>
+                      <span className="px-2 py-1 rounded-full text-xs gradient-bg">
+                        Host
+                      </span>
                     )}
                   </li>
                 ))}
@@ -147,13 +156,19 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
               disabled={isStarting || players.length < 2}
               className="w-full"
             >
-              {isGeneratingCards ? "Generating Cards..." : isStarting ? "Starting Game..." : "Start Game"}
+              {isGeneratingCards
+                ? "Generating Cards..."
+                : isStarting
+                ? "Starting Game..."
+                : "Start Game"}
             </Button>
           ) : (
-            <p className="text-center w-full text-muted-foreground">Waiting for the host to start the game...</p>
+            <p className="w-full text-muted-foreground text-center">
+              Waiting for the host to start the game...
+            </p>
           )}
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

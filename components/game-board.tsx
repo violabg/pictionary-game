@@ -1,72 +1,77 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useSupabase } from "./supabase-provider"
-import { useToast } from "@/components/ui/use-toast"
-import DrawingCanvas from "./drawing-canvas"
-import PlayerList from "./player-list"
-import GuessInput from "./guess-input"
-import Timer from "./timer"
-import CardDisplay from "./card-display"
-import SelectWinnerModal from "./select-winner-modal"
-import type { Game, Player, Card } from "@/lib/types"
-import { getCard, submitGuess, selectWinner, nextTurn, startTurn } from "@/lib/game-actions"
-import { Button } from "./ui/button"
-import { PlayCircle, Crown } from "lucide-react"
+import {
+  getCard,
+  nextTurn,
+  selectWinner,
+  startTurn,
+  submitGuess,
+} from "@/lib/game-actions";
+import type { Card, Game, Player } from "@/lib/types";
+import { Crown, PlayCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import CardDisplay from "./card-display";
+import DrawingCanvas from "./drawing-canvas";
+import GuessInput from "./guess-input";
+import PlayerList from "./player-list";
+import SelectWinnerModal from "./select-winner-modal";
+import { useSupabase } from "./supabase-provider";
+import Timer from "./timer";
+import { Button } from "./ui/button";
 
 interface GameBoardProps {
-  game: Game
-  players: Player[]
+  game: Game;
+  players: Player[];
 }
 
 export default function GameBoard({ game, players }: GameBoardProps) {
-  const { supabase } = useSupabase()
-  const { toast } = useToast()
-  const [currentCard, setCurrentCard] = useState<Card | null>(null)
-  const [isDrawer, setIsDrawer] = useState(false)
-  const [correctGuessers, setCorrectGuessers] = useState<Player[]>([])
-  const [showSelectWinnerModal, setShowSelectWinnerModal] = useState(false)
-  const [timeRemaining, setTimeRemaining] = useState(120)
-  const [turnStarted, setTurnStarted] = useState(false)
-  const [isStartingTurn, setIsStartingTurn] = useState(false)
+  const { supabase } = useSupabase();
+  const [currentCard, setCurrentCard] = useState<Card | null>(null);
+  const [isDrawer, setIsDrawer] = useState(false);
+  const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
+  const [showSelectWinnerModal, setShowSelectWinnerModal] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(120);
+  const [turnStarted, setTurnStarted] = useState(false);
+  const [isStartingTurn, setIsStartingTurn] = useState(false);
 
-  const playerId = localStorage.getItem("playerId")
-  const currentPlayer = players.find((p) => p.id === playerId)
+  const playerId = localStorage.getItem("playerId");
+  const currentPlayer = players.find((p) => p.id === playerId);
 
   useEffect(() => {
     // Check if current player is the drawer
-    setIsDrawer(game.current_drawer_id === playerId)
+    setIsDrawer(game.current_drawer_id === playerId);
 
     // Load the current card if we're the drawer
     if (game.current_drawer_id === playerId && game.current_card_id) {
-      getCard(game.current_card_id).then(setCurrentCard)
+      getCard(game.current_card_id).then(setCurrentCard);
     } else {
-      setCurrentCard(null)
+      setCurrentCard(null);
     }
 
     // Check if turn has started based on timer_end
-    setTurnStarted(!!game.timer_end)
+    setTurnStarted(!!game.timer_end);
 
     // Calculate time remaining if turn has started
     if (game.timer_end) {
-      const endTime = new Date(game.timer_end).getTime()
+      const endTime = new Date(game.timer_end).getTime();
       const updateTimer = () => {
-        const now = new Date().getTime()
-        const diff = Math.max(0, Math.floor((endTime - now) / 1000))
-        setTimeRemaining(diff)
+        const now = new Date().getTime();
+        const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+        setTimeRemaining(diff);
 
         if (diff <= 0 && isDrawer) {
           // If time's up and we're the drawer, move to next turn
-          nextTurn(game.id)
-          clearInterval(timerInterval)
+          nextTurn(game.id);
+          clearInterval(timerInterval);
         }
-      }
+      };
 
-      updateTimer()
-      const timerInterval = setInterval(updateTimer, 1000)
-      return () => clearInterval(timerInterval)
+      updateTimer();
+      const timerInterval = setInterval(updateTimer, 1000);
+      return () => clearInterval(timerInterval);
     }
-  }, [game, playerId, isDrawer])
+  }, [game, playerId, isDrawer]);
 
   // Subscribe to guesses
   useEffect(() => {
@@ -81,110 +86,121 @@ export default function GameBoard({ game, players }: GameBoardProps) {
           filter: `game_id=eq.${game.id}`,
         },
         (payload) => {
-          const guess = payload.new as any
+          const guess = payload.new as any;
 
           // If we're the drawer and this is a correct guess
-          if (isDrawer && guess.is_correct && !correctGuessers.some((p) => p.id === guess.player_id)) {
+          if (
+            isDrawer &&
+            guess.is_correct &&
+            !correctGuessers.some((p) => p.id === guess.player_id)
+          ) {
             // Find the player who made the guess
-            const guesser = players.find((p) => p.id === guess.player_id)
+            const guesser = players.find((p) => p.id === guess.player_id);
             if (guesser) {
-              setCorrectGuessers((prev) => [...prev, guesser])
+              setCorrectGuessers((prev) => [...prev, guesser]);
 
               // Show toast notification
-              toast({
-                title: "Correct Guess!",
+              toast.success("Correct Guess!", {
                 description: `${guesser.username} guessed correctly and earned ${timeRemaining} points!`,
-                variant: "default",
-              })
+              });
             }
           }
-        },
+        }
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(guessSubscription)
-    }
-  }, [game.id, supabase, isDrawer, players, correctGuessers, toast, timeRemaining])
+      supabase.removeChannel(guessSubscription);
+    };
+  }, [
+    game.id,
+    supabase,
+    isDrawer,
+    players,
+    correctGuessers,
+    toast,
+    timeRemaining,
+  ]);
 
   const handleGuessSubmit = async (guess: string) => {
-    if (!currentPlayer) return
+    if (!currentPlayer) return;
 
     try {
-      await submitGuess(game.id, currentPlayer.id, guess, timeRemaining)
+      await submitGuess(game.id, currentPlayer.id, guess, timeRemaining);
     } catch (error) {
-      console.error("Error submitting guess:", error)
-      toast({
-        title: "Error",
+      console.error("Error submitting guess:", error);
+      toast.error("Error", {
         description: "Failed to submit guess",
-        variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleSelectWinner = async (winnerId: string) => {
     try {
-      await selectWinner(game.id, winnerId, timeRemaining)
-      setShowSelectWinnerModal(false)
-      setCorrectGuessers([])
+      await selectWinner(game.id, winnerId, timeRemaining);
+      setShowSelectWinnerModal(false);
+      setCorrectGuessers([]);
     } catch (error) {
-      console.error("Error selecting winner:", error)
-      toast({
-        title: "Error",
+      console.error("Error selecting winner:", error);
+      toast.error("Error", {
         description: "Failed to select winner",
-        variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleStartTurn = async () => {
-    if (!isDrawer) return
+    if (!isDrawer) return;
 
-    setIsStartingTurn(true)
+    setIsStartingTurn(true);
     try {
-      await startTurn(game.id)
-      setTurnStarted(true)
+      await startTurn(game.id);
+      setTurnStarted(true);
     } catch (error) {
-      console.error("Error starting turn:", error)
-      toast({
-        title: "Error",
+      console.error("Error starting turn:", error);
+      toast.error("Error", {
         description: "Failed to start turn",
-        variant: "destructive",
-      })
+      });
     } finally {
-      setIsStartingTurn(false)
+      setIsStartingTurn(false);
     }
-  }
+  };
 
   const handleOpenSelectWinner = () => {
-    if (!isDrawer || !turnStarted) return
-    setShowSelectWinnerModal(true)
-  }
+    if (!isDrawer || !turnStarted) return;
+    setShowSelectWinnerModal(true);
+  };
 
   return (
-    <div className="container py-6 min-h-screen flex flex-col">
+    <div className="flex flex-col py-6 min-h-screen container">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold gradient-text">Pictionary: {game.category}</h1>
+        <h1 className="font-bold text-2xl gradient-text">
+          Pictionary: {game.category}
+        </h1>
         {turnStarted ? (
           <div className="flex items-center gap-4">
             <Timer seconds={timeRemaining} />
             {isDrawer && (
-              <Button variant="gradient" size="sm" onClick={handleOpenSelectWinner} className="flex items-center gap-2">
-                <Crown className="h-4 w-4" />
+              <Button
+                variant="gradient"
+                size="sm"
+                onClick={handleOpenSelectWinner}
+                className="flex items-center gap-2"
+              >
+                <Crown className="w-4 h-4" />
                 Select Winner
               </Button>
             )}
           </div>
         ) : (
-          <div className="text-lg font-medium text-muted-foreground">
+          <div className="font-medium text-muted-foreground text-lg">
             {isDrawer ? "Your turn to draw" : "Waiting for drawer to start"}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 grow">
-        <div className="md:col-span-3 flex flex-col">
-          <div className="glass-card gradient-border rounded-lg p-4 grow">
+      <div className="gap-6 grid grid-cols-1 md:grid-cols-4 grow">
+        <div className="flex flex-col md:col-span-3">
+          <div className="p-4 gradient-border rounded-lg glass-card grow">
             <DrawingCanvas
               gameId={game.id}
               isDrawer={isDrawer}
@@ -193,7 +209,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
             />
 
             {isDrawer && !turnStarted && (
-              <div className="mt-4 flex justify-center">
+              <div className="flex justify-center mt-4">
                 <Button
                   variant="gradient"
                   size="lg"
@@ -201,7 +217,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
                   disabled={isStartingTurn}
                   className="flex items-center gap-2"
                 >
-                  <PlayCircle className="h-5 w-5" />
+                  <PlayCircle className="w-5 h-5" />
                   {isStartingTurn ? "Starting Turn..." : "Start Your Turn"}
                 </Button>
               </div>
@@ -216,7 +232,10 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         </div>
 
         <div className="flex flex-col space-y-4">
-          <PlayerList players={players} currentDrawerId={game.current_drawer_id} />
+          <PlayerList
+            players={players}
+            currentDrawerId={game.current_drawer_id}
+          />
 
           {isDrawer && currentCard && <CardDisplay card={currentCard} />}
         </div>
@@ -231,5 +250,5 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         />
       )}
     </div>
-  )
+  );
 }
