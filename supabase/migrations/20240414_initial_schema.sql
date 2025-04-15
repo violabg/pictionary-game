@@ -53,14 +53,14 @@ CREATE TABLE IF NOT EXISTS public.drawings (
 
 -- Create function to increment score
 CREATE OR REPLACE FUNCTION increment_score(points INTEGER, row_id UUID)
-RETURNS INTEGER AS $
+RETURNS INTEGER AS $$
 DECLARE
   current_score INTEGER;
 BEGIN
   SELECT score INTO current_score FROM public.players WHERE id = row_id;
   RETURN current_score + points;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Create realtime publication for all tables
 DROP PUBLICATION IF EXISTS supabase_realtime;

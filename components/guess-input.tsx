@@ -33,7 +33,7 @@ export default function GuessInput({ onSubmit, disabled = false }: GuessInputPro
         value={guess}
         onChange={(e) => setGuess(e.target.value)}
         disabled={disabled}
-        className="flex-grow glass-card"
+        className="grow glass-card"
       />
       <Button type="submit" variant="gradient" disabled={disabled || !guess.trim()}>
         <Send className="h-4 w-4 mr-2" />

@@ -182,9 +182,9 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-grow">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 grow">
         <div className="md:col-span-3 flex flex-col">
-          <div className="glass-card gradient-border rounded-lg p-4 flex-grow">
+          <div className="glass-card gradient-border rounded-lg p-4 grow">
             <DrawingCanvas
               gameId={game.id}
               isDrawer={isDrawer}

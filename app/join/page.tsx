@@ -177,7 +177,7 @@ export default function JoinGamePage() {
               <div className="space-y-2">
                 <Label htmlFor="username">Your Username</Label>
                 <div className="flex space-x-2">
-                  <div className="flex-grow">
+                  <div className="grow">
                     <Input
                       id="username"
                       placeholder="Enter your username"

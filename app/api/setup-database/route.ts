@@ -1,16 +1,21 @@
-import { createClient } from "@supabase/supabase-js"
-import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 
 export async function POST() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({ error: "Supabase credentials are missing" }, { status: 500 })
+      return NextResponse.json(
+        { error: "Supabase credentials are missing" },
+        { status: 500 }
+      );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // SQL to create tables
     const sql = `
@@ -67,6 +72,17 @@ export async function POST() {
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
 
+      -- Create function to increment score if it doesn't exist
+      CREATE OR REPLACE FUNCTION increment_score(points INTEGER, row_id UUID)
+      RETURNS INTEGER AS $$
+      DECLARE
+        current_score INTEGER;
+      BEGIN
+        SELECT score INTO current_score FROM public.players WHERE id = row_id;
+        RETURN current_score + points;
+      END;
+      $$ LANGUAGE plpgsql;
+
       -- Create realtime publication for all tables
       DROP PUBLICATION IF EXISTS supabase_realtime;
       CREATE PUBLICATION supabase_realtime FOR TABLE 
@@ -101,28 +117,33 @@ export async function POST() {
 
       CREATE POLICY IF NOT EXISTS "Allow public read access on drawings" ON public.drawings FOR SELECT USING (true);
       CREATE POLICY IF NOT EXISTS "Allow public insert access on drawings" ON public.drawings FOR INSERT WITH CHECK (true);
-    `
+    `;
 
     // Try to execute the SQL directly using SQL query
     try {
-      console.log("Attempting to execute SQL setup script...")
+      console.log("Attempting to execute SQL setup script...");
 
       // Split the SQL into individual statements and execute them one by one
       const statements = sql
         .split(";")
         .map((stmt) => stmt.trim())
-        .filter((stmt) => stmt.length > 0)
+        .filter((stmt) => stmt.length > 0);
 
       for (const statement of statements) {
-        console.log(`Executing SQL statement: ${statement.substring(0, 50)}...`)
+        console.log(
+          `Executing SQL statement: ${statement.substring(0, 50)}...`
+        );
         try {
-          const { error } = await supabase.rpc("exec_sql", { sql: statement })
+          const { error } = await supabase.rpc("exec_sql", { sql: statement });
           if (error && !error.message.includes("Could not find the function")) {
-            console.error("Error executing SQL statement:", error)
-            return NextResponse.json({ error: `SQL execution error: ${error.message}` }, { status: 500 })
+            console.error("Error executing SQL statement:", error);
+            return NextResponse.json(
+              { error: `SQL execution error: ${error.message}` },
+              { status: 500 }
+            );
           }
         } catch (stmtError) {
-          console.log("SQL execution error caught:", stmtError)
+          console.log("SQL execution error caught:", stmtError);
           // Continue to the next statement if this one fails
         }
       }
@@ -132,18 +153,22 @@ export async function POST() {
         success: true,
         message:
           "Database setup completed. If you encounter errors, you may need to run the SQL script manually in the Supabase SQL editor.",
-      })
+      });
     } catch (sqlError: any) {
-      console.error("Error executing SQL:", sqlError)
+      console.error("Error executing SQL:", sqlError);
 
       return NextResponse.json({
-        message: "Database setup requires manual intervention. Please run the SQL script in the Supabase SQL editor.",
+        message:
+          "Database setup requires manual intervention. Please run the SQL script in the Supabase SQL editor.",
         sql: sql,
         error: sqlError.message,
-      })
+      });
     }
   } catch (error: any) {
-    console.error("Error setting up database:", error)
-    return NextResponse.json({ error: error.message || "An unexpected error occurred" }, { status: 500 })
+    console.error("Error setting up database:", error);
+    return NextResponse.json(
+      { error: error.message || "An unexpected error occurred" },
+      { status: 500 }
+    );
   }
 }
