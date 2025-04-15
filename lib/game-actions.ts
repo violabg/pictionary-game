@@ -133,7 +133,8 @@ export async function createGame(
     }
 
     // Store player ID in cookies for identification
-    cookies().set("playerId", playerId, {
+    const cookieStore = await cookies();
+    cookieStore.set("playerId", playerId, {
       path: "/",
       maxAge: 60 * 60 * 24, // 1 day
       sameSite: "strict",
@@ -236,7 +237,8 @@ export async function joinGame(
     }
 
     // Store player ID in cookies for identification
-    cookies().set("playerId", playerId, {
+    const cookieStore = await cookies();
+    cookieStore.set("playerId", playerId, {
       path: "/",
       maxAge: 60 * 60 * 24, // 1 day
       sameSite: "strict",

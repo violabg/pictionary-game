@@ -36,26 +36,26 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const categories = [
-  "Animals",
-  "Food",
-  "Movies",
-  "Sports",
-  "Technology",
-  "Geography",
-  "Music",
-  "Art",
+  "Animali",
+  "Cibo",
+  "Film",
+  "Sport",
+  "Tecnologia",
+  "Geografia",
+  "Musica",
+  "Arte",
 ];
 const difficulties = [
   { value: "facile", label: "Facile" },
   { value: "medio", label: "Medio" },
   { value: "difficile", label: "Difficile" },
-  { value: "random", label: "Random" },
+  { value: "random", label: "Casuale" },
 ];
 
 const schema = z.object({
-  username: z.string().min(2, "Username is required"),
-  category: z.string().min(1, "Category is required"),
-  difficulty: z.string().min(1, "Difficulty is required"),
+  username: z.string().min(2, "Il nome utente è obbligatorio"),
+  category: z.string().min(1, "La categoria è obbligatoria"),
+  difficulty: z.string().min(1, "La difficoltà è obbligatoria"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -117,16 +117,16 @@ export default function NewGamePage() {
         </Link>
         <Card className="gradient-border w-full glass-card">
           <CardHeader>
-            <CardTitle>Create New Game</CardTitle>
+            <CardTitle>Crea una nuova partita</CardTitle>
             <CardDescription>
-              Set up a new Pictionary game and generate cards
+              Imposta una nuova partita di Pictionary e genera le carte
             </CardDescription>
           </CardHeader>
           {error && (
             <div className="px-6">
               <Alert variant="destructive">
                 <AlertCircle className="w-4 h-4" />
-                <AlertTitle>Error</AlertTitle>
+                <AlertTitle>Errore</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             </div>
@@ -134,13 +134,13 @@ export default function NewGamePage() {
           {needsSetup && (
             <div className="mb-4 px-6">
               <Alert>
-                <AlertTitle>Database Setup Required</AlertTitle>
+                <AlertTitle>Configurazione database necessaria</AlertTitle>
                 <AlertDescription>
                   <p className="mb-2">
-                    The database tables need to be created first.
+                    È necessario prima creare le tabelle del database.
                   </p>
                   <Link href="/setup" className="text-primary underline">
-                    Click here to set up the database
+                    Clicca qui per configurare il database
                   </Link>
                 </AlertDescription>
               </Alert>
@@ -153,10 +153,10 @@ export default function NewGamePage() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Your Username</FormLabel>
+                      <FormLabel>Nome utente</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter your username"
+                          placeholder="Inserisci il tuo nome utente"
                           {...field}
                           className="glass-card"
                         />
@@ -169,7 +169,7 @@ export default function NewGamePage() {
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>Categoria</FormLabel>
                       <FormControl>
                         <Select
                           value={field.value}
@@ -177,7 +177,7 @@ export default function NewGamePage() {
                           required
                         >
                           <SelectTrigger id="category" className="glass-card">
-                            <SelectValue placeholder="Select a category" />
+                            <SelectValue placeholder="Seleziona una categoria" />
                           </SelectTrigger>
                           <SelectContent>
                             {categories.map((cat) => (
@@ -189,7 +189,7 @@ export default function NewGamePage() {
                         </Select>
                       </FormControl>
                       <p className="text-muted-foreground text-sm">
-                        Cards will be generated based on this category
+                        Le carte verranno generate in base a questa categoria
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -199,7 +199,7 @@ export default function NewGamePage() {
                   name="difficulty"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Difficulty</FormLabel>
+                      <FormLabel>Difficoltà</FormLabel>
                       <FormControl>
                         <Select
                           value={field.value}
@@ -207,7 +207,7 @@ export default function NewGamePage() {
                           required
                         >
                           <SelectTrigger id="difficulty" className="glass-card">
-                            <SelectValue placeholder="Select difficulty" />
+                            <SelectValue placeholder="Seleziona la difficoltà" />
                           </SelectTrigger>
                           <SelectContent>
                             {difficulties.map((diff) => (
@@ -220,11 +220,11 @@ export default function NewGamePage() {
                       </FormControl>
                       <p className="text-muted-foreground text-sm">
                         {field.value === "facile"
-                          ? "Parole semplici facili da disegnare e indovinare"
-                          : field.value === "media"
+                          ? "Parole semplici, facili da disegnare e indovinare"
+                          : field.value === "medio"
                           ? "Parole di difficoltà moderata per un gioco equilibrato"
                           : field.value === "difficile"
-                          ? "Parole impegnative più difficili da disegnare e indovinare"
+                          ? "Parole impegnative, più difficili da disegnare e indovinare"
                           : "Selezione casuale da tutti i livelli di difficoltà"}
                       </p>
                       <FormMessage />
@@ -239,7 +239,7 @@ export default function NewGamePage() {
                   className="w-full"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Creating Game..." : "Create Game"}
+                  {isSubmitting ? "Creazione partita..." : "Crea partita"}
                 </Button>
               </CardFooter>
             </form>
