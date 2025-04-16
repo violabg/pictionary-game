@@ -1,6 +1,6 @@
 "use server";
 
-import { openai } from "@ai-sdk/openai";
+import { groq } from "@ai-sdk/groq";
 import { createClient } from "@supabase/supabase-js";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -46,7 +46,7 @@ export async function seedCardsForGame(
     });
 
     const result = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
       output: "array",
       prompt,
       schema,
