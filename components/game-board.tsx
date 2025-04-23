@@ -232,10 +232,12 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         </div>
 
         <div className="flex flex-col space-y-4">
-          <PlayerList
-            players={players}
-            currentDrawerId={game.current_drawer_id}
-          />
+          {game.current_drawer_id && (
+            <PlayerList
+              players={players}
+              currentDrawerId={game.current_drawer_id}
+            />
+          )}
 
           {isDrawer && currentCard && <CardDisplay card={currentCard} />}
         </div>
