@@ -252,7 +252,10 @@ export async function joinGame(
 }
 
 // Get game data
-export async function getGame(gameId: string): Promise<Game> {
+export async function getGame(gameId?: string): Promise<Game> {
+  if (!gameId) {
+    throw new Error("Game ID is required");
+  }
   try {
     const supabase = getSupabaseServerClient();
 
@@ -279,7 +282,10 @@ export async function getGame(gameId: string): Promise<Game> {
 }
 
 // Get players in a game
-export async function getPlayers(gameId: string): Promise<Player[]> {
+export async function getPlayers(gameId?: string): Promise<Player[]> {
+  if (!gameId) {
+    throw new Error("Game ID is required");
+  }
   try {
     const supabase = getSupabaseServerClient();
 
