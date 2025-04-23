@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Eraser, Palette, Trash2, Undo2 } from "lucide-react";
+import { Eraser, Palette, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSupabase } from "./supabase-provider";
 
@@ -19,19 +19,6 @@ interface DrawingCanvasProps {
   turnStarted: boolean;
 }
 
-// Define types for drawing actions
-type Point = { x: number; y: number };
-type DrawAction = {
-  type: "draw";
-  points: { start: Point; end: Point };
-  color: string;
-  lineWidth: number;
-};
-type ClearAction = {
-  type: "clear";
-};
-type DrawingAction = DrawAction | ClearAction;
-
 export default function DrawingCanvas({
   gameId,
   isDrawer,
@@ -39,18 +26,13 @@ export default function DrawingCanvas({
   turnStarted,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const { supabase } = useSupabase();
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#000000");
   const [lineWidth, setLineWidth] = useState(5);
   const [tool, setTool] = useState<"brush" | "eraser">("brush");
-  const prevPointRef = useRef<Point | null>(null);
+  const prevPointRef = useRef<{ x: number; y: number } | null>(null);
   const [eraserWidth, setEraserWidth] = useState(20);
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [drawingHistory, setDrawingHistory] = useState<DrawingAction[]>([]);
-  const [canvasScale, setCanvasScale] = useState({ x: 1, y: 1 });
-  const [canvasAspectRatio, setCanvasAspectRatio] = useState(4 / 3); // Default aspect ratio
 
   // Set up canvas
   useEffect(() => {
@@ -62,39 +44,14 @@ export default function DrawingCanvas({
 
     // Set canvas size
     const resizeCanvas = () => {
-      const container = canvasContainerRef.current;
+      const container = canvas.parentElement;
       if (!container) return;
 
-      const containerWidth = container.clientWidth;
-      const containerHeight = Math.min(
+      canvas.width = container.clientWidth;
+      canvas.height = Math.min(
         window.innerHeight * 0.6,
-        containerWidth * 0.75
+        container.clientWidth * 0.75
       );
-
-      // Set canvas display size (CSS)
-      canvas.style.width = `${containerWidth}px`;
-      canvas.style.height = `${containerHeight}px`;
-
-      // Set canvas actual size (resolution)
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = containerWidth * dpr;
-      canvas.height = containerHeight * dpr;
-
-      // Scale the context to account for the device pixel ratio
-      ctx.scale(dpr, dpr);
-
-      // Update canvas size state
-      setCanvasSize({ width: containerWidth, height: containerHeight });
-      setCanvasAspectRatio(containerWidth / containerHeight);
-
-      // Calculate scale factors for normalizing coordinates
-      setCanvasScale({
-        x: 1000 / containerWidth, // Normalize to 1000x750 virtual canvas
-        y: 750 / containerHeight,
-      });
-
-      // Redraw canvas content after resize
-      redrawCanvas();
     };
 
     resizeCanvas();
@@ -111,106 +68,32 @@ export default function DrawingCanvas({
 
   // Subscribe to drawing updates
   useEffect(() => {
+    if (isDrawer) return; // Drawer doesn't need to subscribe
+
     const drawingSubscription = supabase
       .channel(`drawing:${gameId}`)
       .on("broadcast", { event: "drawing" }, (payload) => {
         const { type, data } = payload.payload as any;
 
         if (type === "clear") {
-          clearCanvas(false); // Don't broadcast again
-          setDrawingHistory([{ type: "clear" }]);
+          clearCanvas();
         } else if (type === "draw") {
-          // Denormalize coordinates based on current canvas size
-          const startX = data.prevPoint.x / canvasScale.x;
-          const startY = data.prevPoint.y / canvasScale.y;
-          const endX = data.currentPoint.x / canvasScale.x;
-          const endY = data.currentPoint.y / canvasScale.y;
-
           drawLine(
-            startX,
-            startY,
-            endX,
-            endY,
+            data.prevPoint.x,
+            data.prevPoint.y,
+            data.currentPoint.x,
+            data.currentPoint.y,
             data.color,
-            data.lineWidth,
-            false // Don't broadcast again
+            data.lineWidth
           );
-
-          // Add to history if not from this client
-          if (!isDrawer) {
-            setDrawingHistory((prev) => [
-              ...prev,
-              {
-                type: "draw",
-                points: {
-                  start: { x: startX, y: startY },
-                  end: { x: endX, y: endY },
-                },
-                color: data.color,
-                lineWidth: data.lineWidth,
-              },
-            ]);
-          }
-        } else if (type === "undo") {
-          handleUndoFromBroadcast(data.historyLength);
-        } else if (type === "fullState") {
-          // Apply full canvas state
-          setDrawingHistory(data.history);
-          redrawCanvas(data.history);
         }
       })
       .subscribe();
 
-    // Request full canvas state when joining
-    if (!isDrawer) {
-      requestCanvasState();
-    }
-
     return () => {
       supabase.removeChannel(drawingSubscription);
     };
-  }, [gameId, supabase, isDrawer, canvasScale]);
-
-  // Request full canvas state from the drawer
-  const requestCanvasState = () => {
-    supabase.channel(`drawing:${gameId}`).send({
-      type: "broadcast",
-      event: "drawing",
-      payload: {
-        type: "requestState",
-      },
-    });
-  };
-
-  // Redraw the entire canvas from history
-  const redrawCanvas = (history = drawingHistory) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Redraw all actions
-    for (const action of history) {
-      if (action.type === "clear") {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else if (action.type === "draw") {
-        const { start, end } = action.points;
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.strokeStyle = action.color;
-        ctx.lineWidth = action.lineWidth;
-        ctx.lineCap = "round";
-        ctx.stroke();
-      }
-    }
-  };
+  }, [gameId, supabase, isDrawer]);
 
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -238,23 +121,23 @@ export default function DrawingCanvas({
       currentPoint.x,
       currentPoint.y,
       tool === "brush" ? color : "#ffffff",
-      tool === "brush" ? lineWidth : eraserWidth,
-      true // Broadcast to others
+      tool === "brush" ? lineWidth : eraserWidth
     );
 
-    // Add to history
-    setDrawingHistory((prev) => [
-      ...prev,
-      {
+    // Broadcast to other players
+    supabase.channel(`drawing:${gameId}`).send({
+      type: "broadcast",
+      event: "drawing",
+      payload: {
         type: "draw",
-        points: {
-          start: { x: prevPoint.x, y: prevPoint.y },
-          end: { x: currentPoint.x, y: currentPoint.y },
+        data: {
+          prevPoint,
+          currentPoint,
+          color: tool === "brush" ? color : "#ffffff",
+          lineWidth: tool === "brush" ? lineWidth : eraserWidth,
         },
-        color: tool === "brush" ? color : "#ffffff",
-        lineWidth: tool === "brush" ? lineWidth : eraserWidth,
       },
-    ]);
+    });
 
     prevPointRef.current = currentPoint;
   };
@@ -295,8 +178,7 @@ export default function DrawingCanvas({
     x2: number,
     y2: number,
     color: string,
-    width: number,
-    broadcast = false
+    width: number
   ) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -311,38 +193,9 @@ export default function DrawingCanvas({
     ctx.lineWidth = width;
     ctx.lineCap = "round";
     ctx.stroke();
-
-    if (broadcast && isDrawer) {
-      // Normalize coordinates to a standard canvas size (1000x750)
-      // This ensures consistent drawing across different screen sizes
-      const normalizedPrevPoint = {
-        x: x1 * canvasScale.x,
-        y: y1 * canvasScale.y,
-      };
-
-      const normalizedCurrentPoint = {
-        x: x2 * canvasScale.x,
-        y: y2 * canvasScale.y,
-      };
-
-      // Broadcast to other players
-      supabase.channel(`drawing:${gameId}`).send({
-        type: "broadcast",
-        event: "drawing",
-        payload: {
-          type: "draw",
-          data: {
-            prevPoint: normalizedPrevPoint,
-            currentPoint: normalizedCurrentPoint,
-            color,
-            lineWidth: width,
-          },
-        },
-      });
-    }
   };
 
-  const clearCanvas = (broadcast = true) => {
+  const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -352,10 +205,7 @@ export default function DrawingCanvas({
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Reset drawing history
-    setDrawingHistory([{ type: "clear" }]);
-
-    if (broadcast && isDrawer) {
+    if (isDrawer) {
       // Broadcast clear to other players
       supabase.channel(`drawing:${gameId}`).send({
         type: "broadcast",
@@ -366,73 +216,6 @@ export default function DrawingCanvas({
       });
     }
   };
-
-  const handleUndo = () => {
-    if (!isDrawer || drawingHistory.length === 0) return;
-
-    // Remove the last action
-    const newHistory = [...drawingHistory];
-    newHistory.pop();
-
-    // If we've removed everything, add a clear action
-    if (newHistory.length === 0) {
-      newHistory.push({ type: "clear" });
-    }
-
-    setDrawingHistory(newHistory);
-
-    // Redraw canvas with updated history
-    redrawCanvas(newHistory);
-
-    // Broadcast undo to other players
-    supabase.channel(`drawing:${gameId}`).send({
-      type: "broadcast",
-      event: "drawing",
-      payload: {
-        type: "undo",
-        data: {
-          historyLength: newHistory.length,
-        },
-      },
-    });
-  };
-
-  const handleUndoFromBroadcast = (historyLength: number) => {
-    // Truncate local history to match the drawer's history length
-    const newHistory = drawingHistory.slice(0, historyLength);
-    setDrawingHistory(newHistory);
-    redrawCanvas(newHistory);
-  };
-
-  // Share full canvas state with new viewers
-  useEffect(() => {
-    if (isDrawer) {
-      const subscription = supabase
-        .channel(`drawing:${gameId}`)
-        .on("broadcast", { event: "drawing" }, (payload) => {
-          const { type } = payload.payload as any;
-
-          if (type === "requestState") {
-            // Send full canvas state to the requester
-            supabase.channel(`drawing:${gameId}`).send({
-              type: "broadcast",
-              event: "drawing",
-              payload: {
-                type: "fullState",
-                data: {
-                  history: drawingHistory,
-                },
-              },
-            });
-          }
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(subscription);
-      };
-    }
-  }, [isDrawer, gameId, supabase, drawingHistory]);
 
   const colors = [
     "#000000",
@@ -534,33 +317,20 @@ export default function DrawingCanvas({
                 </div>
               </PopoverContent>
             </Popover>
-
-            <Button
-              variant="glass"
-              size="icon"
-              className="w-8 h-8"
-              onClick={handleUndo}
-              disabled={drawingHistory.length <= 1} // Disable if only clear action exists
-            >
-              <Undo2 className="w-4 h-4" />
-            </Button>
           </div>
 
           <Button
             variant="glass"
             size="icon"
             className="w-8 h-8"
-            onClick={() => clearCanvas(true)}
+            onClick={clearCanvas}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       )}
 
-      <div
-        ref={canvasContainerRef}
-        className="relative bg-white border rounded-md overflow-hidden"
-      >
+      <div className="relative bg-white border rounded-md overflow-hidden">
         {!turnStarted && (
           <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 pointer-events-none glass-card">
             <p className="text-white text-lg">
