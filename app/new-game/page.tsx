@@ -58,7 +58,7 @@ const schema = z.object({
   difficulty: z.string().min(1, "La difficoltà è obbligatoria"),
   timer: z.coerce
     .number()
-    .min(5, "Il timer deve essere almeno 5 secondi")
+    .min(30, "Il timer deve essere almeno 30 secondi")
     .max(600, "Il timer deve essere al massimo 600 secondi"),
 });
 
@@ -245,7 +245,7 @@ export default function NewGamePage() {
                       <FormControl>
                         <Input
                           type="number"
-                          min={5}
+                          min={30}
                           max={600}
                           step={10}
                           {...field}

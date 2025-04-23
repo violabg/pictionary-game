@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getCard,
   nextTurn,
@@ -7,7 +8,7 @@ import {
   startTurn,
   submitGuess,
 } from "@/lib/game-actions";
-import type { Card, Game, Player } from "@/lib/types";
+import type { Card as CardType, Game, Player } from "@/lib/types";
 import { Crown, PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -27,7 +28,7 @@ interface GameBoardProps {
 
 export default function GameBoard({ game, players }: GameBoardProps) {
   const { supabase } = useSupabase();
-  const [currentCard, setCurrentCard] = useState<Card | null>(null);
+  const [currentCard, setCurrentCard] = useState<CardType | null>(null);
   const [isDrawer, setIsDrawer] = useState(false);
   const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
   const [showSelectWinnerModal, setShowSelectWinnerModal] = useState(false);
@@ -266,6 +267,23 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         </div>
 
         <div className="flex flex-col space-y-4">
+          {/* Show time's up card above the player list */}
+          {showTimeUpModal && timeRemaining === 0 && (
+            <Card className="gradient-border glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-bold text-red-500 text-lg">
+                  Tempo scaduto!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="mb-2">La risposta corretta era:</p>
+                <div className="mb-4 font-semibold text-xl">
+                  {correctAnswer || ""}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {game.current_drawer_id && (
             <PlayerList
               players={players}
@@ -284,25 +302,6 @@ export default function GameBoard({ game, players }: GameBoardProps) {
           onClose={handleCloseSelectWinner}
           timeRemaining={timeRemaining}
         />
-      )}
-
-      {/* Modal for time's up */}
-      {showTimeUpModal && (
-        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
-          <div className="bg-white shadow-lg p-8 rounded-lg w-full max-w-sm text-center">
-            <h2 className="mb-4 font-bold text-2xl">Tempo scaduto!</h2>
-            <p className="mb-4">La risposta corretta era:</p>
-            <div className="mb-6 font-semibold text-xl">
-              {correctAnswer || ""}
-            </div>
-            <Button
-              variant="gradient"
-              onClick={() => setShowTimeUpModal(false)}
-            >
-              Chiudi
-            </Button>
-          </div>
-        </div>
       )}
     </div>
   );
