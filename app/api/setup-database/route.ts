@@ -27,6 +27,7 @@ export async function POST() {
         current_drawer_id UUID,
         current_card_id UUID,
         timer_end TIMESTAMP WITH TIME ZONE,
+        timer INTEGER NOT NULL DEFAULT 120,
         cards_generated BOOLEAN NOT NULL DEFAULT FALSE,
         difficulty TEXT NOT NULL DEFAULT 'medium',
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
