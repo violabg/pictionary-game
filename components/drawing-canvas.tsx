@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Eraser, Palette, Trash2 } from "lucide-react";
+import { Eraser, Pen, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSupabase } from "./supabase-provider";
 
@@ -228,7 +228,7 @@ export default function DrawingCanvas({
     "#FFD700",
   ];
 
-  // Keyboard shortcuts for tool selection and clear
+  // Keyboard shortcuts for tool selection, clear, and undo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isDrawer || !turnStarted) return;
@@ -302,7 +302,7 @@ export default function DrawingCanvas({
               className="w-8 h-8"
               onClick={() => setTool("brush")}
             >
-              <Palette className="w-4 h-4" />
+              <Pen className="w-4 h-4" />
             </Button>
 
             <Popover>
