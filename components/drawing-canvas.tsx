@@ -36,6 +36,12 @@ export default function DrawingCanvas({
   const [strokes, setStrokes] = useState<any[]>([]); // Each stroke: { points: [{x, y}], color, width }
   const [currentStroke, setCurrentStroke] = useState<any | null>(null);
 
+  // Keep a ref to the latest strokes for use in resize handler
+  const strokesRef = useRef(strokes);
+  useEffect(() => {
+    strokesRef.current = strokes;
+  }, [strokes]);
+
   // Set up canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,6 +60,8 @@ export default function DrawingCanvas({
         window.innerHeight * 0.6,
         container.clientWidth * 0.75
       );
+      // Redraw strokes after resizing, always use latest
+      redrawStrokes(strokesRef.current);
     };
 
     resizeCanvas();
@@ -74,46 +82,65 @@ export default function DrawingCanvas({
     setCurrentStroke(null);
   }, [currentDrawerId]);
 
+  // Utility: Normalize and denormalize points
+  const normalizePoint = (
+    point: { x: number; y: number },
+    canvas: HTMLCanvasElement
+  ) => ({
+    x: point.x / canvas.width,
+    y: point.y / canvas.height,
+  });
+  const denormalizePoint = (
+    point: { x: number; y: number },
+    canvas: HTMLCanvasElement
+  ) => ({
+    x: point.x * canvas.width,
+    y: point.y * canvas.height,
+  });
+
+  // --- Update startDrawing to use normalized points ---
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
     if (!isDrawer || !turnStarted) return;
-
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     setIsDrawing(true);
     const point = getPoint(e);
-    prevPointRef.current = point;
+    const normPoint = normalizePoint(point, canvas);
+    prevPointRef.current = normPoint;
     setCurrentStroke({
-      points: [point],
+      points: [normPoint],
       color: tool === "brush" ? color : "#ffffff",
       width: tool === "brush" ? lineWidth : eraserWidth,
     });
   };
 
+  // --- Update draw to use normalized points and broadcast normalized ---
   const draw = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
     if (!isDrawing || !isDrawer || !turnStarted || !prevPointRef.current)
       return;
-
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const currentPoint = getPoint(e);
+    const normCurrent = normalizePoint(currentPoint, canvas);
     const prevPoint = prevPointRef.current;
-
-    // Draw on local canvas
+    // Draw on local canvas (denormalize for drawing)
     drawLine(
-      prevPoint.x,
-      prevPoint.y,
-      currentPoint.x,
-      currentPoint.y,
+      prevPoint.x * canvas.width,
+      prevPoint.y * canvas.height,
+      normCurrent.x * canvas.width,
+      normCurrent.y * canvas.height,
       tool === "brush" ? color : "#ffffff",
       tool === "brush" ? lineWidth : eraserWidth
     );
-
     // Add to current stroke
     setCurrentStroke((stroke: any) =>
-      stroke ? { ...stroke, points: [...stroke.points, currentPoint] } : null
+      stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
     );
-
-    // Broadcast to other players
+    // Broadcast to other players (normalized)
     supabase.channel(`drawing:${gameId}`).send({
       type: "broadcast",
       event: "drawing",
@@ -121,23 +148,23 @@ export default function DrawingCanvas({
         type: "draw",
         data: {
           prevPoint,
-          currentPoint,
+          currentPoint: normCurrent,
           color: tool === "brush" ? color : "#ffffff",
           lineWidth: tool === "brush" ? lineWidth : eraserWidth,
         },
       },
     });
-
-    prevPointRef.current = currentPoint;
+    prevPointRef.current = normCurrent;
   };
 
+  // --- Update stopDrawing to use normalized points ---
   const stopDrawing = () => {
     setIsDrawing(false);
     prevPointRef.current = null;
     if (currentStroke && currentStroke.points.length > 1) {
       setStrokes((prev) => {
         const newStrokes = [...prev, currentStroke];
-        // Broadcast new strokes to others
+        // Broadcast new strokes to others (normalized)
         supabase.channel(`drawing:${gameId}`).send({
           type: "broadcast",
           event: "drawing",
@@ -152,7 +179,7 @@ export default function DrawingCanvas({
     setCurrentStroke(null);
   };
 
-  // Redraw all strokes
+  // --- Update redrawStrokes to denormalize points ---
   const redrawStrokes = (allStrokes: any[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -166,14 +193,9 @@ export default function DrawingCanvas({
 
     for (const stroke of allStrokes) {
       for (let i = 1; i < stroke.points.length; i++) {
-        drawLine(
-          stroke.points[i - 1].x,
-          stroke.points[i - 1].y,
-          stroke.points[i].x,
-          stroke.points[i].y,
-          stroke.color,
-          stroke.width
-        );
+        const p1 = denormalizePoint(stroke.points[i - 1], canvas);
+        const p2 = denormalizePoint(stroke.points[i], canvas);
+        drawLine(p1.x, p1.y, p2.x, p2.y, stroke.color, stroke.width);
       }
     }
   };
@@ -244,7 +266,7 @@ export default function DrawingCanvas({
       } else {
         redrawStrokes(newStrokes);
       }
-      // Broadcast new strokes to others
+      // Broadcast new strokes to others (normalized)
       supabase.channel(`drawing:${gameId}`).send({
         type: "broadcast",
         event: "drawing",
@@ -286,18 +308,16 @@ export default function DrawingCanvas({
       .channel(`drawing:${gameId}`)
       .on("broadcast", { event: "drawing" }, (payload) => {
         const { type, data } = payload.payload as any;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
         if (type === "clear") {
           clearCanvas();
         } else if (type === "draw") {
-          drawLine(
-            data.prevPoint.x,
-            data.prevPoint.y,
-            data.currentPoint.x,
-            data.currentPoint.y,
-            data.color,
-            data.lineWidth
-          );
+          // Denormalize points for drawing
+          const p1 = denormalizePoint(data.prevPoint, canvas);
+          const p2 = denormalizePoint(data.currentPoint, canvas);
+          drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
         } else if (type === "strokes") {
           setStrokes(data);
           redrawStrokes(data);
