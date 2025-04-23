@@ -228,6 +228,24 @@ export default function DrawingCanvas({
     "#FFD700",
   ];
 
+  // Keyboard shortcuts for tool selection and clear
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isDrawer || !turnStarted) return;
+      if (e.key === "p" || e.key === "P") {
+        setTool("brush");
+      } else if (e.key === "e" || e.key === "E") {
+        setTool("eraser");
+      } else if (e.key === "c" || e.key === "C") {
+        clearCanvas();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDrawer, turnStarted]);
+
   return (
     <div className="flex flex-col">
       {isDrawer && turnStarted && (
@@ -235,10 +253,15 @@ export default function DrawingCanvas({
           <div className="flex items-center space-x-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="glass" size="icon" className="p-0 w-8 h-8">
+                <Button variant="default" size="icon" className="p-0 w-8 h-8">
                   <div
-                    className="rounded-full w-4 h-4"
-                    style={{ backgroundColor: color }}
+                    className="border rounded-full w-4 h-4"
+                    style={{
+                      backgroundColor: color,
+                      borderColor: "#d1d5db", // Tailwind gray-300
+                      borderWidth: "2px",
+                      borderStyle: "solid",
+                    }}
                   />
                 </Button>
               </PopoverTrigger>
@@ -250,7 +273,8 @@ export default function DrawingCanvas({
                       className="flex justify-center items-center border-2 rounded-md w-12 h-12"
                       style={{
                         backgroundColor: c,
-                        borderColor: c === color ? "#fff" : "transparent",
+                        borderColor: c === color ? "#d1d5db" : "transparent", // light gray border if selected
+                        boxShadow: c === color ? "0 0 0 2px #fff" : undefined, // optional: white outline for contrast
                       }}
                       onClick={() => setColor(c)}
                     />
