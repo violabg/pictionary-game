@@ -49,8 +49,9 @@ export default function JoinGamePage() {
     setUsernameError(null);
   }, [username, gameId]);
 
-  const handleCheckUsername = async () => {
-    if (!username || !gameId) return;
+  // Make handleCheckUsername return a boolean indicating username availability
+  const handleCheckUsername = async (): Promise<boolean> => {
+    if (!username || !gameId) return false;
 
     setIsCheckingUsername(true);
     setUsernameError(null);
@@ -61,22 +62,26 @@ export default function JoinGamePage() {
 
       if (result.available) {
         setUsernameAvailable(true);
+        return true;
       } else {
         setUsernameError(
           result.message ||
             "Username already taken. Please choose another username."
         );
         setUsernameAvailable(false);
+        return false;
       }
     } catch (error: any) {
       console.error("Error checking username:", error);
       setUsernameError("Failed to check username availability");
       setUsernameAvailable(false);
+      return false;
     } finally {
       setIsCheckingUsername(false);
     }
   };
 
+  // Update handleJoinGame to only join if handleCheckUsername returns true
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -90,11 +95,9 @@ export default function JoinGamePage() {
     }
 
     // Check username availability first
-    if (usernameAvailable !== true) {
-      await handleCheckUsername();
-      if (usernameAvailable !== true) {
-        return;
-      }
+    const isAvailable = await handleCheckUsername();
+    if (!isAvailable) {
+      return;
     }
 
     setIsLoading(true);
@@ -232,7 +235,7 @@ export default function JoinGamePage() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="px-6 pt-6">
               <Button
                 type="submit"
                 variant="gradient"
