@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Eraser, Pen, Trash2 } from "lucide-react";
+import { Eraser, Pen, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSupabase } from "./supabase-provider";
 
@@ -33,6 +33,8 @@ export default function DrawingCanvas({
   const [tool, setTool] = useState<"brush" | "eraser">("brush");
   const prevPointRef = useRef<{ x: number; y: number } | null>(null);
   const [eraserWidth, setEraserWidth] = useState(20);
+  const [strokes, setStrokes] = useState<any[]>([]); // Each stroke: { points: [{x, y}], color, width }
+  const [currentStroke, setCurrentStroke] = useState<any | null>(null);
 
   // Set up canvas
   useEffect(() => {
@@ -66,34 +68,11 @@ export default function DrawingCanvas({
     };
   }, [currentDrawerId]);
 
-  // Subscribe to drawing updates
+  // Reset history on new turn
   useEffect(() => {
-    if (isDrawer) return; // Drawer doesn't need to subscribe
-
-    const drawingSubscription = supabase
-      .channel(`drawing:${gameId}`)
-      .on("broadcast", { event: "drawing" }, (payload) => {
-        const { type, data } = payload.payload as any;
-
-        if (type === "clear") {
-          clearCanvas();
-        } else if (type === "draw") {
-          drawLine(
-            data.prevPoint.x,
-            data.prevPoint.y,
-            data.currentPoint.x,
-            data.currentPoint.y,
-            data.color,
-            data.lineWidth
-          );
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(drawingSubscription);
-    };
-  }, [gameId, supabase, isDrawer]);
+    setStrokes([]);
+    setCurrentStroke(null);
+  }, [currentDrawerId]);
 
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -103,6 +82,11 @@ export default function DrawingCanvas({
     setIsDrawing(true);
     const point = getPoint(e);
     prevPointRef.current = point;
+    setCurrentStroke({
+      points: [point],
+      color: tool === "brush" ? color : "#ffffff",
+      width: tool === "brush" ? lineWidth : eraserWidth,
+    });
   };
 
   const draw = (
@@ -122,6 +106,11 @@ export default function DrawingCanvas({
       currentPoint.y,
       tool === "brush" ? color : "#ffffff",
       tool === "brush" ? lineWidth : eraserWidth
+    );
+
+    // Add to current stroke
+    setCurrentStroke((stroke: any) =>
+      stroke ? { ...stroke, points: [...stroke.points, currentPoint] } : null
     );
 
     // Broadcast to other players
@@ -145,31 +134,48 @@ export default function DrawingCanvas({
   const stopDrawing = () => {
     setIsDrawing(false);
     prevPointRef.current = null;
+    if (currentStroke && currentStroke.points.length > 1) {
+      setStrokes((prev) => {
+        const newStrokes = [...prev, currentStroke];
+        // Broadcast new strokes to others
+        supabase.channel(`drawing:${gameId}`).send({
+          type: "broadcast",
+          event: "drawing",
+          payload: {
+            type: "strokes",
+            data: newStrokes,
+          },
+        });
+        return newStrokes;
+      });
+    }
+    setCurrentStroke(null);
   };
 
-  const getPoint = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
+  // Redraw all strokes
+  const redrawStrokes = (allStrokes: any[]) => {
     const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    if ("touches" in e) {
-      // Touch event
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      // Mouse event
-      clientX = e.clientX;
-      clientY = e.clientY;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (const stroke of allStrokes) {
+      for (let i = 1; i < stroke.points.length; i++) {
+        drawLine(
+          stroke.points[i - 1].x,
+          stroke.points[i - 1].y,
+          stroke.points[i].x,
+          stroke.points[i].y,
+          stroke.color,
+          stroke.width
+        );
+      }
     }
-
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
   };
 
   const drawLine = (
@@ -228,11 +234,37 @@ export default function DrawingCanvas({
     "#FFD700",
   ];
 
+  // Undo logic
+  const handleUndo = () => {
+    setStrokes((prev) => {
+      if (prev.length === 0) return prev;
+      const newStrokes = prev.slice(0, -1);
+      if (newStrokes.length === 0) {
+        clearCanvas();
+      } else {
+        redrawStrokes(newStrokes);
+      }
+      // Broadcast new strokes to others
+      supabase.channel(`drawing:${gameId}`).send({
+        type: "broadcast",
+        event: "drawing",
+        payload: {
+          type: "strokes",
+          data: newStrokes,
+        },
+      });
+      return newStrokes;
+    });
+  };
+
   // Keyboard shortcuts for tool selection, clear, and undo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isDrawer || !turnStarted) return;
-      if (e.key === "p" || e.key === "P") {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.key === "p" || e.key === "P") {
         setTool("brush");
       } else if (e.key === "e" || e.key === "E") {
         setTool("eraser");
@@ -245,6 +277,59 @@ export default function DrawingCanvas({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isDrawer, turnStarted]);
+
+  // Subscribe to drawing updates
+  useEffect(() => {
+    if (isDrawer) return; // Drawer doesn't need to subscribe
+
+    const drawingSubscription = supabase
+      .channel(`drawing:${gameId}`)
+      .on("broadcast", { event: "drawing" }, (payload) => {
+        const { type, data } = payload.payload as any;
+
+        if (type === "clear") {
+          clearCanvas();
+        } else if (type === "draw") {
+          drawLine(
+            data.prevPoint.x,
+            data.prevPoint.y,
+            data.currentPoint.x,
+            data.currentPoint.y,
+            data.color,
+            data.lineWidth
+          );
+        } else if (type === "strokes") {
+          setStrokes(data);
+          redrawStrokes(data);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(drawingSubscription);
+    };
+  }, [gameId, supabase, isDrawer]);
+
+  // Get mouse/touch point relative to canvas
+  const getPoint = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if ("touches" in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
 
   return (
     <div className="flex flex-col">
@@ -343,14 +428,25 @@ export default function DrawingCanvas({
             </Popover>
           </div>
 
-          <Button
-            variant="glass"
-            size="icon"
-            className="w-8 h-8"
-            onClick={clearCanvas}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="glass"
+              size="icon"
+              className="w-8 h-8"
+              onClick={handleUndo}
+              aria-label="Undo (Ctrl+Z)"
+            >
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="glass"
+              size="icon"
+              className="w-8 h-8"
+              onClick={clearCanvas}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       )}
 
