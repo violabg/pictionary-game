@@ -9,7 +9,7 @@ import {
 } from "@/lib/game-actions";
 import type { Card, Game, Player } from "@/lib/types";
 import { Crown, PlayCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import CardDisplay from "./card-display";
 import DrawingCanvas from "./drawing-canvas";
@@ -34,6 +34,8 @@ export default function GameBoard({ game, players }: GameBoardProps) {
   const [timeRemaining, setTimeRemaining] = useState(120);
   const [turnStarted, setTurnStarted] = useState(false);
   const [isStartingTurn, setIsStartingTurn] = useState(false);
+  const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const playerId = localStorage.getItem("playerId");
   const currentPlayer = players.find((p) => p.id === playerId);
@@ -56,22 +58,32 @@ export default function GameBoard({ game, players }: GameBoardProps) {
     if (game.timer_end) {
       const endTime = new Date(game.timer_end).getTime();
       const updateTimer = () => {
-        const now = new Date().getTime();
-        const diff = Math.max(0, Math.floor((endTime - now) / 1000));
-        setTimeRemaining(diff);
+        if (!isTimerPaused) {
+          const now = new Date().getTime();
+          const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+          setTimeRemaining(diff);
 
-        if (diff <= 0 && isDrawer) {
-          // If time's up and we're the drawer, move to next turn
-          nextTurn(game.id);
-          clearInterval(timerInterval);
+          if (diff <= 0 && isDrawer) {
+            // If time's up and we're the drawer, move to next turn
+            nextTurn(game.id).catch((error) => {
+              console.error("Error moving to next turn:", error);
+              toast.error("Error", {
+                description: "Failed to move to the next turn",
+              });
+            });
+            if (timerIntervalRef.current)
+              clearInterval(timerIntervalRef.current);
+          }
         }
       };
 
       updateTimer();
-      const timerInterval = setInterval(updateTimer, 1000);
-      return () => clearInterval(timerInterval);
+      timerIntervalRef.current = setInterval(updateTimer, 1000);
+      return () => {
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      };
     }
-  }, [game, playerId, isDrawer]);
+  }, [game, playerId, isDrawer, isTimerPaused]);
 
   // Subscribe to guesses
   useEffect(() => {
@@ -140,6 +152,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
       await selectWinner(game.id, winnerId, timeRemaining);
       setShowSelectWinnerModal(false);
       setCorrectGuessers([]);
+      setIsTimerPaused(false); // Resume timer if winner is selected (timer will end anyway)
     } catch (error) {
       console.error("Error selecting winner:", error);
       toast.error("Error", {
@@ -168,6 +181,13 @@ export default function GameBoard({ game, players }: GameBoardProps) {
   const handleOpenSelectWinner = () => {
     if (!isDrawer || !turnStarted) return;
     setShowSelectWinnerModal(true);
+    setIsTimerPaused(true); // Pause timer when modal opens
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+  };
+
+  const handleCloseSelectWinner = () => {
+    setShowSelectWinnerModal(false);
+    setIsTimerPaused(false); // Resume timer if modal closed without winner
   };
 
   return (
@@ -247,7 +267,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         <SelectWinnerModal
           players={players.filter((p) => p.id !== game.current_drawer_id)}
           onSelectWinner={handleSelectWinner}
-          onClose={() => setShowSelectWinnerModal(false)}
+          onClose={handleCloseSelectWinner}
           timeRemaining={timeRemaining}
         />
       )}

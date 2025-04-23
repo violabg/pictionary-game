@@ -525,6 +525,8 @@ export async function submitGuess(
         console.error("Error updating score:", updateError);
         throw new Error("Failed to update score");
       }
+      // Move to next turn
+      await nextTurn(gameId);
     }
   } catch (error: any) {
     console.error("Error in submitGuess:", error);
