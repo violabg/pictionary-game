@@ -1,147 +1,156 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 export interface Database {
   public: {
     Tables: {
       games: {
         Row: {
-          id: string
-          category: string
-          status: string
-          current_drawer_id: string | null
-          current_card_id: string | null
-          timer_end: string | null
-          cards_generated: boolean
-          created_at: string
-          difficulty: string
-        }
+          id: string;
+          category: string;
+          status: string;
+          current_drawer_id: string | null;
+          current_card_id: string | null;
+          timer_end: string | null;
+          timer: number; // NEW: timer in seconds
+          cards_generated: boolean;
+          created_at: string;
+          difficulty: string;
+        };
         Insert: {
-          id?: string
-          category: string
-          status?: string
-          current_drawer_id?: string | null
-          current_card_id?: string | null
-          timer_end?: string | null
-          cards_generated?: boolean
-          created_at?: string
-          difficulty?: string
-        }
+          id?: string;
+          category: string;
+          status?: string;
+          current_drawer_id?: string | null;
+          current_card_id?: string | null;
+          timer_end?: string | null;
+          timer?: number; // NEW: timer in seconds
+          cards_generated?: boolean;
+          created_at?: string;
+          difficulty?: string;
+        };
         Update: {
-          id?: string
-          category?: string
-          status?: string
-          current_drawer_id?: string | null
-          current_card_id?: string | null
-          timer_end?: string | null
-          cards_generated?: boolean
-          created_at?: string
-          difficulty?: string
-        }
-      }
+          id?: string;
+          category?: string;
+          status?: string;
+          current_drawer_id?: string | null;
+          current_card_id?: string | null;
+          timer_end?: string | null;
+          timer?: number; // NEW: timer in seconds
+          cards_generated?: boolean;
+          created_at?: string;
+          difficulty?: string;
+        };
+      };
       players: {
         Row: {
-          id: string
-          game_id: string
-          username: string
-          score: number
-          order_index: number
-          created_at: string
-        }
+          id: string;
+          game_id: string;
+          username: string;
+          score: number;
+          order_index: number;
+          created_at: string;
+        };
         Insert: {
-          id?: string
-          game_id: string
-          username: string
-          score?: number
-          order_index: number
-          created_at?: string
-        }
+          id?: string;
+          game_id: string;
+          username: string;
+          score?: number;
+          order_index: number;
+          created_at?: string;
+        };
         Update: {
-          id?: string
-          game_id?: string
-          username?: string
-          score?: number
-          order_index?: number
-          created_at?: string
-        }
-      }
+          id?: string;
+          game_id?: string;
+          username?: string;
+          score?: number;
+          order_index?: number;
+          created_at?: string;
+        };
+      };
       cards: {
         Row: {
-          id: string
-          game_id: string
-          title: string
-          description: string
-          used: boolean
-          created_at: string
-        }
+          id: string;
+          game_id: string;
+          title: string;
+          description: string;
+          used: boolean;
+          created_at: string;
+        };
         Insert: {
-          id?: string
-          game_id: string
-          title: string
-          description: string
-          used?: boolean
-          created_at?: string
-        }
+          id?: string;
+          game_id: string;
+          title: string;
+          description: string;
+          used?: boolean;
+          created_at?: string;
+        };
         Update: {
-          id?: string
-          game_id?: string
-          title?: string
-          description?: string
-          used?: boolean
-          created_at?: string
-        }
-      }
+          id?: string;
+          game_id?: string;
+          title?: string;
+          description?: string;
+          used?: boolean;
+          created_at?: string;
+        };
+      };
       guesses: {
         Row: {
-          id: string
-          game_id: string
-          player_id: string
-          guess_text: string
-          is_correct: boolean
-          created_at: string
-        }
+          id: string;
+          game_id: string;
+          player_id: string;
+          guess_text: string;
+          is_correct: boolean;
+          created_at: string;
+        };
         Insert: {
-          id?: string
-          game_id: string
-          player_id: string
-          guess_text: string
-          is_correct?: boolean
-          created_at?: string
-        }
+          id?: string;
+          game_id: string;
+          player_id: string;
+          guess_text: string;
+          is_correct?: boolean;
+          created_at?: string;
+        };
         Update: {
-          id?: string
-          game_id?: string
-          player_id?: string
-          guess_text?: string
-          is_correct?: boolean
-          created_at?: string
-        }
-      }
+          id?: string;
+          game_id?: string;
+          player_id?: string;
+          guess_text?: string;
+          is_correct?: boolean;
+          created_at?: string;
+        };
+      };
       drawings: {
         Row: {
-          id: string
-          game_id: string
-          card_id: string
-          drawer_id: string
-          data: Json
-          created_at: string
-        }
+          id: string;
+          game_id: string;
+          card_id: string;
+          drawer_id: string;
+          data: Json;
+          created_at: string;
+        };
         Insert: {
-          id?: string
-          game_id: string
-          card_id: string
-          drawer_id: string
-          data: Json
-          created_at?: string
-        }
+          id?: string;
+          game_id: string;
+          card_id: string;
+          drawer_id: string;
+          data: Json;
+          created_at?: string;
+        };
         Update: {
-          id?: string
-          game_id?: string
-          card_id?: string
-          drawer_id?: string
-          data?: Json
-          created_at?: string
-        }
-      }
-    }
-  }
+          id?: string;
+          game_id?: string;
+          card_id?: string;
+          drawer_id?: string;
+          data?: Json;
+          created_at?: string;
+        };
+      };
+    };
+  };
 }

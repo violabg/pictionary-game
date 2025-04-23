@@ -35,7 +35,8 @@ const getSupabaseServerClient = () => {
 export async function createGame(
   username: string,
   category: string,
-  difficulty = "medium"
+  difficulty = "medium",
+  timer = 120
 ): Promise<string> {
   try {
     console.log(
@@ -44,7 +45,9 @@ export async function createGame(
       "category:",
       category,
       "and difficulty:",
-      difficulty
+      difficulty,
+      "and timer:",
+      timer
     );
 
     const supabase = getSupabaseServerClient();
@@ -64,6 +67,7 @@ export async function createGame(
           status: "waiting",
           cards_generated: false,
           difficulty: difficulty, // Store the difficulty level
+          timer: timer, // Store the timer value
         })
         .select();
 
@@ -687,9 +691,21 @@ export async function startTurn(gameId: string): Promise<void> {
   try {
     const supabase = getSupabaseServerClient();
 
-    // Set timer end (2 minutes from now)
+    // Get the timer value from the game
+    const { data: game, error: gameError } = await supabase
+      .from("games")
+      .select("timer")
+      .eq("id", gameId)
+      .single();
+
+    if (gameError) {
+      console.error("Error getting game timer:", gameError);
+      throw new Error("Failed to get game timer");
+    }
+
+    const timerSeconds = game?.timer ?? 120;
     const timerEnd = new Date();
-    timerEnd.setMinutes(timerEnd.getMinutes() + 2);
+    timerEnd.setSeconds(timerEnd.getSeconds() + timerSeconds);
 
     // Update game with timer_end to indicate turn has started
     const { error: updateError } = await supabase

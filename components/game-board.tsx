@@ -35,6 +35,8 @@ export default function GameBoard({ game, players }: GameBoardProps) {
   const [turnStarted, setTurnStarted] = useState(false);
   const [isStartingTurn, setIsStartingTurn] = useState(false);
   const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
+  const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const playerId = localStorage.getItem("playerId");
@@ -62,6 +64,18 @@ export default function GameBoard({ game, players }: GameBoardProps) {
           const now = new Date().getTime();
           const diff = Math.max(0, Math.floor((endTime - now) / 1000));
           setTimeRemaining(diff);
+
+          if (diff <= 0) {
+            // Show time up modal and correct answer
+            if (currentCard) {
+              setCorrectAnswer(currentCard.title);
+            } else if (game.current_card_id) {
+              getCard(game.current_card_id).then((card) => {
+                setCorrectAnswer(card.title);
+              });
+            }
+            setShowTimeUpModal(true);
+          }
 
           if (diff <= 0 && isDrawer) {
             // If time's up and we're the drawer, move to next turn
@@ -270,6 +284,25 @@ export default function GameBoard({ game, players }: GameBoardProps) {
           onClose={handleCloseSelectWinner}
           timeRemaining={timeRemaining}
         />
+      )}
+
+      {/* Modal for time's up */}
+      {showTimeUpModal && (
+        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
+          <div className="bg-white shadow-lg p-8 rounded-lg w-full max-w-sm text-center">
+            <h2 className="mb-4 font-bold text-2xl">Tempo scaduto!</h2>
+            <p className="mb-4">La risposta corretta era:</p>
+            <div className="mb-6 font-semibold text-xl">
+              {correctAnswer || ""}
+            </div>
+            <Button
+              variant="gradient"
+              onClick={() => setShowTimeUpModal(false)}
+            >
+              Chiudi
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

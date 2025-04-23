@@ -56,6 +56,10 @@ const schema = z.object({
   username: z.string().min(2, "Il nome utente è obbligatorio"),
   category: z.string().min(1, "La categoria è obbligatoria"),
   difficulty: z.string().min(1, "La difficoltà è obbligatoria"),
+  timer: z.coerce
+    .number()
+    .min(5, "Il timer deve essere almeno 5 secondi")
+    .max(600, "Il timer deve essere al massimo 600 secondi"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -71,6 +75,7 @@ export default function NewGamePage() {
       username: "",
       category: "",
       difficulty: "medio",
+      timer: 120,
     },
   });
 
@@ -86,7 +91,8 @@ export default function NewGamePage() {
       const gameId = await createGame(
         data.username,
         data.category,
-        data.difficulty
+        data.difficulty,
+        data.timer
       );
       if (!gameId) throw new Error("No game ID returned");
       const playerId = document.cookie
@@ -226,6 +232,33 @@ export default function NewGamePage() {
                           : field.value === "difficile"
                           ? "Parole impegnative, più difficili da disegnare e indovinare"
                           : "Selezione casuale da tutti i livelli di difficoltà"}
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  name="timer"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Timer (secondi)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={5}
+                          max={600}
+                          step={10}
+                          {...field}
+                          value={field.value ?? 120}
+                          onChange={(e) =>
+                            field.onChange(Number(e.target.value))
+                          }
+                          className="glass-card"
+                        />
+                      </FormControl>
+                      <p className="text-muted-foreground text-sm">
+                        Imposta la durata del turno in secondi (default 120,
+                        minimo 30, massimo 600)
                       </p>
                       <FormMessage />
                     </FormItem>
