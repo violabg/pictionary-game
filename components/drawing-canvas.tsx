@@ -352,7 +352,7 @@ export default function DrawingCanvas({
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col rounded-md overflow-hidden">
       {isDrawer && turnStarted && (
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center space-x-2">
@@ -472,7 +472,7 @@ export default function DrawingCanvas({
 
       <div className="relative bg-white border rounded-md overflow-hidden">
         {!turnStarted && (
-          <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 pointer-events-none glass-card">
+          <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 rounded-md pointer-events-none glass-card">
             <p className="text-white text-lg">
               {isDrawer
                 ? "Clicca 'Inizia il tuo turno' per iniziare a disegnare"
