@@ -50,16 +50,15 @@ export default function DrawingCanvas({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size
+    // Set canvas size with 4:3 aspect ratio
     const resizeCanvas = () => {
       const container = canvas.parentElement;
       if (!container) return;
-
-      canvas.width = container.clientWidth;
-      canvas.height = Math.min(
-        window.innerHeight * 0.6,
-        container.clientWidth * 0.75
-      );
+      // Use container width, but limit height to 4:3 aspect ratio
+      const width = container.clientWidth;
+      const height = Math.min(window.innerHeight * 0.6, width * 0.75); // 0.75 = 3/4
+      canvas.width = width;
+      canvas.height = height;
       // Redraw strokes after resizing, always use latest
       redrawStrokes(strokesRef.current);
     };
@@ -330,7 +329,7 @@ export default function DrawingCanvas({
     };
   }, [gameId, supabase, isDrawer]);
 
-  // Get mouse/touch point relative to canvas
+  // Get mouse/touch point relative to canvas, scaled to canvas size
   const getPoint = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
@@ -345,9 +344,12 @@ export default function DrawingCanvas({
       clientX = e.clientX;
       clientY = e.clientY;
     }
+    // Scale from CSS pixels to canvas pixels
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   };
 
@@ -470,7 +472,7 @@ export default function DrawingCanvas({
         </div>
       )}
 
-      <div className="relative bg-white border rounded-md overflow-hidden">
+      <div className="relative bg-white border rounded-md aspect-[4/3] overflow-hidden">
         {!turnStarted && (
           <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 rounded-md pointer-events-none glass-card">
             <p className="text-white text-lg">
@@ -483,7 +485,7 @@ export default function DrawingCanvas({
 
         <canvas
           ref={canvasRef}
-          className="touch-none"
+          className="block w-full h-full touch-none"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
