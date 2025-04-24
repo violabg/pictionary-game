@@ -1,34 +1,44 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import type { Player } from "@/lib/types"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import type { Player } from "@/lib/types";
 
 interface SelectWinnerModalProps {
-  players: Player[]
-  onSelectWinner: (playerId: string) => void
-  onClose: () => void
-  timeRemaining: number
+  players: Player[];
+  onSelectWinner: (playerId: string) => void;
+  onClose: () => void;
+  timeRemaining: number;
 }
 
-export default function SelectWinnerModal({ players, onSelectWinner, onClose, timeRemaining }: SelectWinnerModalProps) {
+export default function SelectWinnerModal({
+  players,
+  onSelectWinner,
+  onClose,
+  timeRemaining,
+}: SelectWinnerModalProps) {
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md glass-card gradient-border">
+      <DialogContent className="gradient-border sm:max-w-md glass-card">
         <DialogHeader>
-          <DialogTitle className="gradient-text">Select Winner</DialogTitle>
-          <DialogDescription>Choose the player who guessed correctly</DialogDescription>
+          <DialogTitle className="gradient-text">
+            Seleziona Vincitore
+          </DialogTitle>
+          <DialogDescription>
+            Scegli il giocatore che ha indovinato correttamente
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <p className="text-center text-muted-foreground">
-            Points to award: <span className="font-bold gradient-text">{timeRemaining}</span>
+          <p className="text-muted-foreground text-center">
+            Punti da assegnare:{" "}
+            <span className="font-bold gradient-text">{timeRemaining}</span>
           </p>
           <div className="space-y-2">
             {players.length > 0 ? (
@@ -36,26 +46,30 @@ export default function SelectWinnerModal({ players, onSelectWinner, onClose, ti
                 <Button
                   key={player.id}
                   variant="glass"
-                  className="w-full justify-start text-left"
+                  className="justify-start w-full text-left"
                   onClick={() => onSelectWinner(player.id)}
                 >
-                  <div className="flex items-center w-full justify-between">
+                  <div className="flex justify-between items-center w-full">
                     <span>{player.username}</span>
-                    <span className="text-sm text-muted-foreground">Current score: {player.score}</span>
+                    <span className="text-muted-foreground text-sm">
+                      Punteggio attuale: {player.score}
+                    </span>
                   </div>
                 </Button>
               ))
             ) : (
-              <p className="text-center text-muted-foreground">No players available to select</p>
+              <p className="text-muted-foreground text-center">
+                Nessun giocatore disponibile
+              </p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            Annulla
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

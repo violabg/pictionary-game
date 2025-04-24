@@ -29,10 +29,10 @@ export default function GamePage() {
         setGame(gameData);
         setPlayers(playersData);
       } catch (err) {
-        console.error("Error loading game:", err);
-        setError("Failed to load game data");
-        toast.error("Error", {
-          description: "Failed to load game data",
+        console.error("Errore nel caricamento della partita:", err);
+        setError("Impossibile caricare i dati della partita");
+        toast.error("Errore", {
+          description: "Impossibile caricare i dati della partita",
         });
       } finally {
         setLoading(false);
@@ -86,7 +86,7 @@ export default function GamePage() {
       <div className="flex justify-center items-center min-h-screen container">
         <div className="text-center">
           <div className="mx-auto border-4 border-primary border-t-transparent rounded-full w-16 h-16 animate-spin"></div>
-          <p className="mt-4 text-lg">Loading game...</p>
+          <p className="mt-4 text-lg">Caricamento partita...</p>
         </div>
       </div>
     );
@@ -96,8 +96,10 @@ export default function GamePage() {
     return (
       <div className="flex justify-center items-center min-h-screen container">
         <div className="text-center">
-          <h2 className="mb-4 font-bold text-2xl">Error</h2>
-          <p className="text-muted-foreground">{error || "Game not found"}</p>
+          <h2 className="mb-4 font-bold text-2xl">Errore</h2>
+          <p className="text-muted-foreground">
+            {error || "Partita non trovata"}
+          </p>
         </div>
       </div>
     );

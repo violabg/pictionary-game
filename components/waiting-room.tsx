@@ -29,8 +29,9 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
 
   const handleStartGame = async () => {
     if (players.length < 2) {
-      toast.warning("Not enough players", {
-        description: "You need at least 2 players to start the game",
+      toast.warning("Giocatori insufficienti", {
+        description:
+          "Sono necessari almeno 2 giocatori per iniziare la partita",
       });
       return;
     }
@@ -48,9 +49,9 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
       // Then start the game
       await startGame(game.id);
     } catch (error) {
-      console.error("Error starting game:", error);
-      toast.error("Error", {
-        description: "Failed to start game. Please try again.",
+      console.error("Errore nell'avvio della partita:", error);
+      toast.error("Errore", {
+        description: "Impossibile avviare la partita. Riprova.",
       });
       setIsStarting(false);
     }
@@ -67,9 +68,9 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
       await generateCards(gameId, category, playerCount);
       return true;
     } catch (error) {
-      console.error("Error generating cards:", error);
-      toast.error("Error", {
-        description: "Failed to generate cards. Please try again.",
+      console.error("Errore nella generazione delle carte:", error);
+      toast.error("Errore", {
+        description: "Impossibile generare le carte. Riprova.",
       });
       return false;
     }
@@ -77,14 +78,16 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
 
   const copyGameId = () => {
     navigator.clipboard.writeText(game.id);
-    toast.success("Game ID copied", {
-      description: "The game ID has been copied to your clipboard",
+    toast.success("ID partita copiato", {
+      description: "L'ID della partita è stato copiato negli appunti",
     });
   };
 
   // Format difficulty for display
   const formatDifficulty = (difficulty: string) => {
-    if (!difficulty) return "Medium";
+    if (!difficulty) return "Media";
+    if (difficulty.toLowerCase() === "easy") return "Facile";
+    if (difficulty.toLowerCase() === "hard") return "Difficile";
     return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
   };
 
@@ -92,15 +95,15 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
     <div className="flex justify-center items-center py-12 min-h-screen container">
       <Card className="gradient-border w-full max-w-2xl glass-card">
         <CardHeader>
-          <CardTitle className="gradient-text">Waiting Room</CardTitle>
+          <CardTitle className="gradient-text">Sala d'attesa</CardTitle>
           <CardDescription>
-            Waiting for players to join the game
+            In attesa che i giocatori si uniscano alla partita
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex justify-between items-center p-4 rounded-md glass-card">
             <div>
-              <p className="font-medium text-sm">Game ID</p>
+              <p className="font-medium text-sm">ID Partita</p>
               <p className="font-mono text-lg">{game.id}</p>
             </div>
             <Button variant="glass" size="icon" onClick={copyGameId}>
@@ -110,25 +113,27 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
 
           <div className="space-y-4">
             <h3 className="mb-2 font-medium text-lg gradient-text">
-              Game Settings
+              Impostazioni partita
             </h3>
             <div className="gap-4 grid grid-cols-2">
               <div className="p-4 rounded-md glass-card">
-                <p className="font-medium text-sm">Category</p>
+                <p className="font-medium text-sm">Categoria</p>
                 <p className="text-lg">{game.category}</p>
               </div>
               <div className="p-4 rounded-md glass-card">
-                <p className="font-medium text-sm">Difficulty</p>
+                <p className="font-medium text-sm">Difficoltà</p>
                 <p className="text-lg">{formatDifficulty(game.difficulty)}</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="mb-2 font-medium text-lg gradient-text">Players</h3>
+            <h3 className="mb-2 font-medium text-lg gradient-text">
+              Giocatori
+            </h3>
             <div className="border rounded-md glass-card">
               <div className="p-4 border-white/10 border-b">
-                <h4 className="font-medium">Players ({players.length})</h4>
+                <h4 className="font-medium">Giocatori ({players.length})</h4>
               </div>
               <ul className="divide-y divide-white/10">
                 {players.map((player) => (
@@ -157,14 +162,14 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
               className="w-full"
             >
               {isGeneratingCards
-                ? "Generating Cards..."
+                ? "Generazione carte..."
                 : isStarting
-                ? "Starting Game..."
-                : "Start Game"}
+                ? "Avvio partita..."
+                : "Avvia partita"}
             </Button>
           ) : (
             <p className="w-full text-muted-foreground text-center">
-              Waiting for the host to start the game...
+              In attesa che l'host avvii la partita...
             </p>
           )}
         </CardFooter>

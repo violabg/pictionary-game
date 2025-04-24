@@ -106,8 +106,8 @@ export default function NewGamePage() {
       if (err.message && err.message.includes("tables not set up"))
         setNeedsSetup(true);
       setError(err.message || "Failed to create game. Please try again.");
-      toast.error("Error", {
-        description: err.message || "Failed to create game. Please try again.",
+      toast.error("Errore", {
+        description: err.message || "Impossibile creare la partita. Riprova.",
       });
     }
   };
@@ -118,7 +118,7 @@ export default function NewGamePage() {
         <Link href="/" className="inline-block mb-4">
           <Button variant="glass" size="sm" className="gap-2">
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
+            Torna alla Home
           </Button>
         </Link>
         <Card className="gradient-border w-full glass-card">

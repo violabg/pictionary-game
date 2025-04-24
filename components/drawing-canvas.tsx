@@ -386,7 +386,7 @@ export default function DrawingCanvas({
                   ))}
                 </div>
                 <div className="mt-2">
-                  <label className="text-sm">Brush Size</label>
+                  <label className="text-sm">Dimensione Pennello</label>
                   <input
                     type="range"
                     min="1"
@@ -423,7 +423,7 @@ export default function DrawingCanvas({
               </PopoverTrigger>
               <PopoverContent className="p-2 w-64 glass-card">
                 <div className="mt-2">
-                  <label className="text-sm">Eraser Size</label>
+                  <label className="text-sm">Dimensione Gomma</label>
                   <input
                     type="range"
                     min="5"
@@ -475,8 +475,8 @@ export default function DrawingCanvas({
           <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 pointer-events-none glass-card">
             <p className="text-white text-lg">
               {isDrawer
-                ? "Click 'Start Your Turn' to begin drawing"
-                : "Waiting for drawer to start their turn..."}
+                ? "Clicca 'Inizia il tuo turno' per iniziare a disegnare"
+                : "In attesa che il disegnatore inizi il turno..."}
             </p>
           </div>
         )}

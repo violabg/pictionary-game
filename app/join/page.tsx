@@ -65,15 +65,14 @@ export default function JoinGamePage() {
         return true;
       } else {
         setUsernameError(
-          result.message ||
-            "Username already taken. Please choose another username."
+          result.message || "Nome già utilizzato. Scegli un altro nome."
         );
         setUsernameAvailable(false);
         return false;
       }
     } catch (error: any) {
       console.error("Error checking username:", error);
-      setUsernameError("Failed to check username availability");
+      setUsernameError("Impossibile verificare la disponibilità del nome");
       setUsernameAvailable(false);
       return false;
     } finally {
@@ -88,8 +87,8 @@ export default function JoinGamePage() {
     setShowGameStartedDialog(false);
 
     if (!username || !gameId) {
-      toast.error("Missing information", {
-        description: "Please provide your username and game ID",
+      toast.error("Informazioni mancanti", {
+        description: "Inserisci il tuo nome e l'ID della partita",
       });
       return;
     }
@@ -125,12 +124,12 @@ export default function JoinGamePage() {
         } else {
           setError(
             result.message ||
-              "Failed to join game. Please check the game ID and try again."
+              "Impossibile unirsi alla partita. Controlla l'ID e riprova."
           );
-          toast.error("Error", {
+          toast.error("Errore", {
             description:
               result.message ||
-              "Failed to join game. Please check the game ID and try again.",
+              "Impossibile unirsi alla partita. Controlla l'ID e riprova.",
           });
         }
       }
@@ -138,12 +137,12 @@ export default function JoinGamePage() {
       console.error("Error joining game:", err);
       setError(
         err.message ||
-          "Failed to join game. Please check the game ID and try again."
+          "Impossibile unirsi alla partita. Controlla l'ID e riprova."
       );
-      toast.error("Error", {
+      toast.error("Errore", {
         description:
           err.message ||
-          "Failed to join game. Please check the game ID and try again.",
+          "Impossibile unirsi alla partita. Controlla l'ID e riprova.",
       });
     } finally {
       setIsLoading(false);
@@ -161,22 +160,23 @@ export default function JoinGamePage() {
         <Link href="/" className="inline-block mb-4">
           <Button variant="glass" size="sm" className="gap-2">
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
+            Torna alla Home
           </Button>
         </Link>
 
         <Card className="gradient-border w-full glass-card">
           <CardHeader>
-            <CardTitle>Join Game</CardTitle>
+            <CardTitle>Unisciti a una partita</CardTitle>
             <CardDescription>
-              Enter a game ID to join an existing Pictionary game
+              Inserisci un ID partita per unirti a una partita di Pictionary
+              esistente
             </CardDescription>
           </CardHeader>
           {error && (
             <div className="px-6">
               <Alert variant="destructive">
                 <AlertCircle className="w-4 h-4" />
-                <AlertTitle>Error</AlertTitle>
+                <AlertTitle>Errore</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             </div>
@@ -184,10 +184,10 @@ export default function JoinGamePage() {
           <form onSubmit={handleJoinGame}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="gameId">Game ID</Label>
+                <Label htmlFor="gameId">ID Partita</Label>
                 <Input
                   id="gameId"
-                  placeholder="Enter the game ID"
+                  placeholder="Inserisci l'ID della partita"
                   value={gameId}
                   onChange={(e) => setGameId(e.target.value)}
                   required
@@ -195,12 +195,12 @@ export default function JoinGamePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Your Username</Label>
+                <Label htmlFor="username">Il tuo nome</Label>
                 <div className="flex space-x-2">
                   <div className="grow">
                     <Input
                       id="username"
-                      placeholder="Enter your username"
+                      placeholder="Inserisci il tuo nome"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
@@ -219,7 +219,7 @@ export default function JoinGamePage() {
                     )}
                     {usernameAvailable === true && (
                       <p className="flex items-center mt-1 text-green-500 text-sm">
-                        <Check className="mr-1 w-3 h-3" /> Username available
+                        <Check className="mr-1 w-3 h-3" /> Nome disponibile
                       </p>
                     )}
                   </div>
@@ -230,7 +230,7 @@ export default function JoinGamePage() {
                     disabled={!username || !gameId || isCheckingUsername}
                     className="shrink-0"
                   >
-                    {isCheckingUsername ? "Checking..." : "Check"}
+                    {isCheckingUsername ? "Controllo..." : "Controlla"}
                   </Button>
                 </div>
               </div>
@@ -242,7 +242,9 @@ export default function JoinGamePage() {
                 className="w-full"
                 disabled={isLoading}
               >
-                {isLoading ? "Joining Game..." : "Join Game"}
+                {isLoading
+                  ? "Accesso alla partita..."
+                  : "Unisciti alla partita"}
               </Button>
             </CardFooter>
           </form>
@@ -256,24 +258,24 @@ export default function JoinGamePage() {
       >
         <DialogContent className="gradient-border glass-card">
           <DialogHeader>
-            <DialogTitle>Game Already Started</DialogTitle>
+            <DialogTitle>Partita già iniziata</DialogTitle>
             <DialogDescription>
-              This game has already{" "}
-              {gameStatus === "completed" ? "ended" : "started"} and is not
-              accepting new players.
+              Questa partita è già{" "}
+              {gameStatus === "completed" ? "terminata" : "iniziata"} e non
+              accetta nuovi giocatori.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertTitle>
-                Game Status:{" "}
-                {gameStatus === "completed" ? "Completed" : "In Progress"}
+                Stato partita:{" "}
+                {gameStatus === "completed" ? "Terminata" : "In corso"}
               </AlertTitle>
               <AlertDescription>
                 {gameStatus === "completed"
-                  ? "This game has already ended. You can view the results or create a new game."
-                  : "This game is currently in progress. You can spectate the game or create a new one."}
+                  ? "Questa partita è già terminata. Puoi vedere i risultati o creare una nuova partita."
+                  : "Questa partita è attualmente in corso. Puoi guardare la partita o crearne una nuova."}
               </AlertDescription>
             </Alert>
           </div>
@@ -283,18 +285,18 @@ export default function JoinGamePage() {
               onClick={() => setShowGameStartedDialog(false)}
               className="sm:order-1"
             >
-              Go Back
+              Torna indietro
             </Button>
             <Button
               variant="gradient"
               onClick={handleViewGame}
               className="sm:order-2"
             >
-              {gameStatus === "completed" ? "View Results" : "Spectate Game"}
+              {gameStatus === "completed" ? "Vedi risultati" : "Guarda partita"}
             </Button>
             <Link href="/new-game" className="sm:order-3 w-full sm:w-auto">
               <Button variant="outline" className="w-full">
-                Create New Game
+                Crea nuova partita
               </Button>
             </Link>
           </DialogFooter>

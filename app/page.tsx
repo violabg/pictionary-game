@@ -16,26 +16,27 @@ export default function Home() {
           Pictionary
         </h1>
         <p className="max-w-md text-muted-foreground text-xl">
-          A real-time multiplayer drawing and guessing game
+          Un gioco multiplayer in tempo reale di disegno e indovinelli
         </p>
       </div>
 
       <Card className="w-full max-w-md" glass gradientBorder>
         <CardHeader>
-          <CardTitle>Start a new game</CardTitle>
+          <CardTitle>Inizia una nuova partita</CardTitle>
           <CardDescription>
-            Create a new Pictionary game and invite your friends to join
+            Crea una nuova partita di Pictionary e invita i tuoi amici a
+            partecipare
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Link href="/new-game" className="w-full">
             <Button variant="gradient" size="lg" className="w-full">
-              Create Game
+              Crea partita
             </Button>
           </Link>
           <Link href="/join" className="w-full">
             <Button variant="outline" size="lg" className="w-full">
-              Join Game
+              Unisciti ad una partita
             </Button>
           </Link>
         </CardContent>

@@ -222,18 +222,20 @@ export default function GameBoard({ game, players }: GameBoardProps) {
                 className="flex items-center gap-2"
               >
                 <Crown className="w-4 h-4" />
-                Select Winner
+                Seleziona Vincitore
               </Button>
             )}
           </div>
         ) : (
           <div className="font-medium text-muted-foreground text-lg">
-            {isDrawer ? "Your turn to draw" : "Waiting for drawer to start"}
+            {isDrawer
+              ? "È il tuo turno di disegnare"
+              : "In attesa che il disegnatore inizi"}
           </div>
         )}
       </div>
 
-      <div className="gap-6 grid grid-cols-1 md:grid-cols-4 grow">
+      <div className="gap-6 grid grid-cols-1 md:grid-cols-4">
         <div className="flex flex-col md:col-span-3">
           <div className="p-4 gradient-border rounded-lg glass-card grow">
             <DrawingCanvas
@@ -253,7 +255,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
                   className="flex items-center gap-2"
                 >
                   <PlayCircle className="w-5 h-5" />
-                  {isStartingTurn ? "Starting Turn..." : "Start Your Turn"}
+                  {isStartingTurn ? "Avvio turno..." : "Inizia il tuo turno"}
                 </Button>
               </div>
             )}
