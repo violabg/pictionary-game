@@ -29,12 +29,16 @@ export default function DrawingCanvas({
   const { supabase } = useSupabase();
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#000000");
-  const [lineWidth, setLineWidth] = useState(5);
+  const [lineWidth, setLineWidth] = useState(2);
   const [tool, setTool] = useState<"brush" | "eraser">("brush");
   const prevPointRef = useRef<{ x: number; y: number } | null>(null);
   const [eraserWidth, setEraserWidth] = useState(20);
   const [strokes, setStrokes] = useState<any[]>([]); // Each stroke: { points: [{x, y}], color, width }
   const [currentStroke, setCurrentStroke] = useState<any | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [isCanvasHovered, setIsCanvasHovered] = useState(false);
 
   // Keep a ref to the latest strokes for use in resize handler
   const strokesRef = useRef(strokes);
@@ -363,6 +367,30 @@ export default function DrawingCanvas({
     };
   };
 
+  // Track mouse position for eraser cursor
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === "eraser" || tool === "brush") {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      setMousePos({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+    draw(e);
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setMousePos(null);
+    setIsCanvasHovered(false);
+    stopDrawing();
+  };
+
+  const handleMouseEnter = () => {
+    setIsCanvasHovered(true);
+  };
+
   return (
     <div className="flex flex-col rounded-md overflow-hidden">
       {isDrawer && turnStarted && (
@@ -399,6 +427,11 @@ export default function DrawingCanvas({
                 </div>
                 <div className="mt-2">
                   <label className="text-sm">Dimensione Pennello</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-gray-500 text-xs">
+                      {lineWidth} px
+                    </span>
+                  </div>
                   <input
                     type="range"
                     min="1"
@@ -495,15 +528,46 @@ export default function DrawingCanvas({
 
         <canvas
           ref={canvasRef}
-          className="block w-full h-full touch-none"
+          className={`block w-full h-full touch-none ${
+            tool !== "brush" && tool !== "eraser" ? "" : "cursor-none"
+          }`}
           onMouseDown={startDrawing}
-          onMouseMove={draw}
+          onMouseMove={handleMouseMove}
           onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
+          onMouseLeave={handleMouseLeave}
+          onMouseEnter={handleMouseEnter}
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
         />
+        {/* Custom pen/eraser cursor */}
+        {(tool === "eraser" || tool === "brush") &&
+          isCanvasHovered &&
+          mousePos && (
+            <div
+              style={{
+                position: "absolute",
+                left: `calc(${mousePos.x}px - ${
+                  (tool === "eraser" ? eraserWidth : lineWidth) / 2
+                }px)`,
+                top: `calc(${mousePos.y}px - ${
+                  (tool === "eraser" ? eraserWidth : lineWidth) / 2
+                }px)`,
+                width: tool === "eraser" ? eraserWidth : lineWidth,
+                height: tool === "eraser" ? eraserWidth : lineWidth,
+                pointerEvents: "none",
+                border:
+                  tool === "eraser" ? "2px solid #888" : `2px solid ${color}`,
+                borderRadius: "50%",
+                background:
+                  tool === "eraser"
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(0,0,0,0.05)",
+                boxSizing: "border-box",
+                zIndex: 20,
+              }}
+            />
+          )}
       </div>
     </div>
   );
