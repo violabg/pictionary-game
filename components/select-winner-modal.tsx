@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Player } from "@/lib/types";
+import { useState } from "react";
 
 interface SelectWinnerModalProps {
   players: Player[];
@@ -24,6 +25,17 @@ export default function SelectWinnerModal({
   onClose,
   timeRemaining,
 }: SelectWinnerModalProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSelectWinner = async (playerId: string) => {
+    setLoading(true);
+    try {
+      await onSelectWinner(playerId);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="gradient-border sm:max-w-md glass-card">
@@ -47,7 +59,8 @@ export default function SelectWinnerModal({
                   key={player.id}
                   variant="glass"
                   className="justify-start w-full text-left"
-                  onClick={() => onSelectWinner(player.id)}
+                  onClick={() => handleSelectWinner(player.id)}
+                  disabled={loading}
                 >
                   <div className="flex justify-between items-center w-full">
                     <span>{player.username}</span>
@@ -63,9 +76,17 @@ export default function SelectWinnerModal({
               </p>
             )}
           </div>
+          {loading && (
+            <div className="flex justify-center pt-2">
+              <span className="from-pink-500 to-yellow-500 border-2 border-gradient-to-r border-t-transparent rounded-full w-6 h-6 animate-spin"></span>
+              <span className="ml-2 text-muted-foreground">
+                Invio in corso...
+              </span>
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
             Annulla
           </Button>
         </DialogFooter>

@@ -9,9 +9,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Eraser, Pen, Trash2, Undo2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSupabase } from "./supabase-provider";
 
+// --- Update redrawStrokes to denormalize points ---
+type Stroke = {
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
+};
 interface DrawingCanvasProps {
   gameId: string;
   isDrawer: boolean;
@@ -33,7 +39,7 @@ export default function DrawingCanvas({
   const [tool, setTool] = useState<"brush" | "eraser">("brush");
   const prevPointRef = useRef<{ x: number; y: number } | null>(null);
   const [eraserWidth, setEraserWidth] = useState(20);
-  const [strokes, setStrokes] = useState<any[]>([]); // Each stroke: { points: [{x, y}], color, width }
+  const [strokes, setStrokes] = useState<Stroke[]>([]); // Each stroke: { points: [{x, y}], color, width }
   const [currentStroke, setCurrentStroke] = useState<any | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
@@ -42,48 +48,26 @@ export default function DrawingCanvas({
 
   // Keep a ref to the latest strokes for use in resize handler
   const strokesRef = useRef(strokes);
-  useEffect(() => {
-    strokesRef.current = strokes;
-  }, [strokes]);
 
-  // Set up canvas
-  useEffect(() => {
+  const redrawStrokes = useCallback((allStrokes: Stroke[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size with 4:3 aspect ratio
-    const resizeCanvas = () => {
-      const container = canvas.parentElement;
-      if (!container) return;
-      // Use container width, but limit height to 4:3 aspect ratio
-      const width = container.clientWidth;
-      const height = Math.min(window.innerHeight * 0.6, width * 0.75); // 0.75 = 3/4
-      canvas.width = width;
-      canvas.height = height;
-      // Redraw strokes after resizing, always use latest
-      redrawStrokes(strokesRef.current);
-    };
-
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-
-    // Clear canvas on new turn
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    return () => {
-      window.removeEventListener("resize", resizeCanvas);
-    };
-  }, [currentDrawerId]);
-
-  // Reset history on new turn
-  useEffect(() => {
-    setStrokes([]);
-    setCurrentStroke(null);
-  }, [currentDrawerId]);
+    for (const stroke of allStrokes) {
+      for (let i = 1; i < stroke.points.length; i++) {
+        const p1 = denormalizePoint(stroke.points[i - 1], canvas);
+        const p2 = denormalizePoint(stroke.points[i], canvas);
+        drawLine(p1.x, p1.y, p2.x, p2.y, stroke.color, stroke.width);
+      }
+    }
+  }, []);
 
   // Utility: Normalize and denormalize points
   const normalizePoint = (
@@ -140,7 +124,7 @@ export default function DrawingCanvas({
       tool === "brush" ? lineWidth : eraserWidth
     );
     // Add to current stroke
-    setCurrentStroke((stroke: any) =>
+    setCurrentStroke((stroke: Stroke) =>
       stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
     );
     // Broadcast to other players (normalized)
@@ -182,27 +166,6 @@ export default function DrawingCanvas({
     setCurrentStroke(null);
   };
 
-  // --- Update redrawStrokes to denormalize points ---
-  const redrawStrokes = (allStrokes: any[]) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    for (const stroke of allStrokes) {
-      for (let i = 1; i < stroke.points.length; i++) {
-        const p1 = denormalizePoint(stroke.points[i - 1], canvas);
-        const p2 = denormalizePoint(stroke.points[i], canvas);
-        drawLine(p1.x, p1.y, p2.x, p2.y, stroke.color, stroke.width);
-      }
-    }
-  };
-
   const drawLine = (
     x1: number,
     y1: number,
@@ -226,7 +189,7 @@ export default function DrawingCanvas({
     ctx.stroke();
   };
 
-  const clearCanvas = () => {
+  const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -256,7 +219,7 @@ export default function DrawingCanvas({
         },
       });
     }
-  };
+  }, [canvasRef, isDrawer, supabase, gameId]);
 
   const colors = [
     "#000000",
@@ -270,7 +233,7 @@ export default function DrawingCanvas({
   ];
 
   // Undo logic
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     setStrokes((prev) => {
       if (prev.length === 0) return prev;
       const newStrokes = prev.slice(0, -1);
@@ -290,58 +253,7 @@ export default function DrawingCanvas({
       });
       return newStrokes;
     });
-  };
-
-  // Keyboard shortcuts for tool selection, clear, and undo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isDrawer || !turnStarted) return;
-      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-        e.preventDefault();
-        handleUndo();
-      } else if (e.key === "p" || e.key === "P") {
-        setTool("brush");
-      } else if (e.key === "e" || e.key === "E") {
-        setTool("eraser");
-      } else if (e.key === "c" || e.key === "C") {
-        clearCanvas();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isDrawer, turnStarted]);
-
-  // Subscribe to drawing updates
-  useEffect(() => {
-    if (isDrawer) return; // Drawer doesn't need to subscribe
-
-    const drawingSubscription = supabase
-      .channel(`drawing:${gameId}`)
-      .on("broadcast", { event: "drawing" }, (payload) => {
-        const { type, data } = payload.payload as any;
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        if (type === "clear") {
-          clearCanvas();
-        } else if (type === "draw") {
-          // Denormalize points for drawing
-          const p1 = denormalizePoint(data.prevPoint, canvas);
-          const p2 = denormalizePoint(data.currentPoint, canvas);
-          drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
-        } else if (type === "strokes") {
-          setStrokes(data);
-          redrawStrokes(data);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(drawingSubscription);
-    };
-  }, [gameId, supabase, isDrawer]);
+  }, [redrawStrokes, supabase, gameId, clearCanvas]);
 
   // Get mouse/touch point relative to canvas, scaled to canvas size
   const getPoint = (
@@ -390,6 +302,100 @@ export default function DrawingCanvas({
   const handleMouseEnter = () => {
     setIsCanvasHovered(true);
   };
+
+  useEffect(() => {
+    strokesRef.current = strokes;
+  }, [strokes]);
+
+  // Set up canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Set canvas size with 4:3 aspect ratio
+    const resizeCanvas = () => {
+      const container = canvas.parentElement;
+      if (!container) return;
+      // Use container width, but limit height to 4:3 aspect ratio
+      const width = container.clientWidth;
+      const height = Math.min(window.innerHeight * 0.6, width * 0.75); // 0.75 = 3/4
+      canvas.width = width;
+      canvas.height = height;
+      // Redraw strokes after resizing, always use latest
+      redrawStrokes(strokesRef.current);
+    };
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // Clear canvas on new turn
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+    };
+  }, [currentDrawerId, redrawStrokes]);
+
+  // Reset history on new turn
+  useEffect(() => {
+    setStrokes([]);
+    setCurrentStroke(null);
+  }, [currentDrawerId]);
+
+  // Keyboard shortcuts for tool selection, clear, and undo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isDrawer || !turnStarted) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.key === "p" || e.key === "P") {
+        setTool("brush");
+      } else if (e.key === "e" || e.key === "E") {
+        setTool("eraser");
+      } else if (e.key === "c" || e.key === "C") {
+        clearCanvas();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [clearCanvas, handleUndo, isDrawer, turnStarted]);
+
+  // Subscribe to drawing updates
+  useEffect(() => {
+    if (isDrawer) return; // Drawer doesn't need to subscribe
+
+    const drawingSubscription = supabase
+      .channel(`drawing:${gameId}`)
+      .on("broadcast", { event: "drawing" }, (payload) => {
+        const { type, data } = payload.payload as any;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        if (type === "clear") {
+          clearCanvas();
+        } else if (type === "draw") {
+          // Denormalize points for drawing
+          const p1 = denormalizePoint(data.prevPoint, canvas);
+          const p2 = denormalizePoint(data.currentPoint, canvas);
+          drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
+        } else if (type === "strokes") {
+          setStrokes(data);
+          redrawStrokes(data);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(drawingSubscription);
+    };
+  }, [gameId, supabase, isDrawer, clearCanvas, redrawStrokes]);
 
   return (
     <div className="flex flex-col rounded-md overflow-hidden">
