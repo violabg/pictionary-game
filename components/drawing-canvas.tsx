@@ -232,13 +232,23 @@ export default function DrawingCanvas({
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    setStrokes([]); // Clear local strokes state
+
     if (isDrawer) {
-      // Broadcast clear to other players
+      // Broadcast clear and empty strokes to other players
       supabase.channel(`drawing:${gameId}`).send({
         type: "broadcast",
         event: "drawing",
         payload: {
           type: "clear",
+        },
+      });
+      supabase.channel(`drawing:${gameId}`).send({
+        type: "broadcast",
+        event: "drawing",
+        payload: {
+          type: "strokes",
+          data: [],
         },
       });
     }
