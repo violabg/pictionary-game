@@ -2,13 +2,7 @@
 
 import type React from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Eraser, Pen, Trash2, Undo2 } from "lucide-react";
+import ToolBar from "@/components/tool-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSupabase } from "./supabase-provider";
 
@@ -40,7 +34,7 @@ export default function DrawingCanvas({
   const prevPointRef = useRef<{ x: number; y: number } | null>(null);
   const [eraserWidth, setEraserWidth] = useState(20);
   const [strokes, setStrokes] = useState<Stroke[]>([]); // Each stroke: { points: [{x, y}], color, width }
-  const [currentStroke, setCurrentStroke] = useState<any | null>(null);
+  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
@@ -124,7 +118,7 @@ export default function DrawingCanvas({
       tool === "brush" ? lineWidth : eraserWidth
     );
     // Add to current stroke
-    setCurrentStroke((stroke: Stroke) =>
+    setCurrentStroke((stroke: Stroke | null) =>
       stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
     );
     // Broadcast to other players (normalized)
@@ -221,17 +215,6 @@ export default function DrawingCanvas({
     }
   }, [canvasRef, isDrawer, supabase, gameId]);
 
-  const colors = [
-    "#000000",
-    "#FF0000",
-    "#0000FF",
-    "#008000",
-    "#FFA500",
-    "#800080",
-    "#A52A2A",
-    "#FFD700",
-  ];
-
   // Undo logic
   const handleUndo = useCallback(() => {
     setStrokes((prev) => {
@@ -293,7 +276,7 @@ export default function DrawingCanvas({
     draw(e);
   };
 
-  const handleMouseLeave = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseLeave = () => {
     setMousePos(null);
     setIsCanvasHovered(false);
     stopDrawing();
@@ -400,125 +383,18 @@ export default function DrawingCanvas({
   return (
     <div className="flex flex-col rounded-md overflow-hidden">
       {isDrawer && turnStarted && (
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center space-x-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="default" size="icon" className="p-0 w-8 h-8">
-                  <div
-                    className="border rounded-full w-4 h-4"
-                    style={{
-                      backgroundColor: color,
-                      borderColor: "#d1d5db", // Tailwind gray-300
-                      borderWidth: "2px",
-                      borderStyle: "solid",
-                    }}
-                  />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-2 w-64 glass-card">
-                <div className="gap-2 grid grid-cols-4">
-                  {colors.map((c) => (
-                    <button
-                      key={c}
-                      className="flex justify-center items-center border-2 rounded-md w-12 h-12"
-                      style={{
-                        backgroundColor: c,
-                        borderColor: c === color ? "#d1d5db" : "transparent", // light gray border if selected
-                        boxShadow: c === color ? "0 0 0 2px #fff" : undefined, // optional: white outline for contrast
-                      }}
-                      onClick={() => setColor(c)}
-                    />
-                  ))}
-                </div>
-                <div className="mt-2">
-                  <label className="text-sm">Dimensione Pennello</label>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-gray-500 text-xs">
-                      {lineWidth} px
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    value={lineWidth}
-                    onChange={(e) =>
-                      setLineWidth(Number.parseInt(e.target.value))
-                    }
-                    className="w-full"
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            <Button
-              variant={tool === "brush" ? "gradient" : "glass"}
-              size="icon"
-              className="w-8 h-8"
-              onClick={() => setTool("brush")}
-            >
-              <Pen className="w-4 h-4" />
-            </Button>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={tool === "eraser" ? "gradient" : "glass"}
-                  size="icon"
-                  className="w-8 h-8"
-                  onClick={() => setTool("eraser")}
-                >
-                  <Eraser className="w-4 h-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-2 w-64 glass-card">
-                <div className="mt-2">
-                  <label className="text-sm">Dimensione Gomma</label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="50"
-                    value={eraserWidth}
-                    onChange={(e) =>
-                      setEraserWidth(Number.parseInt(e.target.value))
-                    }
-                    className="w-full"
-                  />
-                  <div className="flex justify-center mt-2">
-                    <div
-                      className="bg-white border border-gray-300 rounded-full"
-                      style={{
-                        width: `${eraserWidth}px`,
-                        height: `${eraserWidth}px`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="glass"
-              size="icon"
-              className="w-8 h-8"
-              onClick={handleUndo}
-              aria-label="Undo (Ctrl+Z)"
-            >
-              <Undo2 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="glass"
-              size="icon"
-              className="w-8 h-8"
-              onClick={clearCanvas}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        <ToolBar
+          color={color}
+          setColor={setColor}
+          lineWidth={lineWidth}
+          setLineWidth={setLineWidth}
+          tool={tool}
+          setTool={setTool}
+          eraserWidth={eraserWidth}
+          setEraserWidth={setEraserWidth}
+          handleUndo={handleUndo}
+          clearCanvas={clearCanvas}
+        />
       )}
 
       <div className="relative bg-white border rounded-md aspect-[4/3] overflow-hidden">

@@ -8,7 +8,7 @@ import {
   startTurn,
   submitGuess,
 } from "@/lib/game-actions";
-import type { Card as CardType, Game, Player } from "@/lib/types";
+import type { Card as CardType, Game, Guess, Player } from "@/lib/types";
 import { Crown, PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -98,7 +98,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       };
     }
-  }, [game, playerId, isDrawer, isTimerPaused]);
+  }, [game, playerId, isDrawer, isTimerPaused, currentCard]);
 
   // Subscribe to guesses
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
           filter: `game_id=eq.${game.id}`,
         },
         (payload) => {
-          const guess = payload.new as any;
+          const guess = payload.new as Guess;
 
           // If we're the drawer and this is a correct guess
           if (
@@ -139,15 +139,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
     return () => {
       supabase.removeChannel(guessSubscription);
     };
-  }, [
-    game.id,
-    supabase,
-    isDrawer,
-    players,
-    correctGuessers,
-    toast,
-    timeRemaining,
-  ]);
+  }, [game.id, supabase, isDrawer, players, correctGuessers, timeRemaining]);
 
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer) return;
