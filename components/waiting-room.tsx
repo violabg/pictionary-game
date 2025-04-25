@@ -95,7 +95,7 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
     <div className="flex justify-center items-center py-12 min-h-screen container">
       <Card className="gradient-border w-full max-w-2xl glass-card">
         <CardHeader>
-          <CardTitle className="gradient-text">Sala d'attesa</CardTitle>
+          <CardTitle className="gradient-text">{"Sala d'attesa"}</CardTitle>
           <CardDescription>
             In attesa che i giocatori si uniscano alla partita
           </CardDescription>
@@ -164,12 +164,12 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
               {isGeneratingCards
                 ? "Generazione carte..."
                 : isStarting
-                ? "Avvio partita..."
-                : "Avvia partita"}
+                  ? "Avvio partita..."
+                  : "Avvia partita"}
             </Button>
           ) : (
             <p className="w-full text-muted-foreground text-center">
-              In attesa che l'host avvii la partita...
+              {"In attesa che l'host avvii la partita..."}
             </p>
           )}
         </CardFooter>
