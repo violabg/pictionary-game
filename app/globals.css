@@ -167,7 +167,8 @@
       var(--gradient-from),
       var(--gradient-to)
     );
-    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -183,7 +184,7 @@
   ) !important;
 }
 
-.gradient-text {
+.text-gradient {
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;

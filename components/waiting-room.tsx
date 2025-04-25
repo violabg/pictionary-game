@@ -95,7 +95,7 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
     <div className="flex justify-center items-center py-12 min-h-screen container">
       <Card className="gradient-border w-full max-w-2xl glass-card">
         <CardHeader>
-          <CardTitle className="gradient-text">{"Sala d'attesa"}</CardTitle>
+          <CardTitle className="text-gradient">{"Sala d'attesa"}</CardTitle>
           <CardDescription>
             In attesa che i giocatori si uniscano alla partita
           </CardDescription>
@@ -112,7 +112,7 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
           </div>
 
           <div className="space-y-4">
-            <h3 className="mb-2 font-medium text-lg gradient-text">
+            <h3 className="mb-2 font-medium text-gradient text-lg">
               Impostazioni partita
             </h3>
             <div className="gap-4 grid grid-cols-2">
@@ -128,7 +128,7 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
           </div>
 
           <div>
-            <h3 className="mb-2 font-medium text-lg gradient-text">
+            <h3 className="mb-2 font-medium text-gradient text-lg">
               Giocatori
             </h3>
             <div className="border rounded-md glass-card">

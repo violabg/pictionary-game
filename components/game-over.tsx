@@ -29,7 +29,7 @@ export default function GameOver({ game, players }: GameOverProps) {
     <div className="flex justify-center items-center py-12 min-h-screen container">
       <Card className="gradient-border w-full max-w-2xl glass-card">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl gradient-text">Game Over!</CardTitle>
+          <CardTitle className="text-gradient text-3xl">Game Over!</CardTitle>
           <CardDescription>Categoria: {game.category}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -53,7 +53,7 @@ export default function GameOver({ game, players }: GameOverProps) {
                 </div>
                 <div className="text-center">
                   <p className="font-medium">{winners[0].username}</p>
-                  <p className="font-bold text-3xl gradient-text">
+                  <p className="font-bold text-gradient text-3xl">
                     {winners[0].score}
                   </p>
                 </div>

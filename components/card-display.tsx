@@ -22,7 +22,7 @@ export default function CardDisplay({ card }: CardDisplayProps) {
       </CardHeader>
       <CardContent className="py-2">
         <div className="text-center">
-          <h3 className="mb-1 font-bold text-2xl gradient-text">
+          <h3 className="mb-1 font-bold text-gradient text-2xl">
             {card.title}
           </h3>
           <p className="text-muted-foreground text-sm">{card.description}</p>

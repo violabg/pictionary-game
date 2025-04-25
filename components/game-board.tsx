@@ -200,7 +200,7 @@ export default function GameBoard({ game, players }: GameBoardProps) {
   return (
     <div className="flex flex-col py-6 min-h-screen container">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="font-bold text-2xl gradient-text">
+        <h1 className="font-bold text-gradient text-2xl">
           Pictionary: {game.category}
         </h1>
         {turnStarted ? (

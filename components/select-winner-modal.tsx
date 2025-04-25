@@ -40,7 +40,7 @@ export default function SelectWinnerModal({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="gradient-border sm:max-w-md glass-card">
         <DialogHeader>
-          <DialogTitle className="gradient-text">
+          <DialogTitle className="text-gradient">
             Seleziona Vincitore
           </DialogTitle>
           <DialogDescription>
@@ -50,7 +50,7 @@ export default function SelectWinnerModal({
         <div className="space-y-4 py-4">
           <p className="text-muted-foreground text-center">
             Punti da assegnare:{" "}
-            <span className="font-bold gradient-text">{timeRemaining}</span>
+            <span className="font-bold text-gradient">{timeRemaining}</span>
           </p>
           <div className="space-y-2">
             {players.length > 0 ? (

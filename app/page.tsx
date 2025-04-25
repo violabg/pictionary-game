@@ -12,7 +12,7 @@ export default function Home() {
   return (
     <div className="flex flex-col justify-center items-center space-y-8 py-12 min-h-screen container">
       <div className="space-y-4 text-center">
-        <h1 className="font-bold text-5xl tracking-tight gradient-text">
+        <h1 className="font-bold text-gradient text-5xl tracking-tight">
           Pictionary
         </h1>
         <p className="max-w-md text-muted-foreground text-xl">

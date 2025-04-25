@@ -19,7 +19,7 @@ export default function PlayerList({
   return (
     <Card className="gradient-border glass-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg gradient-text">Players</CardTitle>
+        <CardTitle className="text-gradient text-lg">Players</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <ul className="divide-y divide-white/10">
