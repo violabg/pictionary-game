@@ -61,7 +61,6 @@ CREATE TABLE IF NOT EXISTS public.players (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   player_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   game_id UUID REFERENCES games(id) ON DELETE CASCADE,
-  username TEXT NOT NULL,
   score INTEGER NOT NULL DEFAULT 0,
   order_index INTEGER NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

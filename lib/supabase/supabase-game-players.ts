@@ -11,28 +11,28 @@ const supabase = createClient();
 export async function addPlayerToGame(
   game_id: string,
   player_id: string,
-  turn_order: number
+  order_index: number
 ) {
   const { error } = await supabase
-    .from("game_players")
-    .insert({ game_id, player_id, turn_order });
+    .from("players")
+    .insert({ game_id, player_id, order_index });
   if (error) throw error;
   return true;
 }
 
 export async function getPlayersForGame(game_id: string) {
   const { data, error } = await supabase
-    .from("game_players")
+    .from("players")
     .select("*, profile:player_id(id, name, full_name, user_name, avatar_url)")
     .eq("game_id", game_id)
-    .order("turn_order", { ascending: true });
+    .order("order_index", { ascending: true });
   if (error) throw error;
   return data as (Player & { profile: Profile })[];
 }
 
 export async function getPlayerInGame(game_id: string, player_id: string) {
   const { data, error } = await supabase
-    .from("game_players")
+    .from("players")
     .select("*")
     .eq("game_id", game_id)
     .eq("player_id", player_id)
@@ -65,10 +65,10 @@ export function subscribeToGamePlayers(
   }) => void
 ) {
   return supabase
-    .channel("game-players-updates")
+    .channel("players-updates")
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "game_players" },
+      { event: "*", schema: "public", table: "players" },
       (payload) => {
         handler({
           eventType: payload.eventType,
@@ -88,7 +88,7 @@ export function unsubscribeFromGamePlayers(channel: {
 
 export async function setPlayerInactive(game_id: string, player_id: string) {
   const { error } = await supabase
-    .from("game_players")
+    .from("players")
     .update({ is_active: false })
     .eq("game_id", game_id)
     .eq("player_id", player_id);

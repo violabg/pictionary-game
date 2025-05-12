@@ -11,15 +11,20 @@ const supabase = createClient();
 export async function createGame(
   current_drawer_id: string,
   max_players: number,
+  category: string,
+  difficulty = "medium",
   timer: number = 120
 ) {
   const { data, error } = await supabase
     .from("games")
     .insert({
       current_drawer_id,
-      status: "waiting",
       max_players,
       code: "",
+      category,
+      status: "waiting",
+      cards_generated: false,
+      difficulty: difficulty, // Store the difficulty level
       timer,
     })
     .select()

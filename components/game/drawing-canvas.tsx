@@ -3,8 +3,8 @@
 import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
+import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSupabase } from "./supabase-provider";
 
 // --- Update redrawStrokes to denormalize points ---
 type Stroke = {
@@ -26,7 +26,7 @@ export default function DrawingCanvas({
   turnStarted,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { supabase } = useSupabase();
+  const supabase = createClient();
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#000000");
   const [lineWidth, setLineWidth] = useState(2);
