@@ -168,7 +168,7 @@ export default function JoinGamePage() {
           <CardHeader>
             <CardTitle>Unisciti a una partita</CardTitle>
             <CardDescription>
-              Inserisci un ID partita per unirti a una partita di Pictionary
+              Inserisci un ID partita per unirti a una partita di PictionAi
               esistente
             </CardDescription>
           </CardHeader>

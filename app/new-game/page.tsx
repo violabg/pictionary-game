@@ -125,7 +125,7 @@ export default function NewGamePage() {
           <CardHeader>
             <CardTitle>Crea una nuova partita</CardTitle>
             <CardDescription>
-              Imposta una nuova partita di Pictionary e genera le carte
+              Imposta una nuova partita di PictionAi e genera le carte
             </CardDescription>
           </CardHeader>
           {error && (
