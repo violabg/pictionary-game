@@ -3,9 +3,9 @@
 import GameBoard from "@/components/game/game-board";
 import GameOver from "@/components/game/game-over";
 import WaitingRoom from "@/components/game/waiting-room";
-import { useSupabase } from "@/components/supabase-provider";
 import { getGame, getPlayers } from "@/lib/game-actions";
-import type { Game, Player } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import { Game, Player } from "@/types/supabase";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { toast } from "sonner";
 export default function GamePage() {
   const { id } = useParams();
   const gameId = Array.isArray(id) ? id[0] : id;
-  const { supabase } = useSupabase();
+  const supabase = createClient();
 
   const [game, setGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);

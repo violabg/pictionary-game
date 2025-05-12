@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Game, Player } from "@/lib/types";
+import { Game, Player } from "@/types/supabase";
 import { Award, Home, Medal, Trophy } from "lucide-react";
 import Link from "next/link";
 

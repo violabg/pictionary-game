@@ -257,3 +257,8 @@ export type GuessUpdate = Database["public"]["Tables"]["guesses"]["Update"];
 export type Drawing = Database["public"]["Tables"]["drawings"]["Row"];
 export type DrawingInsert = Database["public"]["Tables"]["drawings"]["Insert"];
 export type DrawingUpdate = Database["public"]["Tables"]["drawings"]["Update"];
+
+export type GameWithPlayers = Game & {
+  players: (Player & { profile: Profile })[];
+  host: Profile;
+};
