@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { generateCards } from "@/lib/game-actions";
 import { addPlayerToGame } from "@/lib/supabase/supabase-game-players";
 import { createGame } from "@/lib/supabase/supabase-games";
 import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
@@ -91,6 +92,7 @@ export const CreateGameForm = ({ user }: { user: User }) => {
         values.timer
       );
       if (error) throw error;
+      await generateCards(data.id, values.category, values.maxPlayers);
       await addPlayerToGame(data.id, user.id, 1);
       router.push(`/game/${data.code}`);
     } catch (error: unknown) {

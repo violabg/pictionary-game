@@ -2,6 +2,7 @@
 
 import { Card, Game, Player } from "@/types/supabase";
 import { cookies } from "next/headers";
+import { seedCardsForGame } from "./seed-cards";
 import { createClient } from "./supabase/client";
 
 // Initialize Supabase client for server-side operations
@@ -383,8 +384,6 @@ export async function generateCards(
       throw new Error("Failed to get game difficulty");
     }
 
-    // Use the seed cards function with the appropriate difficulty
-    const { seedCardsForGame } = await import("./seed-cards");
     await seedCardsForGame(
       gameId,
       category,
