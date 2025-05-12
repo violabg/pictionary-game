@@ -9,13 +9,19 @@ import { createClient } from "./client";
 const supabase = createClient();
 
 export async function createGame(
-  host_id: string,
+  current_drawer_id: string,
   max_players: number,
-  time_limit: number = 120
+  timer: number = 120
 ) {
   const { data, error } = await supabase
     .from("games")
-    .insert({ host_id, status: "waiting", max_players, code: "", time_limit })
+    .insert({
+      current_drawer_id,
+      status: "waiting",
+      max_players,
+      code: "",
+      timer,
+    })
     .select()
     .single();
   if (error) throw error;

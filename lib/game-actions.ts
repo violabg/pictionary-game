@@ -1,35 +1,11 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { Card, Game, Player } from "@/types/supabase";
 import { cookies } from "next/headers";
-import type { Card, Game, Player } from "./types";
+import { createClient } from "./supabase/client";
 
 // Initialize Supabase client for server-side operations
-const getSupabaseServerClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl) {
-    throw new Error("Supabase URL is missing");
-  }
-
-  if (!supabaseKey) {
-    throw new Error("Supabase key is missing");
-  }
-
-  console.log(
-    "Initializing Supabase client with URL:",
-    supabaseUrl.substring(0, 20) + "..."
-  );
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-    },
-  });
-};
+const supabase = createClient();
 
 // Create a new game
 export async function createGame(
@@ -49,8 +25,6 @@ export async function createGame(
       "and timer:",
       timer
     );
-
-    const supabase = getSupabaseServerClient();
 
     // Create a unique game ID
     const gameId = crypto.randomUUID();
@@ -161,8 +135,6 @@ export async function joinGame(
   gameId: string
 ): Promise<{ success: boolean; message?: string; gameStatus?: string }> {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Check if game exists and is in waiting status
     const { data: game, error: gameError } = await supabase
       .from("games")
@@ -261,8 +233,6 @@ export async function getGame(gameId?: string): Promise<Game> {
     throw new Error("Game ID is required");
   }
   try {
-    const supabase = getSupabaseServerClient();
-
     const { data, error } = await supabase
       .from("games")
       .select("*")
@@ -291,8 +261,6 @@ export async function getPlayers(gameId?: string): Promise<Player[]> {
     throw new Error("Game ID is required");
   }
   try {
-    const supabase = getSupabaseServerClient();
-
     const { data, error } = await supabase
       .from("players")
       .select("*")
@@ -314,8 +282,6 @@ export async function getPlayers(gameId?: string): Promise<Player[]> {
 // Get a specific card
 export async function getCard(cardId: string): Promise<Card> {
   try {
-    const supabase = getSupabaseServerClient();
-
     const { data, error } = await supabase
       .from("cards")
       .select("*")
@@ -341,8 +307,6 @@ export async function getCard(cardId: string): Promise<Card> {
 // Start the game
 export async function startGame(gameId: string): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Get players
     const { data: players, error: playersError } = await supabase
       .from("players")
@@ -408,7 +372,6 @@ export async function generateCards(
 ): Promise<void> {
   try {
     // Get the game to determine the difficulty
-    const supabase = getSupabaseServerClient();
     const { data: game, error: gameError } = await supabase
       .from("games")
       .select("difficulty")
@@ -448,8 +411,6 @@ export async function submitGuess(
   timeRemaining: number
 ): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Get current card
     const { data: game, error: gameError } = await supabase
       .from("games")
@@ -545,8 +506,6 @@ export async function selectWinner(
   timeRemaining: number
 ): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Get current score
     const { data: player, error: playerError } = await supabase
       .from("players")
@@ -587,8 +546,6 @@ export async function selectWinner(
 // Move to the next turn
 export async function nextTurn(gameId: string): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Get current game state
     const { data: game, error: gameError } = await supabase
       .from("games")
@@ -689,8 +646,6 @@ export async function nextTurn(gameId: string): Promise<void> {
 // Start the current turn
 export async function startTurn(gameId: string): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Get the timer value from the game
     const { data: game, error: gameError } = await supabase
       .from("games")
@@ -731,8 +686,6 @@ export async function checkUsernameAvailability(
   gameId: string
 ): Promise<{ available: boolean; message?: string }> {
   try {
-    const supabase = getSupabaseServerClient();
-
     const { data, error } = await supabase
       .from("players")
       .select("id")

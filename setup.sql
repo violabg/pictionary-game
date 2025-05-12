@@ -146,7 +146,7 @@ BEGIN
   SELECT score INTO current_score FROM public.players WHERE id = row_id;
   RETURN current_score + points;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = 'public';
 
 -- Create realtime publication for all tables
 DROP PUBLICATION IF EXISTS supabase_realtime;

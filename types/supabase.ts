@@ -262,3 +262,9 @@ export type GameWithPlayers = Game & {
   players: (Player & { profile: Profile })[];
   host: Profile;
 };
+
+export type GenerateUniqueGameCodeArgs =
+  Database["public"]["Functions"]["generate_unique_game_code"]["Args"];
+
+export type GenerateUniqueGameCodeReturn =
+  Database["public"]["Functions"]["generate_unique_game_code"]["Returns"];
