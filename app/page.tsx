@@ -34,7 +34,7 @@ export default async function Home() {
         <CardContent className="space-y-4">
           <div className="flex sm:flex-row flex-col gap-4">
             <Button asChild size="lg">
-              <Link href="/dashboard">Inizia a giocare</Link>
+              <Link href="/gioca">Inizia a giocare</Link>
             </Button>
             {!data?.user && (
               <Button variant="outline" size="lg" asChild>

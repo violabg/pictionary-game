@@ -1,9 +1,9 @@
 "use client";
 
-import GameBoard from "@/components/game-board";
-import GameOver from "@/components/game-over";
+import GameBoard from "@/components/game/game-board";
+import GameOver from "@/components/game/game-over";
+import WaitingRoom from "@/components/game/waiting-room";
 import { useSupabase } from "@/components/supabase-provider";
-import WaitingRoom from "@/components/waiting-room";
 import { getGame, getPlayers } from "@/lib/game-actions";
 import type { Game, Player } from "@/lib/types";
 import { useParams } from "next/navigation";

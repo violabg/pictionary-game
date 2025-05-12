@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/layout/navbar";
-import { SupabaseProvider } from "@/components/supabase-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { SupabaseProvider } from "@/lib/supabase/supabase-provider";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type React from "react";

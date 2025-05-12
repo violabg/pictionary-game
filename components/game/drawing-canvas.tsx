@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import ToolBar from "@/components/tool-bar";
+import ToolBar from "@/components/game/tool-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSupabase } from "./supabase-provider";
 

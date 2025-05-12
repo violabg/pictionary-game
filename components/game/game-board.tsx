@@ -8,18 +8,18 @@ import {
   startTurn,
   submitGuess,
 } from "@/lib/game-actions";
-import type { Card as CardType, Game, Guess, Player } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import { Card as CardType, Game, Guess, Player } from "@/types/supabase";
 import { Crown, PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "../ui/button";
 import CardDisplay from "./card-display";
 import DrawingCanvas from "./drawing-canvas";
 import GuessInput from "./guess-input";
 import PlayerList from "./player-list";
 import SelectWinnerModal from "./select-winner-modal";
-import { useSupabase } from "./supabase-provider";
 import Timer from "./timer";
-import { Button } from "./ui/button";
 
 interface GameBoardProps {
   game: Game;
@@ -27,7 +27,7 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({ game, players }: GameBoardProps) {
-  const { supabase } = useSupabase();
+  const supabase = createClient();
   const [currentCard, setCurrentCard] = useState<CardType | null>(null);
   const [isDrawer, setIsDrawer] = useState(false);
   const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
