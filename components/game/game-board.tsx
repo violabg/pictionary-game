@@ -336,7 +336,9 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
       {showSelectWinnerModal && (
         <SelectWinnerModal
-          players={players.filter((p) => p.id !== game.current_drawer_id)}
+          players={players.filter(
+            (p) => p.player_id !== game.current_drawer_id
+          )}
           onSelectWinner={handleSelectWinner}
           onClose={handleCloseSelectWinner}
           timeRemaining={timeRemaining}

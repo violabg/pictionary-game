@@ -9,11 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Player } from "@/lib/types";
+import { getInitials } from "@/lib/utils";
+import { GameWithPlayers } from "@/types/supabase";
 import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 interface SelectWinnerModalProps {
-  players: Player[];
+  players: GameWithPlayers["players"];
   onSelectWinner: (playerId: string) => void;
   onClose: () => void;
   timeRemaining: number;
@@ -56,14 +58,24 @@ export default function SelectWinnerModal({
             {players.length > 0 ? (
               players.map((player) => (
                 <Button
-                  key={player.id}
-                  variant="glass"
-                  className="justify-start w-full text-left"
+                  key={player.player_id}
+                  variant="outline"
+                  className="justify-start w-full h-auto text-left"
                   onClick={() => handleSelectWinner(player.id)}
                   disabled={loading}
                 >
                   <div className="flex justify-between items-center w-full">
-                    <span>{player.username}</span>
+                    <div className="flex justify-start items-center gap-2 w-full">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage
+                          src={player.profile.avatar_url || undefined}
+                        />
+                        <AvatarFallback>
+                          {getInitials(player.profile.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{player.profile.name}</span>
+                    </div>
                     <span className="text-muted-foreground text-sm">
                       Punteggio attuale: {player.score}
                     </span>
