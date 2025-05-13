@@ -239,17 +239,28 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     <div className="flex flex-col py-0 min-h-screen container">
       <div className="flex justify-between items-center mb-4">
         <div className="flex justify-between items-center gap-2">
-          Categoria:
-          <span className="inline-block bg-primary/10 px-3 py-1 rounded-full font-medium text-primary text-sm">
-            {game.category}
+          <span className="inline-block bg-primary/20 px-3 py-1 rounded-full font-medium text-primary text-sm">
+            Categoria: {game.category}
           </span>
-          Difficoltà:
-          <span className="inline-block bg-secondary ml-2 px-3 py-1 rounded-full font-medium text-secondary-foreground text-sm">
-            {game.difficulty}
+
+          <span
+            className={`
+              inline-block ml-2 px-3 py-1 rounded-full font-medium text-sm text-black
+              ${
+                game.difficulty === "facile"
+                  ? "bg-green-200"
+                  : game.difficulty === "medio"
+                  ? "bg-yellow-200"
+                  : game.difficulty === "difficile"
+                  ? "bg-red-200"
+                  : "bg-violet-300"
+              }
+            `}
+          >
+            Difficoltà: {game.difficulty}
           </span>
-          Numero di parole:
-          <span className="inline-block bg-secondary ml-2 px-3 py-1 rounded-full font-medium text-secondary-foreground text-sm">
-            {game.card_title_length}
+          <span className="inline-block ml-2 px-3 py-1 rounded-full font-medium text-white text-sm gradient-bg">
+            N° parole: {game.card_title_length}
           </span>
         </div>
         {turnStarted ? (
