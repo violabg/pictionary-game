@@ -12,6 +12,8 @@ import {
 import { GameWithPlayers } from "@/types/supabase";
 import { Home } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import ReactConfetti from "react-confetti";
 import { PlayersStanding } from "./players-standing";
 
 interface GameOverProps {
@@ -20,10 +22,48 @@ interface GameOverProps {
 
 export default function GameOver({ game }: GameOverProps) {
   const players = game.players;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateDimensions = () => {
+      if (!containerRef.current) return;
+      const { width, height } = containerRef.current.getBoundingClientRect();
+      setDimensions({ width, height });
+    };
+
+    // Initial measurement
+    updateDimensions();
+
+    // Setup resize observer
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="flex justify-center items-center py-12 min-h-screen container">
-      <Card className="gradient-border w-full max-w-2xl glass-card">
+      <Card
+        className="gradient-border w-full max-w-2xl glass-card"
+        ref={containerRef}
+      >
+        <ReactConfetti
+          width={dimensions.width}
+          height={dimensions.height}
+          numberOfPieces={500}
+          colors={[
+            "oklch(58.92% 0.25 296.91)", // Purple
+            "oklch(65% 0.2 220)", // Blue
+            "oklch(95% 0.13 90)", // Gold
+            "oklch(60.2% 0.18 22.5)", // Red
+            "oklch(98% 0.005 210)", // White
+          ]}
+          recycle={false}
+          gravity={0.25}
+        />
         <CardHeader className="text-center">
           <CardTitle className="text-gradient text-3xl">Game Over!</CardTitle>
           <CardDescription>Categoria: {game.category}</CardDescription>

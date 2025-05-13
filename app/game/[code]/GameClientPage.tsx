@@ -16,7 +16,7 @@ export function GameClientPage({ code, user }: { code: string; user: User }) {
 
   if (loadingState === "initializing") {
     return (
-      <main className="flex flex-1 justify-center items-center">
+      <main className="flex flex-1 justify-center items-center py-8 container">
         <Loader2 className="w-8 h-8 animate-spin" />
       </main>
     );
