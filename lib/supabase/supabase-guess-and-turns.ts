@@ -148,10 +148,11 @@ export async function nextTurn(gameId: string): Promise<void> {
     // Get an unused card
     const { data: cards, error: cardsError } = await supabase
       .from("cards")
-      .select("id")
+      .select("id, title_length")
       .eq("game_id", gameId)
       .eq("used", false)
       .limit(1);
+    console.log("🚀 ~ nextTurn ~ cards:", cards);
 
     if (cardsError) {
       console.error("Error getting card:", cardsError);
@@ -184,6 +185,7 @@ export async function nextTurn(gameId: string): Promise<void> {
       .update({
         current_drawer_id: nextDrawerId,
         current_card_id: cards[0].id,
+        card_title_length: cards[0].title_length,
         timer_end: null, // Don't set timer_end until drawer starts their turn
       })
       .eq("id", gameId);

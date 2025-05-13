@@ -76,6 +76,7 @@ export async function seedCardsForGame(
       game_id: gameId,
       title: card.title,
       description: card.description,
+      title_length: card.title.split(" ").length,
       used: false,
     }));
 
@@ -90,7 +91,10 @@ export async function seedCardsForGame(
 
     await supabase
       .from("games")
-      .update({ cards_generated: true })
+      .update({
+        cards_generated: true,
+        card_title_length: cardsToInsert[0].title_length,
+      })
       .eq("id", gameId);
     console.log(
       `Successfully seeded ${cards.length} AI-generated cards for game ${gameId}`

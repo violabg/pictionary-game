@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function GameClientPage({ code, user }: { code: string; user: User }) {
-  const { loadingState, game, isHost, handleStartGame, handleLeaveGame } =
+  const { loadingState, game, isDrawer, handleStartGame, handleLeaveGame } =
     useGameState({ code, user });
   const router = useRouter();
 
@@ -28,7 +28,7 @@ export function GameClientPage({ code, user }: { code: string; user: User }) {
         return (
           <GameLobby
             game={game}
-            isHost={isHost}
+            isDrawer={isDrawer}
             onStartGame={handleStartGame}
             onLeaveGame={handleLeaveGame}
             loadingState={loadingState}

@@ -34,7 +34,7 @@ export function useGameState({
     useState<LoadingState>("initializing");
   const [game, setGame] = useState<GameWithPlayers | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
-  const [isHost, setIsHost] = useState(false);
+  const [isDrawer, setIsDrawer] = useState(false);
 
   const fetchGame = useCallback(async () => {
     if (!user) return;
@@ -42,7 +42,7 @@ export function useGameState({
       const { data: gameData } = await getGameByCode(supabase, code);
       const playersData = await getPlayersForGame(gameData.id);
       const hostData = await getProfileById(gameData.current_drawer_id ?? "");
-      setIsHost(user.id === gameData.current_drawer_id);
+      setIsDrawer(user.id === gameData.current_drawer_id);
       const gameWithPlayers = {
         ...gameData,
         players: playersData,
@@ -102,7 +102,7 @@ export function useGameState({
   }, [user, router, gameId]);
 
   const handleStartGame = async () => {
-    if (!game || !isHost) return;
+    if (!game || !isDrawer) return;
     try {
       setLoadingState("starting");
       await startGame(game.id);
@@ -124,7 +124,7 @@ export function useGameState({
   const handleLeaveGame = async () => {
     if (!game || !user) return;
     try {
-      if (isHost) {
+      if (isDrawer) {
         await updateGameStatus(game.id, "completed");
       } else {
         await setPlayerInactive(game.id, user.id);
@@ -139,5 +139,11 @@ export function useGameState({
     }
   };
 
-  return { loadingState, game, isHost, handleStartGame, handleLeaveGame };
+  return {
+    loadingState,
+    game,
+    isDrawer,
+    handleStartGame,
+    handleLeaveGame,
+  };
 }

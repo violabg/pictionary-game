@@ -249,7 +249,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           </span>
           Numero di parole:
           <span className="inline-block bg-secondary ml-2 px-3 py-1 rounded-full font-medium text-secondary-foreground text-sm">
-            {currentCard?.title.split(" ").length || 0}
+            {game.card_title_length}
           </span>
         </div>
         {turnStarted ? (

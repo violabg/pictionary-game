@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 interface GameLobbyProps {
   game: GameWithPlayers;
-  isHost: boolean;
+  isDrawer: boolean;
   onStartGame: () => void;
   onLeaveGame: () => void;
   loadingState: "initializing" | "idle" | "starting";
@@ -18,7 +18,7 @@ interface GameLobbyProps {
 
 export function GameLobby({
   game,
-  isHost,
+  isDrawer,
   onStartGame,
   onLeaveGame,
   loadingState,
@@ -113,7 +113,7 @@ export function GameLobby({
         </CardContent>
       </Card>
 
-      {isHost && (
+      {isDrawer && (
         <div className="flex flex-col items-center gap-2">
           <Button
             size="lg"

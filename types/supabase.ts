@@ -49,6 +49,7 @@ export interface Database {
           current_card_id: string | null;
           timer_end: string | null;
           timer: number;
+          card_title_length: number;
           cards_generated: boolean;
           difficulty: string;
           created_at: string;
@@ -63,6 +64,7 @@ export interface Database {
           current_card_id?: string | null;
           timer_end?: string | null;
           timer?: number;
+          card_title_length: number;
           cards_generated?: boolean;
           difficulty?: string;
           created_at?: string;
@@ -77,6 +79,7 @@ export interface Database {
           current_card_id?: string | null;
           timer_end?: string | null;
           timer?: number;
+          card_title_length: number;
           cards_generated?: boolean;
           difficulty?: string;
           created_at?: string;
@@ -116,6 +119,7 @@ export interface Database {
           id: string;
           game_id: string;
           title: string;
+          title_length: number;
           description: string;
           used: boolean;
           created_at: string;
@@ -124,6 +128,7 @@ export interface Database {
           id?: string;
           game_id: string;
           title: string;
+          title_length: number;
           description: string;
           used?: boolean;
           created_at?: string;
@@ -132,6 +137,7 @@ export interface Database {
           id?: string;
           game_id?: string;
           title?: string;
+          title_length?: number;
           description?: string;
           used?: boolean;
           created_at?: string;
