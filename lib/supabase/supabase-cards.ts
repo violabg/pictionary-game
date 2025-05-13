@@ -1,5 +1,5 @@
 import { Card } from "@/types/supabase";
-import { seedCardsForGame } from "../seed-cards";
+import { seedCardsForGame } from "../groq";
 import { createClient } from "./client";
 
 // Initialize Supabase client for server-side operations

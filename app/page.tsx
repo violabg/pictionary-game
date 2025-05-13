@@ -32,7 +32,7 @@ export default async function Home() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex sm:flex-row flex-col gap-4">
+          <div className="flex sm:flex-row flex-col justify-center gap-4">
             <Button asChild size="lg">
               <Link href="/gioca">Inizia a giocare</Link>
             </Button>

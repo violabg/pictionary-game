@@ -53,7 +53,7 @@ export async function seedCardsForGame(
         : "";
 
     // 2. Add constraint to prompt
-    const prompt = `${avoidTitlesText}Sei un generatore di carte per un gioco PictionAi. Genera un array JSON di ${numCards} oggetti, ognuno con un titolo e una descrizione, per la categoria \"${category}\" e difficoltà \"${difficulty}\". Ogni oggetto deve avere la forma: { \"title\": string, \"description\": string }. Scrivi tutto in italiano. Nessun testo extra, se la difficoltà è random scegli a caso tra facile, medio e difficile. Non usare mai la parola \"carta\".`;
+    const prompt = `${avoidTitlesText} Sei un generatore di carte per un gioco Pictionary. Genera un array JSON di ${numCards} oggetti, ognuno con un titolo e una descrizione, per la categoria \"${category}\" e difficoltà \"${difficulty}\". Ogni oggetto deve avere la forma: { \"title\": string, \"description\": string }. Scrivi tutto in italiano, tranne che per i termini tecnici comuni specialmente nella categoria tecnologia. Il title deve essere massimo di 3 parole Nessun testo extra, se la difficoltà è random scegli a caso tra facile, medio e difficile. Non usare mai la parola \"carta\".`;
     const schema = z.object({
       title: z.string(),
       description: z.string(),
