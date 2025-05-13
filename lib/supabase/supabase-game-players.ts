@@ -58,6 +58,7 @@ export async function getLeaderboardPlayers(
 }
 
 export function subscribeToGamePlayers(
+  gameId: string,
   handler: (payload: {
     eventType: string;
     new: Player | null;
@@ -65,10 +66,15 @@ export function subscribeToGamePlayers(
   }) => void
 ) {
   return supabase
-    .channel("players-updates")
+    .channel(`players:${gameId}`)
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "players" },
+      {
+        event: "*",
+        schema: "public",
+        table: "players",
+        filter: `game_id=eq.${gameId}`,
+      },
       (payload) => {
         handler({
           eventType: payload.eventType,

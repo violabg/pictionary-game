@@ -311,7 +311,7 @@ export async function startGame(gameId: string): Promise<void> {
     // Get players
     const { data: players, error: playersError } = await supabase
       .from("players")
-      .select("id")
+      .select("player_id")
       .eq("game_id", gameId)
       .order("order_index", { ascending: true });
 
@@ -331,6 +331,7 @@ export async function startGame(gameId: string): Promise<void> {
       .eq("game_id", gameId)
       .eq("used", false)
       .limit(1);
+    console.log("🚀 ~ startGame ~ cards:", cards);
 
     if (cardsError) {
       console.error("Error getting card:", cardsError);
@@ -346,7 +347,7 @@ export async function startGame(gameId: string): Promise<void> {
       .from("games")
       .update({
         status: "active",
-        current_drawer_id: players[0].id,
+        current_drawer_id: players[0].player_id,
         current_card_id: cards[0].id,
         timer_end: null, // Don't set timer_end until drawer starts their turn
       })

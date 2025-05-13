@@ -9,7 +9,13 @@ import {
   submitGuess,
 } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase/client";
-import { Card as CardType, Game, Guess, Player } from "@/types/supabase";
+import {
+  Card as CardType,
+  GameWithPlayers,
+  Guess,
+  Player,
+} from "@/types/supabase";
+import { User } from "@supabase/supabase-js";
 import { Crown, PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -22,11 +28,11 @@ import SelectWinnerModal from "./select-winner-modal";
 import Timer from "./timer";
 
 interface GameBoardProps {
-  game: Game;
-  players: Player[];
+  game: GameWithPlayers;
+  user: User;
 }
 
-export default function GameBoard({ game, players }: GameBoardProps) {
+export default function GameBoard({ game, user }: GameBoardProps) {
   const supabase = createClient();
   const [currentCard, setCurrentCard] = useState<CardType | null>(null);
   const [isDrawer, setIsDrawer] = useState(false);
@@ -40,16 +46,39 @@ export default function GameBoard({ game, players }: GameBoardProps) {
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const playerId = localStorage.getItem("playerId");
-  const currentPlayer = players.find((p) => p.id === playerId);
+  const players = game.players;
+  const currentPlayer = players.find((p) => p.player_id === user.id);
 
   useEffect(() => {
     // Check if current player is the drawer
-    setIsDrawer(game.current_drawer_id === playerId);
+    setIsDrawer(game.current_drawer_id === user.id);
 
     // Load the current card if we're the drawer
-    if (game.current_drawer_id === playerId && game.current_card_id) {
-      getCard(game.current_card_id).then(setCurrentCard);
+    if (game.current_drawer_id === user.id && game.current_card_id) {
+      let isActive = true;
+      getCard(game.current_card_id)
+        .then((newCardData) => {
+          if (isActive) {
+            setCurrentCard((prevCard) => {
+              // Prevent loop if getCard returns new ref for same data
+              if (JSON.stringify(prevCard) === JSON.stringify(newCardData)) {
+                return prevCard;
+              }
+              return newCardData;
+            });
+          }
+        })
+        .catch((error) => {
+          // It's good practice to handle potential errors in async operations
+          if (isActive) {
+            console.error("Error fetching card:", error);
+            setCurrentCard(null);
+          }
+        });
+      // Cleanup for the async operation
+      return () => {
+        isActive = false;
+      };
     } else {
       setCurrentCard(null);
     }
@@ -68,12 +97,11 @@ export default function GameBoard({ game, players }: GameBoardProps) {
 
           if (diff <= 0) {
             // Show time up modal and correct answer
-            if (currentCard) {
+            if (currentCard && currentCard.title) {
               setCorrectAnswer(currentCard.title);
-            } else if (game.current_card_id) {
-              getCard(game.current_card_id).then((card) => {
-                setCorrectAnswer(card.title);
-              });
+            } else {
+              // Avoid fetching card inside timer; rely on currentCard state
+              setCorrectAnswer(null); // Or a placeholder like "N/A"
             }
             setShowTimeUpModal(true);
           }
@@ -98,7 +126,16 @@ export default function GameBoard({ game, players }: GameBoardProps) {
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       };
     }
-  }, [game, playerId, isDrawer, isTimerPaused, currentCard]);
+  }, [
+    user.id,
+    isDrawer,
+    isTimerPaused,
+    currentCard,
+    game.current_drawer_id,
+    game.current_card_id,
+    game.timer_end,
+    game.id,
+  ]);
 
   // Subscribe to guesses
   useEffect(() => {
@@ -200,9 +237,9 @@ export default function GameBoard({ game, players }: GameBoardProps) {
   return (
     <div className="flex flex-col py-6 min-h-screen container">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="font-bold text-gradient text-2xl">
-          PictionAi: {game.category}
-        </h1>
+        <p className="font-bold text-xl">
+          Categoria: {game.category} difficoltà: {game.difficulty}
+        </p>
         {turnStarted ? (
           <div className="flex items-center gap-4">
             <Timer seconds={timeRemaining} />

@@ -46,8 +46,8 @@ export function GameClientPage({ code, user }: { code: string; user: User }) {
   }
 
   if (game.status === "completed") {
-    return <GameOver game={game} players={game.players} />;
+    return <GameOver game={game} />;
   }
 
-  return <GameBoard game={game} players={game.players} />;
+  return <GameBoard game={game} user={user} />;
 }

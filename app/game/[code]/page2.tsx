@@ -3,12 +3,10 @@
 import GameBoard from "@/components/game/game-board";
 import GameOver from "@/components/game/game-over";
 import WaitingRoom from "@/components/game/waiting-room";
-import { getGame, getPlayers } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase/client";
 import { Game, Player } from "@/types/supabase";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 
 export default function GamePage() {
   const { id } = useParams();
@@ -20,66 +18,66 @@ export default function GamePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadGameData = async () => {
-      try {
-        const gameData = await getGame(gameId);
-        const playersData = await getPlayers(gameId);
+  // useEffect(() => {
+  //   const loadGameData = async () => {
+  //     try {
+  //       const gameData = await getGame(gameId);
+  //       const playersData = await getPlayers(gameId);
 
-        setGame(gameData);
-        setPlayers(playersData);
-      } catch (err) {
-        console.error("Errore nel caricamento della partita:", err);
-        setError("Impossibile caricare i dati della partita");
-        toast.error("Errore", {
-          description: "Impossibile caricare i dati della partita",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  //       setGame(gameData);
+  //       setPlayers(playersData);
+  //     } catch (err) {
+  //       console.error("Errore nel caricamento della partita:", err);
+  //       setError("Impossibile caricare i dati della partita");
+  //       toast.error("Errore", {
+  //         description: "Impossibile caricare i dati della partita",
+  //       });
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    loadGameData();
+  //   loadGameData();
 
-    // Set up real-time subscriptions
-    const gameSubscription = supabase
-      .channel(`game:${gameId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "games",
-          filter: `id=eq.${gameId}`,
-        },
-        (payload) => {
-          setGame(payload.new as Game);
-        }
-      )
-      .subscribe();
+  //   // Set up real-time subscriptions
+  //   const gameSubscription = supabase
+  //     .channel(`game:${gameId}`)
+  //     .on(
+  //       "postgres_changes",
+  //       {
+  //         event: "UPDATE",
+  //         schema: "public",
+  //         table: "games",
+  //         filter: `id=eq.${gameId}`,
+  //       },
+  //       (payload) => {
+  //         setGame(payload.new as Game);
+  //       }
+  //     )
+  //     .subscribe();
 
-    const playersSubscription = supabase
-      .channel(`players:${gameId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "players",
-          filter: `game_id=eq.${gameId}`,
-        },
-        () => {
-          // Reload players when there's any change
-          getPlayers(gameId).then(setPlayers);
-        }
-      )
-      .subscribe();
+  //   const playersSubscription = supabase
+  //     .channel(`players:${gameId}`)
+  //     .on(
+  //       "postgres_changes",
+  //       {
+  //         event: "*",
+  //         schema: "public",
+  //         table: "players",
+  //         filter: `game_id=eq.${gameId}`,
+  //       },
+  //       () => {
+  //         // Reload players when there's any change
+  //         getPlayers(gameId).then(setPlayers);
+  //       }
+  //     )
+  //     .subscribe();
 
-    return () => {
-      supabase.removeChannel(gameSubscription);
-      supabase.removeChannel(playersSubscription);
-    };
-  }, [gameId, supabase, toast]);
+  //   return () => {
+  //     supabase.removeChannel(gameSubscription);
+  //     supabase.removeChannel(playersSubscription);
+  //   };
+  // }, [gameId, supabase, toast]);
 
   if (loading) {
     return (

@@ -69,38 +69,31 @@ export const updateGameStatus = async (
   return { error };
 };
 
-export function subscribeToGame(
-  options: {
-    gameId?: string;
-    onUpdate: (payload: {
-      eventType: string;
-      new: Game | null;
-      old: Game | null;
-    }) => void;
-  } = { onUpdate: () => {} } // Add default value for options
-) {
-  // Ensure options is defined
-  if (!options) {
-    options = { onUpdate: () => {} };
-  }
-
-  const channelName = options?.gameId ? `game-${options.gameId}` : "games";
+export function subscribeToGame(options: {
+  gameId: string;
+  onUpdate: (payload: {
+    eventType: string;
+    new: Game | null;
+    old: Game | null;
+  }) => void;
+}) {
+  const { gameId, onUpdate } = options;
   return supabase
-    .channel(channelName)
+    .channel(`game:${gameId}`)
     .on(
       "postgres_changes",
       {
         event: "*",
         schema: "public",
         table: "games",
-        filter: options?.gameId ? `id=eq.${options.gameId}` : undefined,
+        filter: `id=eq.${gameId}`,
       },
       (payload: {
         eventType: string;
         new: Record<string, unknown>;
         old: Record<string, unknown>;
       }) => {
-        options?.onUpdate?.({
+        onUpdate({
           eventType: payload.eventType,
           new: payload.new as Game | null,
           old: payload.old as Game | null,

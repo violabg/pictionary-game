@@ -9,16 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Game, Player } from "@/types/supabase";
+import { GameWithPlayers, Player } from "@/types/supabase";
 import { Award, Home, Medal, Trophy } from "lucide-react";
 import Link from "next/link";
 
 interface GameOverProps {
-  game: Game;
-  players: Player[];
+  game: GameWithPlayers;
 }
 
-export default function GameOver({ game, players }: GameOverProps) {
+export default function GameOver({ game }: GameOverProps) {
+  const players: Player[] = game.players;
   // Sort players by score (descending)
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 

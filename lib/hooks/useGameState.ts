@@ -16,6 +16,7 @@ import { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { startGame } from "../game-actions";
 import { createClient } from "../supabase/client";
 
 const supabase = createClient();
@@ -76,7 +77,7 @@ export function useGameState({
         if (payload.eventType === "DELETE") {
           setGame(null);
           toast("La partita è stata chiusa.");
-          router.push("/dashboard");
+          router.push("/gioca");
           return;
         }
         setGame((currentGame) => {
@@ -85,8 +86,8 @@ export function useGameState({
         });
       },
     });
-    const playersSubscription = subscribeToGamePlayers(async () => {
-      if (!gameId) return;
+
+    const playersSubscription = subscribeToGamePlayers(gameId, async () => {
       const playersData = await getPlayersForGame(gameId);
       setGame((currentGame) => {
         if (!currentGame) return null;
@@ -104,7 +105,7 @@ export function useGameState({
     if (!game || !isHost) return;
     try {
       setLoadingState("starting");
-      await updateGameStatus(game.id, "active");
+      await startGame(game.id);
       setGame((currentGame) => {
         if (!currentGame) return null;
         return { ...currentGame, status: "active" };

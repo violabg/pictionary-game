@@ -23,9 +23,7 @@ export default async function GiocaPage() {
         <Card className="gradient-border glass-card">
           <CardHeader>
             <CardTitle>Crea una nuova partita</CardTitle>
-            <CardDescription>
-              Imposta una nuova sfida di quiz di programmazione
-            </CardDescription>
+            <CardDescription>Imposta una nuova sfida</CardDescription>
           </CardHeader>
           <CardContent>{user && <CreateGameForm user={user} />}</CardContent>
         </Card>
