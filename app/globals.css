@@ -106,20 +106,20 @@
   --primary: oklch(58.92% 0.25 296.91); /* Purple */
   --primary-foreground: oklch(98% 0.005 210); /* Light gray */
 
-  --secondary: oklch(17.5% 0.02 217.2); /* Dark gray-blue */
+  --secondary: oklch(27.5% 0.02 217.2); /* Dark gray-blue */
   --secondary-foreground: oklch(98% 0.005 210); /* Light gray */
 
-  --muted: oklch(17.5% 0.02 217.2); /* Dark gray-blue */
+  --muted: oklch(37.5% 0.02 217.2); /* Dark gray-blue */
   --muted-foreground: oklch(65.1% 0.01 215); /* Medium gray */
 
-  --accent: oklch(17.5% 0.02 217.2); /* Dark gray-blue */
+  --accent: oklch(37.5% 0.02 217.2); /* Dark gray-blue */
   --accent-foreground: oklch(98% 0.005 210); /* Light gray */
 
   --destructive: oklch(30.6% 0.12 22.5); /* Dark red */
   --destructive-foreground: oklch(98% 0.005 210); /* Light gray */
 
-  --border: oklch(17.5% 0.02 217.2); /* Dark gray-blue */
-  --input: oklch(17.5% 0.02 217.2); /* Dark gray-blue */
+  --border: oklch(37.5% 0.02 217.2); /* Dark gray-blue */
+  --input: oklch(37.5% 0.02 217.2); /* Dark gray-blue */
   --ring: oklch(83.9% 0.01 212.7); /* Light gray-blue */
 
   /* Gradient colors as direct values */
@@ -167,8 +167,7 @@
       var(--gradient-from),
       var(--gradient-to)
     );
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -217,4 +216,41 @@
   100% {
     background-position: 0% 50%;
   }
+}
+
+/* Winner gradients */
+.silver-gradient {
+  background: linear-gradient(
+    135deg,
+    oklch(0.95 0.01 260),
+    /* light silver */ oklch(0.8 0.02 260),
+    /* mid silver */ oklch(0.7 0.03 260) 90%
+  );
+  box-shadow: 0 2px 8px 0 oklch(0.7 0.03 260 / 0.15),
+    0 1.5px 0 0 oklch(0.98 0.01 260 / 0.5) inset;
+}
+.gold-gradient {
+  background: linear-gradient(
+    135deg,
+    oklch(0.95 0.13 90),
+    /* light gold */ oklch(0.85 0.18 90),
+    /* mid gold */ oklch(0.7 0.18 90) 90%
+  );
+  box-shadow: 0 2px 8px 0 oklch(0.7 0.18 90 / 0.15),
+    0 1.5px 0 0 oklch(0.98 0.13 90 / 0.5) inset;
+}
+.bronze-gradient {
+  background: linear-gradient(
+    135deg,
+    oklch(0.9 0.09 50),
+    /* light bronze */ oklch(0.75 0.13 50),
+    /* mid bronze */ oklch(0.6 0.13 50) 90%
+  );
+  box-shadow: 0 2px 8px 0 oklch(0.6 0.13 50 / 0.15),
+    0 1.5px 0 0 oklch(0.98 0.09 50 / 0.5) inset;
+}
+.emboss {
+  box-shadow: 0 2px 8px 0 oklch(0.7 0.03 260 / 0.15),
+    0 1.5px 0 0 oklch(0.98 0.01 260 / 0.5) inset;
+  filter: drop-shadow(0 1px 2px oklch(0.7 0.03 260 / 0.15));
 }

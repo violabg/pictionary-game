@@ -237,9 +237,16 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   return (
     <div className="flex flex-col py-6 min-h-screen container">
       <div className="flex justify-between items-center mb-6">
-        <p className="font-bold text-xl">
-          Categoria: {game.category} difficoltà: {game.difficulty}
-        </p>
+        <div className="flex justify-between items-center gap-2">
+          Categoria:
+          <span className="inline-block bg-primary/10 px-3 py-1 rounded-full font-medium text-primary text-sm">
+            {game.category}
+          </span>
+          Difficoltà:
+          <span className="inline-block bg-secondary ml-2 px-3 py-1 rounded-full font-medium text-secondary-foreground text-sm">
+            {game.difficulty}
+          </span>
+        </div>
         {turnStarted ? (
           <div className="flex items-center gap-4">
             <Timer seconds={timeRemaining} />
