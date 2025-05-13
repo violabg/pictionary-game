@@ -6,14 +6,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
   return (
     <div className="flex flex-col justify-center items-center space-y-8 py-12 min-h-screen container">
       <div className="space-y-4 text-center">
         <h1 className="font-bold text-gradient text-5xl tracking-tight">
-          Pictionary
+          PictionAi
         </h1>
         <p className="max-w-md text-muted-foreground text-xl">
           Un gioco multiplayer in tempo reale di disegno e indovinelli
@@ -24,21 +27,21 @@ export default function Home() {
         <CardHeader>
           <CardTitle>Inizia una nuova partita</CardTitle>
           <CardDescription>
-            Crea una nuova partita di Pictionary e invita i tuoi amici a
+            Crea una nuova partita di PictionAi e invita i tuoi amici a
             partecipare
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Link href="/new-game" className="w-full">
-            <Button variant="gradient" size="lg" className="w-full">
-              Crea partita
+          <div className="flex sm:flex-row flex-col gap-4">
+            <Button asChild size="lg">
+              <Link href="/gioca">Inizia a giocare</Link>
             </Button>
-          </Link>
-          <Link href="/join" className="w-full">
-            <Button variant="outline" size="lg" className="w-full">
-              Unisciti ad una partita
-            </Button>
-          </Link>
+            {!data?.user && (
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/auth/login">Sign In</Link>
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

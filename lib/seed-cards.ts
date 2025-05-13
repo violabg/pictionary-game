@@ -1,32 +1,9 @@
 "use server";
 
 import { groq } from "@ai-sdk/groq";
-import { createClient } from "@supabase/supabase-js";
 import { generateObject } from "ai";
 import { z } from "zod";
-import type { Database } from "./database.types";
-
-// Initialize Supabase client for server-side operations
-const getSupabaseServerClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl) {
-    throw new Error("Supabase URL is missing");
-  }
-
-  if (!supabaseKey) {
-    throw new Error("Supabase key is missing");
-  }
-
-  return createClient<Database>(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-    },
-  });
-};
+import { createClient } from "./supabase/client";
 
 // Seed cards for a game
 export async function seedCardsForGame(
@@ -36,7 +13,7 @@ export async function seedCardsForGame(
   playersCount: number
 ): Promise<void> {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = createClient();
     // Calculate number of cards: 2 per player
     const numCards = Math.max(2, playersCount * 2);
 
@@ -76,7 +53,7 @@ export async function seedCardsForGame(
         : "";
 
     // 2. Add constraint to prompt
-    const prompt = `${avoidTitlesText}Sei un generatore di carte per un gioco Pictionary. Genera un array JSON di ${numCards} oggetti, ognuno con un titolo e una descrizione, per la categoria \"${category}\" e difficoltà \"${difficulty}\". Ogni oggetto deve avere la forma: { \"title\": string, \"description\": string }. Scrivi tutto in italiano. Nessun testo extra, se la difficoltà è random scegli a caso tra facile, medio e difficile. Non usare mai la parola \"carta\".`;
+    const prompt = `${avoidTitlesText}Sei un generatore di carte per un gioco PictionAi. Genera un array JSON di ${numCards} oggetti, ognuno con un titolo e una descrizione, per la categoria \"${category}\" e difficoltà \"${difficulty}\". Ogni oggetto deve avere la forma: { \"title\": string, \"description\": string }. Scrivi tutto in italiano. Nessun testo extra, se la difficoltà è random scegli a caso tra facile, medio e difficile. Non usare mai la parola \"carta\".`;
     const schema = z.object({
       title: z.string(),
       description: z.string(),
@@ -125,23 +102,23 @@ export async function seedCardsForGame(
 }
 
 // Get count of cards for a game
-export async function getCardCount(gameId: string): Promise<number> {
-  try {
-    const supabase = getSupabaseServerClient();
+// export async function getCardCount(gameId: string): Promise<number> {
+//   try {
+//     const supabase = getSupabaseServerClient();
 
-    const { count, error } = await supabase
-      .from("cards")
-      .select("*", { count: "exact", head: true })
-      .eq("game_id", gameId);
+//     const { count, error } = await supabase
+//       .from("cards")
+//       .select("*", { count: "exact", head: true })
+//       .eq("game_id", gameId);
 
-    if (error) {
-      console.error("Error counting cards:", error);
-      throw new Error("Failed to count cards");
-    }
+//     if (error) {
+//       console.error("Error counting cards:", error);
+//       throw new Error("Failed to count cards");
+//     }
 
-    return count || 0;
-  } catch (error: any) {
-    console.error("Error in getCardCount:", error);
-    throw new Error(error.message || "Failed to count cards");
-  }
-}
+//     return count || 0;
+//   } catch (error: any) {
+//     console.error("Error in getCardCount:", error);
+//     throw new Error(error.message || "Failed to count cards");
+//   }
+// }
