@@ -5,6 +5,7 @@ import type {
 } from "@/types/supabase";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
+import { nextTurn } from "./supabase-guess-and-turns";
 
 const supabase = createClient();
 
@@ -39,6 +40,50 @@ export async function getPlayerInGame(game_id: string, player_id: string) {
     .maybeSingle();
   if (error) throw error;
   return data as Player | null;
+}
+
+// Select a winner for a correct guess
+export async function selectWinner(
+  gameId: string,
+  winnerId: string,
+  timeRemaining: number
+): Promise<void> {
+  try {
+    // Get current score
+    const { data: player, error: playerError } = await supabase
+      .from("players")
+      .select("score")
+      .eq("id", winnerId)
+      .single();
+
+    if (playerError) {
+      console.error("Error getting player score:", playerError);
+      throw new Error("Failed to get player score");
+    }
+
+    if (!player) {
+      throw new Error("Player not found");
+    }
+
+    // Update player score
+    const { error: updateError } = await supabase
+      .from("players")
+      .update({
+        score: player.score + timeRemaining,
+      })
+      .eq("id", winnerId);
+
+    if (updateError) {
+      console.error("Error updating score:", updateError);
+      throw new Error("Failed to update score");
+    }
+
+    // Move to next turn
+    await nextTurn(gameId);
+  } catch (error: any) {
+    console.error("Error in selectWinner:", error);
+    throw new Error(error.message || "Failed to select winner");
+  }
 }
 
 export async function getLeaderboardPlayers(

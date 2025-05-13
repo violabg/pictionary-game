@@ -6,6 +6,7 @@ import {
 } from "@/lib/supabase/supabase-game-players";
 import {
   getGameByCode,
+  startGame,
   subscribeToGame,
   unsubscribeFromGame,
   updateGameStatus,
@@ -16,7 +17,6 @@ import { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { startGame } from "../game-actions";
 import { createClient } from "../supabase/client";
 
 const supabase = createClient();

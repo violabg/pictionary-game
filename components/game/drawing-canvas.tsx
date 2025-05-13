@@ -4,6 +4,7 @@ import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
 import { createClient } from "@/lib/supabase/client";
+import { PlayerWithProfile } from "@/types/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // --- Update redrawStrokes to denormalize points ---
@@ -15,16 +16,17 @@ type Stroke = {
 interface DrawingCanvasProps {
   gameId: string;
   isDrawer: boolean;
-  currentDrawerId: string | null;
+  currentDrawer: PlayerWithProfile;
   turnStarted: boolean;
 }
 
 export default function DrawingCanvas({
   gameId,
   isDrawer,
-  currentDrawerId,
+  currentDrawer,
   turnStarted,
 }: DrawingCanvasProps) {
+  const { id: currentDrawerId, profile } = currentDrawer;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const supabase = createClient();
   const [isDrawing, setIsDrawing] = useState(false);
@@ -403,7 +405,7 @@ export default function DrawingCanvas({
             <p className="text-white text-lg">
               {isDrawer
                 ? "Clicca 'Inizia il tuo turno' per iniziare a disegnare"
-                : "In attesa che il disegnatore inizi il turno..."}
+                : `In attesa che ${currentDrawer.profile.name} inizi il turno...`}
             </p>
           </div>
         )}

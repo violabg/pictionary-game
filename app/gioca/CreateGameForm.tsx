@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateCards } from "@/lib/game-actions";
+import { generateCards } from "@/lib/supabase/supabase-cards";
 import { addPlayerToGame } from "@/lib/supabase/supabase-game-players";
 import { createGame } from "@/lib/supabase/supabase-games";
 import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";

@@ -1,14 +1,14 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
+import { getCard } from "@/lib/supabase/supabase-cards";
+import { selectWinner } from "@/lib/supabase/supabase-game-players";
 import {
-  getCard,
   nextTurn,
-  selectWinner,
   startTurn,
   submitGuess,
-} from "@/lib/game-actions";
-import { createClient } from "@/lib/supabase/client";
+} from "@/lib/supabase/supabase-guess-and-turns";
 import {
   Card as CardType,
   GameWithPlayers,
@@ -17,7 +17,7 @@ import {
 } from "@/types/supabase";
 import { User } from "@supabase/supabase-js";
 import { Crown, PlayCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import CardDisplay from "./card-display";
@@ -47,7 +47,15 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const players = game.players;
-  const currentPlayer = players.find((p) => p.player_id === user.id);
+
+  const currentDrawer = useMemo(
+    () => players.find((p) => p.player_id === game.current_drawer_id),
+    [players, game.current_drawer_id]
+  );
+  const currentPlayer = useMemo(
+    () => players.find((p) => p.player_id === user.id),
+    [players, user.id]
+  );
 
   useEffect(() => {
     // Check if current player is the drawer
@@ -266,7 +274,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           <div className="font-medium text-muted-foreground text-lg">
             {isDrawer
               ? "È il tuo turno di disegnare"
-              : "In attesa che il disegnatore inizi"}
+              : `In attesa che ${currentDrawer?.profile.name} inizi`}
           </div>
         )}
       </div>
@@ -274,12 +282,14 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       <div className="gap-6 grid grid-cols-1 md:grid-cols-4">
         <div className="flex flex-col md:col-span-3">
           <div className="p-4 gradient-border rounded-lg glass-card grow">
-            <DrawingCanvas
-              gameId={game.id}
-              isDrawer={isDrawer}
-              currentDrawerId={game.current_drawer_id}
-              turnStarted={turnStarted}
-            />
+            {currentDrawer && (
+              <DrawingCanvas
+                gameId={game.id}
+                isDrawer={isDrawer}
+                currentDrawer={currentDrawer}
+                turnStarted={turnStarted}
+              />
+            )}
 
             {isDrawer && !turnStarted && (
               <div className="flex justify-center mt-4">

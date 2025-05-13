@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { startGame } from "@/lib/game-actions";
+import { startGame } from "@/lib/supabase/supabase-guess-and-turns";
 import type { Game, Player } from "@/lib/types";
 import { Copy } from "lucide-react";
 import { useState } from "react";
@@ -64,7 +64,9 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
   ) => {
     try {
       // Import the seedCardsForGame function dynamically to avoid server/client mismatch
-      const { generateCards } = await import("@/lib/game-actions");
+      const { generateCards } = await import(
+        "@/lib/supabase/supabase-guess-and-turns"
+      );
       await generateCards(gameId, category, playerCount);
       return true;
     } catch (error) {
@@ -164,8 +166,8 @@ export default function WaitingRoom({ game, players }: WaitingRoomProps) {
               {isGeneratingCards
                 ? "Generazione carte..."
                 : isStarting
-                  ? "Avvio partita..."
-                  : "Avvia partita"}
+                ? "Avvio partita..."
+                : "Avvia partita"}
             </Button>
           ) : (
             <p className="w-full text-muted-foreground text-center">

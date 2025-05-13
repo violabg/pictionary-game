@@ -1,8 +1,4 @@
-import type {
-  Game,
-  GenerateUniqueGameCodeArgs,
-  GenerateUniqueGameCodeReturn,
-} from "@/types/supabase";
+import type { Game } from "@/types/supabase";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 
@@ -43,13 +39,6 @@ export async function getGameByCode(supabase: SupabaseClient, code: string) {
   return { data: data as Game, error };
 }
 
-export async function generateUniqueGameCode(
-  args: GenerateUniqueGameCodeArgs = {}
-): Promise<{ data: GenerateUniqueGameCodeReturn | null; error: unknown }> {
-  const { data, error } = await supabase.rpc("generate_unique_game_code", args);
-  return { data, error };
-}
-
 export const updateGameTurn = async (gameId: string, nextTurn: number) => {
   const { error } = await supabase
     .from("games")
@@ -68,6 +57,66 @@ export const updateGameStatus = async (
     .eq("id", gameId);
   return { error };
 };
+
+// Start the game
+export async function startGame(gameId: string): Promise<void> {
+  try {
+    // Get players
+    const { data: players, error: playersError } = await supabase
+      .from("players")
+      .select("player_id")
+      .eq("game_id", gameId)
+      .order("order_index", { ascending: true });
+
+    if (playersError) {
+      console.error("Error getting players:", playersError);
+      throw new Error("Failed to get players");
+    }
+
+    if (!players || players.length < 2) {
+      throw new Error("Not enough players to start the game");
+    }
+
+    // Get an unused card
+    const { data: cards, error: cardsError } = await supabase
+      .from("cards")
+      .select("id")
+      .eq("game_id", gameId)
+      .eq("used", false)
+      .limit(1);
+
+    if (cardsError) {
+      console.error("Error getting card:", cardsError);
+      throw new Error("Failed to get card");
+    }
+
+    if (!cards || cards.length === 0) {
+      throw new Error("No cards available");
+    }
+
+    // Update game status - don't set timer_end yet
+    const { error: updateError } = await supabase
+      .from("games")
+      .update({
+        status: "active",
+        current_drawer_id: players[0].player_id,
+        current_card_id: cards[0].id,
+        timer_end: null, // Don't set timer_end until drawer starts their turn
+      })
+      .eq("id", gameId);
+
+    if (updateError) {
+      console.error("Error updating game:", updateError);
+      throw new Error("Failed to start game");
+    }
+
+    // Mark card as used
+    await supabase.from("cards").update({ used: true }).eq("id", cards[0].id);
+  } catch (error: any) {
+    console.error("Error in startGame:", error);
+    throw new Error(error.message || "Failed to start game");
+  }
+}
 
 export function subscribeToGame(options: {
   gameId: string;
