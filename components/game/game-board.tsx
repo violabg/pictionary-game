@@ -243,8 +243,8 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   };
 
   return (
-    <div className="flex flex-col py-6 min-h-screen container">
-      <div className="flex justify-between items-center mb-6">
+    <div className="flex flex-col py-0 min-h-screen container">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex justify-between items-center gap-2">
           Categoria:
           <span className="inline-block bg-primary/10 px-3 py-1 rounded-full font-medium text-primary text-sm">
@@ -258,17 +258,6 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         {turnStarted ? (
           <div className="flex items-center gap-4">
             <Timer seconds={timeRemaining} />
-            {isDrawer && (
-              <Button
-                variant="gradient"
-                size="sm"
-                onClick={handleOpenSelectWinner}
-                className="flex items-center gap-2"
-              >
-                <Crown className="w-4 h-4" />
-                Seleziona Vincitore
-              </Button>
-            )}
           </div>
         ) : (
           <div className="font-medium text-muted-foreground text-lg">
@@ -279,8 +268,8 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         )}
       </div>
 
-      <div className="gap-6 grid grid-cols-1 md:grid-cols-4">
-        <div className="flex flex-col md:col-span-3">
+      <div className="gap-4 grid grid-cols-1 lg:grid-cols-4">
+        <div className="flex flex-col lg:col-span-3">
           <div className="p-4 gradient-border rounded-lg glass-card grow">
             {currentDrawer && (
               <DrawingCanvas
@@ -315,6 +304,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         </div>
 
         <div className="flex flex-col space-y-4">
+          {game.current_drawer_id && (
+            <PlayerList
+              players={players}
+              currentDrawerId={game.current_drawer_id}
+            />
+          )}
           {/* Show time's up card above the player list */}
           {showTimeUpModal && timeRemaining === 0 && (
             <Card className="gradient-border glass-card">
@@ -331,14 +326,17 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               </CardContent>
             </Card>
           )}
-
-          {game.current_drawer_id && (
-            <PlayerList
-              players={players}
-              currentDrawerId={game.current_drawer_id}
-            />
+          {isDrawer && (
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={handleOpenSelectWinner}
+              className="flex items-center gap-2"
+            >
+              <Crown className="w-4 h-4" />
+              Seleziona Vincitore
+            </Button>
           )}
-
           {isDrawer && currentCard && <CardDisplay card={currentCard} />}
         </div>
       </div>
