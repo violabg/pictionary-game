@@ -38,7 +38,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   const [isDrawer, setIsDrawer] = useState(false);
   const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
   const [showSelectWinnerModal, setShowSelectWinnerModal] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(120);
+  const [timeRemaining, setTimeRemaining] = useState(game.timer);
   const [turnStarted, setTurnStarted] = useState(false);
   const [isStartingTurn, setIsStartingTurn] = useState(false);
   const [isTimerPaused, setIsTimerPaused] = useState(false);
@@ -61,32 +61,25 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     // Check if current player is the drawer
     setIsDrawer(game.current_drawer_id === user.id);
 
+    const fetchCard = async (cardId: string) => {
+      try {
+        const newCardData = await getCard(cardId);
+
+        setCurrentCard((prevCard) => {
+          // Prevent loop if getCard returns new ref for same data
+          if (JSON.stringify(prevCard) === JSON.stringify(newCardData)) {
+            return prevCard;
+          }
+          return newCardData;
+        });
+      } catch (error) {
+        console.error("Error fetching card:", error);
+        setCurrentCard(null);
+      }
+    };
     // Load the current card if we're the drawer
     if (game.current_drawer_id === user.id && game.current_card_id) {
-      let isActive = true;
-      getCard(game.current_card_id)
-        .then((newCardData) => {
-          if (isActive) {
-            setCurrentCard((prevCard) => {
-              // Prevent loop if getCard returns new ref for same data
-              if (JSON.stringify(prevCard) === JSON.stringify(newCardData)) {
-                return prevCard;
-              }
-              return newCardData;
-            });
-          }
-        })
-        .catch((error) => {
-          // It's good practice to handle potential errors in async operations
-          if (isActive) {
-            console.error("Error fetching card:", error);
-            setCurrentCard(null);
-          }
-        });
-      // Cleanup for the async operation
-      return () => {
-        isActive = false;
-      };
+      fetchCard(game.current_card_id);
     } else {
       setCurrentCard(null);
     }

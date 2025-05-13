@@ -123,7 +123,7 @@ export async function nextTurn(gameId: string): Promise<void> {
     // Get all players ordered by order_index
     const { data: players, error: playersError } = await supabase
       .from("players")
-      .select("id, order_index")
+      .select("player_id, order_index")
       .eq("game_id", gameId)
       .order("order_index", { ascending: true });
 
@@ -138,12 +138,12 @@ export async function nextTurn(gameId: string): Promise<void> {
 
     // Find the index of the current drawer
     const currentDrawerIndex = players.findIndex(
-      (p) => p.id === game.current_drawer_id
+      (p) => p.player_id === game.current_drawer_id
     );
 
     // Calculate the next drawer index
     const nextDrawerIndex = (currentDrawerIndex + 1) % players.length;
-    const nextDrawerId = players[nextDrawerIndex].id;
+    const nextDrawerId = players[nextDrawerIndex].player_id;
 
     // Get an unused card
     const { data: cards, error: cardsError } = await supabase

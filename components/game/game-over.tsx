@@ -105,7 +105,7 @@ export default function GameOver({ game }: GameOverProps) {
               Torna alla Home
             </Button>
           </Link>
-          <Link href="/new-game" className="w-full max-w-xs">
+          <Link href="/gioca" className="w-full max-w-xs">
             <Button variant="glass" className="w-full">
               Gioca ancora
             </Button>
