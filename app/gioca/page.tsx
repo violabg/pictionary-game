@@ -16,9 +16,6 @@ export default async function GiocaPage() {
   const user = data.user;
   return (
     <main className="flex-1 py-8 container">
-      <h1 className="mb-8 font-bold text-3xl">
-        <span className="text-gradient">Gioca</span>
-      </h1>
       <div className="gap-8 grid md:grid-cols-2">
         <Card className="gradient-border glass-card">
           <CardHeader>
