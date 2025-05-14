@@ -20,8 +20,8 @@ export default async function GamePage({
     return (
       <main className="flex flex-col flex-1 justify-center items-center py-8 container">
         <h1 className="mb-4 font-bold text-2xl">Partita non trovata</h1>
-        <a href="/dashboard" className="btn btn-primary">
-          Torna alla Dashboard
+        <a href="/gioca" className="btn btn-primary">
+          Torna alla creazione del gioco
         </a>
       </main>
     );

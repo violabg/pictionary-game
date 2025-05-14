@@ -9,19 +9,19 @@ import { nextTurn } from "./supabase-guess-and-turns";
 
 const supabase = createClient();
 
-export async function addPlayerToGame(
+export const addPlayerToGame = async (
   game_id: string,
   player_id: string,
   order_index: number
-) {
+) => {
   const { error } = await supabase
     .from("players")
     .insert({ game_id, player_id, order_index });
   if (error) throw error;
   return true;
-}
+};
 
-export async function getPlayersForGame(game_id: string) {
+export const getPlayersForGame = async (game_id: string) => {
   const { data, error } = await supabase
     .from("players")
     .select("*, profile:player_id(id, name, full_name, user_name, avatar_url)")
@@ -29,9 +29,9 @@ export async function getPlayersForGame(game_id: string) {
     .order("order_index", { ascending: true });
   if (error) throw error;
   return data as (Player & { profile: Profile })[];
-}
+};
 
-export async function getPlayerInGame(game_id: string, player_id: string) {
+export const getPlayerInGame = async (game_id: string, player_id: string) => {
   const { data, error } = await supabase
     .from("players")
     .select("*")
@@ -40,6 +40,38 @@ export async function getPlayerInGame(game_id: string, player_id: string) {
     .maybeSingle();
   if (error) throw error;
   return data as Player | null;
+};
+
+export const getPlayerScore = async (playerId: string) => {
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("score")
+    .eq("id", playerId)
+    .single();
+
+  if (playerError) {
+    console.error("Error getting player score:", playerError);
+    throw new Error("Failed to get player score");
+  }
+
+  if (!player) {
+    throw new Error("Player not found");
+  }
+  return player.score;
+};
+
+export async function updatePlayerScore(playerId: string, newScore: number) {
+  const { error: updateError } = await supabase
+    .from("players")
+    .update({
+      score: newScore,
+    })
+    .eq("id", playerId);
+
+  if (updateError) {
+    console.error("Error updating score:", updateError);
+    throw new Error("Failed to update score");
+  }
 }
 
 // Select a winner for a correct guess
@@ -50,40 +82,47 @@ export async function selectWinner(
 ): Promise<void> {
   try {
     // Get current score
-    const { data: player, error: playerError } = await supabase
-      .from("players")
-      .select("score")
-      .eq("id", winnerId)
-      .single();
-
-    if (playerError) {
-      console.error("Error getting player score:", playerError);
-      throw new Error("Failed to get player score");
-    }
-
-    if (!player) {
-      throw new Error("Player not found");
-    }
+    const currentScore = await getPlayerScore(winnerId);
 
     // Update player score
-    const { error: updateError } = await supabase
-      .from("players")
-      .update({
-        score: player.score + timeRemaining,
-      })
-      .eq("id", winnerId);
-
-    if (updateError) {
-      console.error("Error updating score:", updateError);
-      throw new Error("Failed to update score");
-    }
+    await updatePlayerScore(winnerId, currentScore + timeRemaining);
 
     // Move to next turn
     await nextTurn(gameId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in selectWinner:", error);
-    throw new Error(error.message || "Failed to select winner");
+    const message =
+      error instanceof Error ? error.message : "Failed to select winner";
+    throw new Error(message);
   }
+}
+
+export async function setPlayerInactive(game_id: string, player_id: string) {
+  const { error } = await supabase
+    .from("players")
+    .update({ is_active: false })
+    .eq("game_id", game_id)
+    .eq("player_id", player_id);
+  if (error) throw error;
+  return true;
+}
+
+export async function getPlayersForGameOrdered(gameId: string) {
+  const { data: players, error: playersError } = await supabase
+    .from("players")
+    .select("player_id, order_index")
+    .eq("game_id", gameId)
+    .order("order_index", { ascending: true });
+
+  if (playersError) {
+    console.error("Error getting players:", playersError);
+    throw new Error("Failed to get players");
+  }
+
+  if (!players || players.length === 0) {
+    throw new Error("No players found");
+  }
+  return players;
 }
 
 export async function getLeaderboardPlayers(
@@ -135,14 +174,4 @@ export function unsubscribeFromGamePlayers(channel: {
   unsubscribe: () => void;
 }) {
   channel.unsubscribe();
-}
-
-export async function setPlayerInactive(game_id: string, player_id: string) {
-  const { error } = await supabase
-    .from("players")
-    .update({ is_active: false })
-    .eq("game_id", game_id)
-    .eq("player_id", player_id);
-  if (error) throw error;
-  return true;
 }
