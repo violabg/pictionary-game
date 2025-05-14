@@ -3,7 +3,15 @@
 import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { createClient } from "./supabase/client";
+import {
+  CardInsert,
+  getPreviousCardTitles,
+  insertGeneratedCards,
+} from "./supabase/supabase-cards";
+import {
+  getRecentGamesForCategory,
+  updateGamePostCardGeneration,
+} from "./supabase/supabase-games";
 
 // Seed cards for a game
 export async function seedCardsForGame(
@@ -13,35 +21,23 @@ export async function seedCardsForGame(
   playersCount: number
 ): Promise<void> {
   try {
-    const supabase = createClient();
     // Calculate number of cards: 2 per player
     const numCards = Math.max(2, playersCount * 2);
 
     // 1. Get all previous card titles for this category and difficulty, only from games created in the last 5 hours
     const now = new Date();
     const fiveHoursAgo = new Date(now.getTime() - 5 * 60 * 60 * 1000);
-    const { data: recentGames, error: recentGamesError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("category", category)
-      .eq("difficulty", difficulty)
-      .gte("created_at", fiveHoursAgo.toISOString());
-    if (recentGamesError) {
-      console.error("Error fetching recent games:", recentGamesError);
-      throw new Error("Failed to fetch recent games");
-    }
-    const recentGameIds = recentGames?.map((g) => g.id) || [];
+
+    const recentGames = await getRecentGamesForCategory(
+      category,
+      difficulty,
+      fiveHoursAgo.toISOString()
+    );
+
+    const recentGameIds = recentGames?.map((g: { id: string }) => g.id) || [];
     let previousTitlesLimited: string[] = [];
     if (recentGameIds.length > 0) {
-      const { data: previousCards, error: previousCardsError } = await supabase
-        .from("cards")
-        .select("title, game_id")
-        .in("game_id", recentGameIds);
-      if (previousCardsError) {
-        console.error("Error fetching previous cards:", previousCardsError);
-        throw new Error("Failed to fetch previous cards");
-      }
-      const previousTitles = previousCards?.map((c) => c.title) || [];
+      const previousTitles = await getPreviousCardTitles(recentGameIds);
       // Limit to last 50 titles to keep prompt size reasonable
       previousTitlesLimited = previousTitles.slice(-50);
     }
@@ -71,7 +67,7 @@ export async function seedCardsForGame(
       throw new Error("AI non ha generato carte valide");
     }
 
-    const cardsToInsert = cards.map((card) => ({
+    const cardsToInsert: CardInsert[] = cards.map((card) => ({
       id: crypto.randomUUID(),
       game_id: gameId,
       title: card.title,
@@ -80,49 +76,17 @@ export async function seedCardsForGame(
       used: false,
     }));
 
-    const { error: insertError } = await supabase
-      .from("cards")
-      .insert(cardsToInsert);
+    await insertGeneratedCards(cardsToInsert);
 
-    if (insertError) {
-      console.error("Error inserting cards:", insertError);
-      throw new Error("Failed to seed cards");
-    }
+    await updateGamePostCardGeneration(gameId, cardsToInsert[0].title_length);
 
-    await supabase
-      .from("games")
-      .update({
-        cards_generated: true,
-        card_title_length: cardsToInsert[0].title_length,
-      })
-      .eq("id", gameId);
     console.log(
       `Successfully seeded ${cards.length} AI-generated cards for game ${gameId}`
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in seedCardsForGame (AI):", error);
-    throw new Error(error.message || "Failed to seed cards");
+    const message =
+      error instanceof Error ? error.message : "Failed to seed cards";
+    throw new Error(message);
   }
 }
-
-// Get count of cards for a game
-// export async function getCardCount(gameId: string): Promise<number> {
-//   try {
-//     const supabase = getSupabaseServerClient();
-
-//     const { count, error } = await supabase
-//       .from("cards")
-//       .select("*", { count: "exact", head: true })
-//       .eq("game_id", gameId);
-
-//     if (error) {
-//       console.error("Error counting cards:", error);
-//       throw new Error("Failed to count cards");
-//     }
-
-//     return count || 0;
-//   } catch (error: any) {
-//     console.error("Error in getCardCount:", error);
-//     throw new Error(error.message || "Failed to count cards");
-//   }
-// }

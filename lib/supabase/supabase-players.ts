@@ -42,6 +42,38 @@ export async function getPlayerInGame(game_id: string, player_id: string) {
   return data as Player | null;
 }
 
+export async function getPlayerScore(playerId: string) {
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("score")
+    .eq("id", playerId)
+    .single();
+
+  if (playerError) {
+    console.error("Error getting player score:", playerError);
+    throw new Error("Failed to get player score");
+  }
+
+  if (!player) {
+    throw new Error("Player not found");
+  }
+  return player.score;
+}
+
+export async function updatePlayerScore(playerId: string, newScore: number) {
+  const { error: updateError } = await supabase
+    .from("players")
+    .update({
+      score: newScore,
+    })
+    .eq("id", playerId);
+
+  if (updateError) {
+    console.error("Error updating score:", updateError);
+    throw new Error("Failed to update score");
+  }
+}
+
 // Select a winner for a correct guess
 export async function selectWinner(
   gameId: string,
@@ -50,39 +82,18 @@ export async function selectWinner(
 ): Promise<void> {
   try {
     // Get current score
-    const { data: player, error: playerError } = await supabase
-      .from("players")
-      .select("score")
-      .eq("id", winnerId)
-      .single();
-
-    if (playerError) {
-      console.error("Error getting player score:", playerError);
-      throw new Error("Failed to get player score");
-    }
-
-    if (!player) {
-      throw new Error("Player not found");
-    }
+    const currentScore = await getPlayerScore(winnerId);
 
     // Update player score
-    const { error: updateError } = await supabase
-      .from("players")
-      .update({
-        score: player.score + timeRemaining,
-      })
-      .eq("id", winnerId);
-
-    if (updateError) {
-      console.error("Error updating score:", updateError);
-      throw new Error("Failed to update score");
-    }
+    await updatePlayerScore(winnerId, currentScore + timeRemaining);
 
     // Move to next turn
     await nextTurn(gameId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in selectWinner:", error);
-    throw new Error(error.message || "Failed to select winner");
+    const message =
+      error instanceof Error ? error.message : "Failed to select winner";
+    throw new Error(message);
   }
 }
 
@@ -145,4 +156,22 @@ export async function setPlayerInactive(game_id: string, player_id: string) {
     .eq("player_id", player_id);
   if (error) throw error;
   return true;
+}
+
+export async function getPlayersForGameOrdered(gameId: string) {
+  const { data: players, error: playersError } = await supabase
+    .from("players")
+    .select("player_id, order_index")
+    .eq("game_id", gameId)
+    .order("order_index", { ascending: true });
+
+  if (playersError) {
+    console.error("Error getting players:", playersError);
+    throw new Error("Failed to get players");
+  }
+
+  if (!players || players.length === 0) {
+    throw new Error("No players found");
+  }
+  return players;
 }
