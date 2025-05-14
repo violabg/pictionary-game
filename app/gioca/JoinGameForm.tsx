@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
+import { getGameByCode } from "@/lib/supabase/supabase-games";
 import {
   addPlayerToGame,
   getPlayerInGame,
   getPlayersForGame,
-} from "@/lib/supabase/supabase-game-players";
-import { getGameByCode } from "@/lib/supabase/supabase-games";
+} from "@/lib/supabase/supabase-players";
 import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { User } from "@supabase/supabase-js";

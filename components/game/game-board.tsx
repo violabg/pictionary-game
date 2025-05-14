@@ -3,12 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { getCard } from "@/lib/supabase/supabase-cards";
-import { selectWinner } from "@/lib/supabase/supabase-game-players";
 import {
   nextTurn,
   startTurn,
   submitGuess,
 } from "@/lib/supabase/supabase-guess-and-turns";
+import { selectWinner } from "@/lib/supabase/supabase-players";
 import {
   Card as CardType,
   GameWithPlayers,

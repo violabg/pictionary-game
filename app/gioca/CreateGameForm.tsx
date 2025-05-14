@@ -19,8 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateCards } from "@/lib/supabase/supabase-cards";
-import { addPlayerToGame } from "@/lib/supabase/supabase-game-players";
 import { createGame } from "@/lib/supabase/supabase-games";
+import { addPlayerToGame } from "@/lib/supabase/supabase-players";
 import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
 import { zodResolver } from "@hookform/resolvers/zod";
 

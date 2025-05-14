@@ -1,16 +1,16 @@
 import {
-  getPlayersForGame,
-  setPlayerInactive,
-  subscribeToGamePlayers,
-  unsubscribeFromGamePlayers,
-} from "@/lib/supabase/supabase-game-players";
-import {
   getGameByCode,
   startGame,
   subscribeToGame,
   unsubscribeFromGame,
   updateGameStatus,
 } from "@/lib/supabase/supabase-games";
+import {
+  getPlayersForGame,
+  setPlayerInactive,
+  subscribeToGamePlayers,
+  unsubscribeFromGamePlayers,
+} from "@/lib/supabase/supabase-players";
 import { getProfileById } from "@/lib/supabase/supabase-profiles";
 import type { GameWithPlayers } from "@/types/supabase";
 import { User } from "@supabase/supabase-js";
