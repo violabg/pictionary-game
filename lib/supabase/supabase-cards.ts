@@ -6,7 +6,7 @@ import { createClient } from "./client";
 const supabase = createClient();
 
 // Get a specific card
-export async function getCard(cardId: string): Promise<Card> {
+export const getCard = async (cardId: string): Promise<Card> => {
   try {
     const { data, error } = await supabase
       .from("cards")
@@ -28,14 +28,14 @@ export async function getCard(cardId: string): Promise<Card> {
     console.error("Error in getCard:", error);
     throw new Error(error.message || "Failed to get card");
   }
-}
+};
 
 // Generate cards for a game
-export async function generateCards(
+export const generateCards = async (
   gameId: string,
   category: string,
   playerCount: number
-): Promise<void> {
+): Promise<void> => {
   try {
     // Get the game to determine the difficulty
     const gameData = await getGameDifficulty(gameId);
@@ -58,7 +58,7 @@ export async function generateCards(
       error instanceof Error ? error.message : "Failed to generate cards";
     throw new Error(message);
   }
-}
+};
 
 export async function getGameDifficulty(gameId: string) {
   const { data: game, error: gameError } = await supabase

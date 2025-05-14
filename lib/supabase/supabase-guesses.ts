@@ -2,12 +2,12 @@ import { createClient } from "./client";
 
 const supabase = createClient();
 
-export async function insertGuess(
+export const insertGuess = async (
   gameId: string,
   playerId: string,
   guessText: string,
   isCorrect: boolean
-) {
+) => {
   const { error: insertError } = await supabase.from("guesses").insert({
     id: crypto.randomUUID(),
     game_id: gameId,
@@ -20,4 +20,4 @@ export async function insertGuess(
     console.error("Error inserting guess:", insertError);
     throw new Error("Failed to submit guess");
   }
-}
+};

@@ -6,13 +6,13 @@ import { getPlayersForGameOrdered } from "./supabase-players";
 
 const supabase = createClient();
 
-export async function createGame(
+export const createGame = async (
   current_drawer_id: string,
   max_players: number,
   category: string,
   difficulty = "medium",
   timer: number = 120
-) {
+) => {
   const { data, error } = await supabase
     .from("games")
     .insert({
@@ -29,9 +29,9 @@ export async function createGame(
     .single();
   if (error) throw error;
   return { data: data as Game, error };
-}
+};
 
-export async function getGameByCode(supabase: SupabaseClient, code: string) {
+export const getGameByCode = async (supabase: SupabaseClient, code: string) => {
   const { data, error } = await supabase
     .from("games")
     .select("*")
@@ -39,9 +39,9 @@ export async function getGameByCode(supabase: SupabaseClient, code: string) {
     .single();
   if (error) throw error;
   return { data: data as Game, error };
-}
+};
 
-export async function getGameCurrentCardId(gameId: string) {
+export const getGameCurrentCardId = async (gameId: string) => {
   const { data: game, error: gameError } = await supabase
     .from("games")
     .select("current_card_id")
@@ -57,9 +57,9 @@ export async function getGameCurrentCardId(gameId: string) {
     throw new Error("No active card found");
   }
   return game.current_card_id;
-}
+};
 
-export async function getGameCurrentDrawerId(gameId: string) {
+export const getGameCurrentDrawerId = async (gameId: string) => {
   const { data: game, error: gameError } = await supabase
     .from("games")
     .select("current_drawer_id")
@@ -75,7 +75,7 @@ export async function getGameCurrentDrawerId(gameId: string) {
     throw new Error("Game not found");
   }
   return game.current_drawer_id;
-}
+};
 
 export const updateGameTurn = async (gameId: string, nextTurn: number) => {
   const { error } = await supabase
@@ -97,7 +97,7 @@ export const updateGameStatus = async (
 };
 
 // Start the game
-export async function startGame(gameId: string): Promise<void> {
+export const startGame = async (gameId: string): Promise<void> => {
   try {
     // Get players
     const players = await getPlayersForGameOrdered(gameId);
@@ -136,16 +136,16 @@ export async function startGame(gameId: string): Promise<void> {
       error instanceof Error ? error.message : "Failed to start game";
     throw new Error(message);
   }
-}
+};
 
-export function subscribeToGame(options: {
+export const subscribeToGame = (options: {
   gameId: string;
   onUpdate: (payload: {
     eventType: string;
     new: Game | null;
     old: Game | null;
   }) => void;
-}) {
+}) => {
   const { gameId, onUpdate } = options;
   return supabase
     .channel(`game:${gameId}`)
@@ -170,17 +170,17 @@ export function subscribeToGame(options: {
       }
     )
     .subscribe();
-}
+};
 
-export function unsubscribeFromGame(channel: { unsubscribe: () => void }) {
+export const unsubscribeFromGame = (channel: { unsubscribe: () => void }) => {
   channel.unsubscribe();
-}
+};
 
-export async function getRecentGamesForCategory(
+export const getRecentGamesForCategory = async (
   category: string,
   difficulty: string,
   fromDate: string
-) {
+) => {
   const { data: recentGames, error: recentGamesError } = await supabase
     .from("games")
     .select("id")
@@ -193,12 +193,12 @@ export async function getRecentGamesForCategory(
     throw new Error("Failed to fetch recent games");
   }
   return recentGames;
-}
+};
 
-export async function updateGamePostCardGeneration(
+export const updateGamePostCardGeneration = async (
   gameId: string,
   firstCardTitleLength: number
-) {
+) => {
   const { error } = await supabase
     .from("games")
     .update({
@@ -211,13 +211,13 @@ export async function updateGamePostCardGeneration(
     console.error("Error updating game post card generation:", error);
     throw new Error("Failed to update game post card generation");
   }
-}
+};
 
-export async function updateGameForNextTurn(
+export const updateGameForNextTurn = async (
   gameId: string,
   nextDrawerId: string,
   nextCardId: string
-) {
+) => {
   const { error: updateError } = await supabase
     .from("games")
     .update({
@@ -231,9 +231,9 @@ export async function updateGameForNextTurn(
     console.error("Error updating game for next turn:", updateError);
     throw new Error("Failed to update game for next turn");
   }
-}
+};
 
-export async function getGameTimerDuration(gameId: string) {
+export const getGameTimerDuration = async (gameId: string) => {
   const { data: game, error: gameError } = await supabase
     .from("games")
     .select("timer") // Assuming 'timer' column stores duration in seconds
@@ -249,9 +249,9 @@ export async function getGameTimerDuration(gameId: string) {
     throw new Error("Game not found");
   }
   return game.timer;
-}
+};
 
-export async function updateGameTimerEnd(gameId: string, timerEnd: string) {
+export const updateGameTimerEnd = async (gameId: string, timerEnd: string) => {
   const { error: updateError } = await supabase
     .from("games")
     .update({ timer_end: timerEnd })
@@ -261,9 +261,9 @@ export async function updateGameTimerEnd(gameId: string, timerEnd: string) {
     console.error("Error starting turn (updating timer_end):", updateError);
     throw new Error("Failed to start turn (updating timer_end)");
   }
-}
+};
 
-export async function setGameAsCompleted(gameId: string) {
+export const setGameAsCompleted = async (gameId: string) => {
   const { error: endError } = await supabase
     .from("games")
     .update({
@@ -278,4 +278,4 @@ export async function setGameAsCompleted(gameId: string) {
     console.error("Error ending game:", endError);
     throw new Error("Failed to end game");
   }
-}
+};

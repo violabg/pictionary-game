@@ -9,19 +9,19 @@ import { nextTurn } from "./supabase-guess-and-turns";
 
 const supabase = createClient();
 
-export async function addPlayerToGame(
+export const addPlayerToGame = async (
   game_id: string,
   player_id: string,
   order_index: number
-) {
+) => {
   const { error } = await supabase
     .from("players")
     .insert({ game_id, player_id, order_index });
   if (error) throw error;
   return true;
-}
+};
 
-export async function getPlayersForGame(game_id: string) {
+export const getPlayersForGame = async (game_id: string) => {
   const { data, error } = await supabase
     .from("players")
     .select("*, profile:player_id(id, name, full_name, user_name, avatar_url)")
@@ -29,9 +29,9 @@ export async function getPlayersForGame(game_id: string) {
     .order("order_index", { ascending: true });
   if (error) throw error;
   return data as (Player & { profile: Profile })[];
-}
+};
 
-export async function getPlayerInGame(game_id: string, player_id: string) {
+export const getPlayerInGame = async (game_id: string, player_id: string) => {
   const { data, error } = await supabase
     .from("players")
     .select("*")
@@ -40,9 +40,9 @@ export async function getPlayerInGame(game_id: string, player_id: string) {
     .maybeSingle();
   if (error) throw error;
   return data as Player | null;
-}
+};
 
-export async function getPlayerScore(playerId: string) {
+export const getPlayerScore = async (playerId: string) => {
   const { data: player, error: playerError } = await supabase
     .from("players")
     .select("score")
@@ -58,7 +58,7 @@ export async function getPlayerScore(playerId: string) {
     throw new Error("Player not found");
   }
   return player.score;
-}
+};
 
 export async function updatePlayerScore(playerId: string, newScore: number) {
   const { error: updateError } = await supabase

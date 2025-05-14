@@ -8,7 +8,7 @@ import { createClient } from "./client";
 
 const supabase = createClient();
 
-export async function getProfileById(id: string) {
+export const getProfileById = async (id: string) => {
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
@@ -16,9 +16,9 @@ export async function getProfileById(id: string) {
     .single();
   if (error) throw error;
   return data as Profile;
-}
+};
 
-export async function getProfileByUsername(user_name: string) {
+export const getProfileByUsername = async (user_name: string) => {
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
@@ -26,18 +26,18 @@ export async function getProfileByUsername(user_name: string) {
     .maybeSingle();
   if (error) throw error;
   return data as Profile | null;
-}
+};
 
-export async function createProfile(id: string, user_name: string) {
+export const createProfile = async (id: string, user_name: string) => {
   const { error } = await supabase.from("profiles").insert({ id, user_name });
   if (error) throw error;
   return true;
-}
+};
 
-export async function ensureUserProfile(user: {
+export const ensureUserProfile = async (user: {
   id: string;
   email?: string | null;
-}): Promise<boolean> {
+}): Promise<boolean> => {
   if (!user) return false;
   let profile: Profile | null = null;
   try {
@@ -64,7 +64,7 @@ export async function ensureUserProfile(user: {
     }
   }
   return true;
-}
+};
 
 export async function getProfileWithScore(userId: string) {
   // Use Supabase RPC to get leaderboard players (summed score, unique per player, paginated)

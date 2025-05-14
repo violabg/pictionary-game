@@ -17,12 +17,12 @@ import {
 } from "./supabase-players";
 
 // Submit a guess
-export async function submitGuess(
+export const submitGuess = async (
   gameId: string,
   playerId: string,
   guessText: string,
   timeRemaining: number
-): Promise<void> {
+): Promise<void> => {
   try {
     // Get current card ID
     const currentCardId = await getGameCurrentCardId(gameId);
@@ -52,7 +52,7 @@ export async function submitGuess(
       error instanceof Error ? error.message : "Failed to submit guess";
     throw new Error(message);
   }
-}
+};
 
 // Move to the next turn
 export async function nextTurn(gameId: string): Promise<void> {
