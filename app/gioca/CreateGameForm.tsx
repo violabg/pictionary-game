@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateCards } from "@/lib/supabase/supabase-cards";
+import { seedCardsForGame } from "@/lib/groq";
 import { createGame } from "@/lib/supabase/supabase-games";
 import { addPlayerToGame } from "@/lib/supabase/supabase-players";
 import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
@@ -84,7 +84,7 @@ export const CreateGameForm = ({ user }: { user: User }) => {
     try {
       const profileExists = await ensureUserProfile(user);
       if (!profileExists) return;
-      const { data, error } = await createGame(
+      const { data: game, error } = await createGame(
         user.id,
         values.maxPlayers,
         values.category,
@@ -92,9 +92,16 @@ export const CreateGameForm = ({ user }: { user: User }) => {
         values.timer
       );
       if (error) throw error;
-      await generateCards(data.id, values.category, values.maxPlayers);
-      await addPlayerToGame(data.id, user.id, 1);
-      router.push(`/game/${data.code}`);
+
+      // Generate cards for a game
+      await seedCardsForGame(
+        game.id,
+        values.category,
+        values.difficulty || "medium",
+        values.maxPlayers
+      );
+      await addPlayerToGame(game.id, user.id, 1);
+      router.push(`/game/${game.code}`);
     } catch (error: unknown) {
       toast.error("Error", {
         description: error instanceof Error ? error.message : String(error),

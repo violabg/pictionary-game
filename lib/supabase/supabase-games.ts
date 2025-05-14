@@ -1,8 +1,6 @@
 import type { Game } from "@/types/supabase";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
-import { getUnusedCard, markCardAsUsed } from "./supabase-cards";
-import { getPlayersForGameOrdered } from "./supabase-players";
 
 const supabase = createClient();
 
@@ -94,86 +92,6 @@ export const updateGameStatus = async (
     .update({ status })
     .eq("id", gameId);
   return { error };
-};
-
-// Start the game
-export const startGame = async (gameId: string): Promise<void> => {
-  try {
-    // Get players
-    const players = await getPlayersForGameOrdered(gameId);
-
-    if (!players || players.length < 2) {
-      throw new Error("Not enough players to start the game");
-    }
-
-    // Get an unused card
-    const card = await getUnusedCard(gameId);
-    if (!card) {
-      throw new Error("No unused card available for the game");
-    }
-
-    // Update game status - don't set timer_end yet
-    const { error: updateError } = await supabase
-      .from("games")
-      .update({
-        status: "active",
-        current_drawer_id: players[0].player_id,
-        current_card_id: card.id,
-        timer_end: null, // Don't set timer_end until drawer starts their turn
-      })
-      .eq("id", gameId);
-
-    if (updateError) {
-      console.error("Error updating game:", updateError);
-      throw new Error("Failed to start game");
-    }
-
-    // Mark card as used
-    await markCardAsUsed(card.id);
-  } catch (error: unknown) {
-    console.error("Error in startGame:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to start game";
-    throw new Error(message);
-  }
-};
-
-export const subscribeToGame = (options: {
-  gameId: string;
-  onUpdate: (payload: {
-    eventType: string;
-    new: Game | null;
-    old: Game | null;
-  }) => void;
-}) => {
-  const { gameId, onUpdate } = options;
-  return supabase
-    .channel(`game:${gameId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "games",
-        filter: `id=eq.${gameId}`,
-      },
-      (payload: {
-        eventType: string;
-        new: Record<string, unknown>;
-        old: Record<string, unknown>;
-      }) => {
-        onUpdate({
-          eventType: payload.eventType,
-          new: payload.new as Game | null,
-          old: payload.old as Game | null,
-        });
-      }
-    )
-    .subscribe();
-};
-
-export const unsubscribeFromGame = (channel: { unsubscribe: () => void }) => {
-  channel.unsubscribe();
 };
 
 export const getRecentGamesForCategory = async (
@@ -278,4 +196,42 @@ export const setGameAsCompleted = async (gameId: string) => {
     console.error("Error ending game:", endError);
     throw new Error("Failed to end game");
   }
+};
+
+export const subscribeToGame = (options: {
+  gameId: string;
+  onUpdate: (payload: {
+    eventType: string;
+    new: Game | null;
+    old: Game | null;
+  }) => void;
+}) => {
+  const { gameId, onUpdate } = options;
+  return supabase
+    .channel(`game:${gameId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "games",
+        filter: `id=eq.${gameId}`,
+      },
+      (payload: {
+        eventType: string;
+        new: Record<string, unknown>;
+        old: Record<string, unknown>;
+      }) => {
+        onUpdate({
+          eventType: payload.eventType,
+          new: payload.new as Game | null,
+          old: payload.old as Game | null,
+        });
+      }
+    )
+    .subscribe();
+};
+
+export const unsubscribeFromGame = (channel: { unsubscribe: () => void }) => {
+  channel.unsubscribe();
 };

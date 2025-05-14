@@ -97,6 +97,34 @@ export async function selectWinner(
   }
 }
 
+export async function setPlayerInactive(game_id: string, player_id: string) {
+  const { error } = await supabase
+    .from("players")
+    .update({ is_active: false })
+    .eq("game_id", game_id)
+    .eq("player_id", player_id);
+  if (error) throw error;
+  return true;
+}
+
+export async function getPlayersForGameOrdered(gameId: string) {
+  const { data: players, error: playersError } = await supabase
+    .from("players")
+    .select("player_id, order_index")
+    .eq("game_id", gameId)
+    .order("order_index", { ascending: true });
+
+  if (playersError) {
+    console.error("Error getting players:", playersError);
+    throw new Error("Failed to get players");
+  }
+
+  if (!players || players.length === 0) {
+    throw new Error("No players found");
+  }
+  return players;
+}
+
 export async function getLeaderboardPlayers(
   supabase: SupabaseClient,
   offset: number,
@@ -146,32 +174,4 @@ export function unsubscribeFromGamePlayers(channel: {
   unsubscribe: () => void;
 }) {
   channel.unsubscribe();
-}
-
-export async function setPlayerInactive(game_id: string, player_id: string) {
-  const { error } = await supabase
-    .from("players")
-    .update({ is_active: false })
-    .eq("game_id", game_id)
-    .eq("player_id", player_id);
-  if (error) throw error;
-  return true;
-}
-
-export async function getPlayersForGameOrdered(gameId: string) {
-  const { data: players, error: playersError } = await supabase
-    .from("players")
-    .select("player_id, order_index")
-    .eq("game_id", gameId)
-    .order("order_index", { ascending: true });
-
-  if (playersError) {
-    console.error("Error getting players:", playersError);
-    throw new Error("Failed to get players");
-  }
-
-  if (!players || players.length === 0) {
-    throw new Error("No players found");
-  }
-  return players;
 }
