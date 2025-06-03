@@ -1,3 +1,4 @@
+import PictionAILogo from "@/assets";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,11 +15,9 @@ export default async function Home() {
   const { data } = await supabase.auth.getUser();
   return (
     <div className="flex flex-col justify-center items-center space-y-8 py-12 min-h-screen container">
-      <div className="space-y-4 text-center">
-        <h1 className="font-bold text-gradient text-5xl tracking-tight">
-          PictionAi
-        </h1>
-        <p className="max-w-md text-muted-foreground text-xl">
+      <div className="flex flex-col items-center gap-4">
+        <PictionAILogo height={100} className="text-black dark:text-white" />
+        <p className="max-w-md text-muted-foreground text-xl text-center">
           Un gioco multiplayer in tempo reale di disegno e indovinelli
         </p>
       </div>

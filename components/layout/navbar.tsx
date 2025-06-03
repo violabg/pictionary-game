@@ -1,5 +1,6 @@
 "use client";
 
+import PictionAILogo from "@/assets";
 import { ModeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,15 +42,21 @@ export function Navbar() {
     <header className="border-b">
       <div className="flex justify-between items-center h-16 container">
         <div className="flex items-center gap-6">
-          <Link href="/" className="font-bold text-gradient text-2xl">
-            PicitonAi
+          <Link
+            href="/"
+            className="font-bold text-black text-gradient dark:text-white text-2xl !important"
+          >
+            <PictionAILogo
+              height={40}
+              className="text-black dark:text-white !important"
+            />
           </Link>
           {/* Desktop nav */}
           <nav className="hidden md:flex gap-6">
             {navItems.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href as any}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   pathname === item.href
                     ? "text-primary"
@@ -77,7 +84,7 @@ export function Navbar() {
                   {navItems.map((item) => (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={item.href as any}
                       className={`block px-4 py-2 rounded-md text-base font-medium transition-colors hover:bg-primary/10 hover:text-primary ${
                         pathname === item.href
                           ? "text-primary bg-primary/5"
