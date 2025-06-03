@@ -155,7 +155,7 @@ BEGIN
     RETURN QUERY
     SELECT p.id, p.name, p.full_name, p.user_name, p.avatar_url, COALESCE(SUM(gp.score)::bigint, 0) AS total_score
     FROM profiles p
-    LEFT JOIN game_players gp ON p.id = gp.player_id
+    LEFT JOIN players gp ON p.id = gp.player_id
     WHERE p.id = user_id
     GROUP BY p.id;
 END;
