@@ -1,8 +1,4 @@
-import type {
-  GetUserProfileWithScoreArgs,
-  GetUserProfileWithScoreReturn,
-  Profile,
-} from "@/lib/supabase/types";
+import type { Profile } from "@/lib/supabase/types";
 import * as crypto from "crypto";
 import { createClient } from "./client";
 
@@ -70,9 +66,9 @@ export async function getProfileWithScore(userId: string) {
   // Use Supabase RPC to get leaderboard players (summed score, unique per player, paginated)
   const { data, error } = await supabase.rpc("get_user_profile_with_score", {
     user_id: userId,
-  } as GetUserProfileWithScoreArgs);
+  });
   if (error) throw error;
-  return data[0] as GetUserProfileWithScoreReturn;
+  return data[0];
 }
 
 export function subscribeToProfiles(

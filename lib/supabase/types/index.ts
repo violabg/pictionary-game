@@ -234,6 +234,17 @@ export type Database = {
         Args: { points: number; row_id: string };
         Returns: number;
       };
+      get_user_profile_with_score: {
+        Args: { user_id: string };
+        Returns: {
+          profile_id: string;
+          name: string;
+          full_name: string;
+          user_name: string;
+          avatar_url: string;
+          total_score: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -1,8 +1,4 @@
-import type {
-  GetLeaderboardPlayersReturn,
-  Player,
-  Profile,
-} from "@/lib/supabase/types";
+import type { Player, Profile } from "@/lib/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 import { nextTurn } from "./supabase-guess-and-turns";
@@ -128,7 +124,7 @@ export async function getLeaderboardPlayers(
     language_filter: languageFilter ?? null,
   });
   if (error) throw error;
-  return (data || []) as GetLeaderboardPlayersReturn[];
+  return data || [];
 }
 
 export function subscribeToGamePlayers(
