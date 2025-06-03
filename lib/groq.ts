@@ -12,6 +12,7 @@ import {
   getRecentGamesForCategory,
   updateGamePostCardGeneration,
 } from "./supabase/supabase-games";
+import { LLM_MODEL } from "./utils";
 
 // Seed cards for a game
 export async function seedCardsForGame(
@@ -56,7 +57,7 @@ export async function seedCardsForGame(
     });
 
     const result = await generateObject({
-      model: groq("meta-llama/llama-4-maverick-17b-128e-instruct"),
+      model: groq(LLM_MODEL),
       output: "array",
       prompt,
       schema,
