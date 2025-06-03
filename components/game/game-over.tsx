@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { GameWithPlayers } from "@/types/supabase";
+import { GameWithPlayers } from "@/lib/supabase/types";
 import { Home } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";

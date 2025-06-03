@@ -1,4 +1,4 @@
-import type { Player, Profile } from "@/types/supabase";
+import type { Player, Profile } from "@/lib/supabase/types";
 import { Award, Medal, Trophy } from "lucide-react";
 import type { ElementType } from "react";
 

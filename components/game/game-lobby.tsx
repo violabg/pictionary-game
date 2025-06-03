@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { GameWithPlayers } from "@/types/supabase";
+import type { GameWithPlayers } from "@/lib/supabase/types";
 import { Copy, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -12,7 +12,6 @@ interface GameLobbyProps {
   game: GameWithPlayers;
   isDrawer: boolean;
   onStartGame: () => void;
-  onLeaveGame: () => void;
   loadingState: "initializing" | "idle" | "starting";
 }
 
@@ -20,7 +19,6 @@ export function GameLobby({
   game,
   isDrawer,
   onStartGame,
-  onLeaveGame,
   loadingState,
 }: GameLobbyProps) {
   const copyGameCode = () => {
@@ -64,9 +62,6 @@ export function GameLobby({
               <Copy className="w-4 h-4" />
             </Button>
           </div>
-          <Button variant="destructive" onClick={onLeaveGame}>
-            Esci
-          </Button>
         </div>
       </div>
 
@@ -96,7 +91,7 @@ export function GameLobby({
               <Avatar>
                 <AvatarImage src={player.profile.avatar_url || undefined} />
                 <AvatarFallback>
-                  {player.profile.user_name.substring(0, 2).toUpperCase()}
+                  {player.profile.user_name?.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">

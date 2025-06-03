@@ -4,7 +4,7 @@ import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
 import { createClient } from "@/lib/supabase/client";
-import { PlayerWithProfile } from "@/types/supabase";
+import { PlayerWithProfile } from "@/lib/supabase/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // --- Update redrawStrokes to denormalize points ---

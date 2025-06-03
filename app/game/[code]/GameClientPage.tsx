@@ -10,8 +10,10 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function GameClientPage({ code, user }: { code: string; user: User }) {
-  const { loadingState, game, isDrawer, handleStartGame, handleLeaveGame } =
-    useGameState({ code, user });
+  const { loadingState, game, isDrawer, handleStartGame } = useGameState({
+    code,
+    user,
+  });
   const router = useRouter();
 
   if (loadingState === "initializing") {
@@ -30,7 +32,6 @@ export function GameClientPage({ code, user }: { code: string; user: User }) {
             game={game}
             isDrawer={isDrawer}
             onStartGame={handleStartGame}
-            onLeaveGame={handleLeaveGame}
             loadingState={loadingState}
           />
         );

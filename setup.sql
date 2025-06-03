@@ -149,6 +149,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = 'public';
 
+CREATE OR REPLACE FUNCTION get_user_profile_with_score(user_id uuid)
+RETURNS TABLE(profile_id uuid, name text, full_name text, user_name text, avatar_url text, total_score bigint) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.id, p.name, p.full_name, p.user_name, p.avatar_url, COALESCE(SUM(gp.score)::bigint, 0) AS total_score
+    FROM profiles p
+    LEFT JOIN game_players gp ON p.id = gp.player_id
+    WHERE p.id = user_id
+    GROUP BY p.id;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = 'public';
+
 -- Create realtime publication for all tables
 DROP PUBLICATION IF EXISTS supabase_realtime;
 CREATE PUBLICATION supabase_realtime FOR TABLE 

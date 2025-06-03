@@ -14,7 +14,7 @@ import {
   GameWithPlayers,
   Guess,
   Player,
-} from "@/types/supabase";
+} from "@/lib/supabase/types";
 import { User } from "@supabase/supabase-js";
 import { Crown, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -166,7 +166,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
               // Show toast notification
               toast.success("Correct Guess!", {
-                description: `${guesser.username} guessed correctly and earned ${timeRemaining} points!`,
+                description: `${guesser.profile.user_name} guessed correctly and earned ${timeRemaining} points!`,
               });
             }
           }

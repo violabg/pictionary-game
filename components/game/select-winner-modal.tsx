@@ -9,8 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { GameWithPlayers } from "@/lib/supabase/types";
 import { getInitials } from "@/lib/utils";
-import { GameWithPlayers } from "@/types/supabase";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 

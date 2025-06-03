@@ -1,4 +1,4 @@
-import type { Game } from "@/types/supabase";
+import type { Game } from "@/lib/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 
@@ -73,14 +73,6 @@ export const getGameCurrentDrawerId = async (gameId: string) => {
     throw new Error("Game not found");
   }
   return game.current_drawer_id;
-};
-
-export const updateGameTurn = async (gameId: string, nextTurn: number) => {
-  const { error } = await supabase
-    .from("games")
-    .update({ current_turn: nextTurn })
-    .eq("id", gameId);
-  return { error };
 };
 
 export const updateGameStatus = async (

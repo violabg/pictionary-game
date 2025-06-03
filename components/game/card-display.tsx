@@ -7,11 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Card as CardType } from "@/lib/types";
+import { Card as CardType } from "@/lib/supabase/types";
 
-interface CardDisplayProps {
-  card: CardType;
-}
+type CardDisplayProps = {
+  card: CardType | null;
+};
 
 export default function CardDisplay({ card }: CardDisplayProps) {
   return (
@@ -23,9 +23,9 @@ export default function CardDisplay({ card }: CardDisplayProps) {
       <CardContent className="py-2">
         <div className="text-center">
           <h3 className="mb-1 font-bold text-gradient text-2xl">
-            {card.title}
+            {card?.title}
           </h3>
-          <p className="text-muted-foreground text-sm">{card.description}</p>
+          <p className="text-muted-foreground text-sm">{card?.description}</p>
         </div>
       </CardContent>
     </Card>

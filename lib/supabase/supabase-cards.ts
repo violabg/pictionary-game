@@ -1,4 +1,4 @@
-import { Card } from "@/types/supabase";
+import { Card } from "@/lib/supabase/types";
 import { createClient } from "./client";
 
 // Initialize Supabase client for server-side operations

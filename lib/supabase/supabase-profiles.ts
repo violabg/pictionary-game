@@ -2,7 +2,7 @@ import type {
   GetUserProfileWithScoreArgs,
   GetUserProfileWithScoreReturn,
   Profile,
-} from "@/types/supabase";
+} from "@/lib/supabase/types";
 import * as crypto from "crypto";
 import { createClient } from "./client";
 

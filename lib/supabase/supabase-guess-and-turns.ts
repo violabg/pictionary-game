@@ -59,6 +59,9 @@ export async function nextTurn(gameId: string): Promise<void> {
   try {
     // Get current game state
     const currentDrawerId = await getGameCurrentDrawerId(gameId);
+    if (!currentDrawerId) {
+      throw new Error("No current drawer found for the game");
+    }
 
     // Get all players ordered by order_index
     const players = await getPlayersForGameOrdered(gameId);
@@ -70,7 +73,8 @@ export async function nextTurn(gameId: string): Promise<void> {
 
     // Calculate the next drawer index
     const nextDrawerIndex = (currentDrawerIndex + 1) % players.length;
-    const nextDrawerId = players[nextDrawerIndex].player_id;
+
+    const nextDrawerId = players[nextDrawerIndex].player_id ?? "";
 
     const cardToUse = await getUnusedCard(gameId);
 

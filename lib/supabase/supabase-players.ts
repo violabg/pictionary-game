@@ -2,7 +2,7 @@ import type {
   GetLeaderboardPlayersReturn,
   Player,
   Profile,
-} from "@/types/supabase";
+} from "@/lib/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 import { nextTurn } from "./supabase-guess-and-turns";
@@ -95,16 +95,6 @@ export async function selectWinner(
       error instanceof Error ? error.message : "Failed to select winner";
     throw new Error(message);
   }
-}
-
-export async function setPlayerInactive(game_id: string, player_id: string) {
-  const { error } = await supabase
-    .from("players")
-    .update({ is_active: false })
-    .eq("game_id", game_id)
-    .eq("player_id", player_id);
-  if (error) throw error;
-  return true;
 }
 
 export async function getPlayersForGameOrdered(gameId: string) {

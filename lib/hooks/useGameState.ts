@@ -2,17 +2,15 @@ import {
   getGameByCode,
   subscribeToGame,
   unsubscribeFromGame,
-  updateGameStatus,
 } from "@/lib/supabase/supabase-games";
 import {
   getPlayersForGame,
   getPlayersForGameOrdered,
-  setPlayerInactive,
   subscribeToGamePlayers,
   unsubscribeFromGamePlayers,
 } from "@/lib/supabase/supabase-players";
 import { getProfileById } from "@/lib/supabase/supabase-profiles";
-import type { GameWithPlayers } from "@/types/supabase";
+import type { GameWithPlayers } from "@/lib/supabase/types";
 import { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -163,29 +161,10 @@ export function useGameState({
     }
   };
 
-  const handleLeaveGame = async () => {
-    if (!game || !user) return;
-    try {
-      if (isDrawer) {
-        await updateGameStatus(game.id, "completed");
-      } else {
-        await setPlayerInactive(game.id, user.id);
-      }
-      router.push("/gioca");
-    } catch (error: unknown) {
-      toast.error("Errore", {
-        description:
-          "Impossibile uscire dalla partita: " +
-          (error instanceof Error ? error.message : String(error)),
-      });
-    }
-  };
-
   return {
     loadingState,
     game,
     isDrawer,
     handleStartGame,
-    handleLeaveGame,
   };
 }

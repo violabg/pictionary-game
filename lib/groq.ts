@@ -78,7 +78,10 @@ export async function seedCardsForGame(
 
     await insertGeneratedCards(cardsToInsert);
 
-    await updateGamePostCardGeneration(gameId, cardsToInsert[0].title_length);
+    await updateGamePostCardGeneration(
+      gameId,
+      cardsToInsert[0].title_length || 0
+    );
   } catch (error: unknown) {
     console.error("Error in seedCardsForGame (AI):", error);
     const message =

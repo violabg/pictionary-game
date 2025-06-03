@@ -1,8 +1,8 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlayerWithProfile } from "@/lib/supabase/types";
 import { getInitials } from "@/lib/utils";
-import { PlayerWithProfile } from "@/types/supabase";
 import { Pencil } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
