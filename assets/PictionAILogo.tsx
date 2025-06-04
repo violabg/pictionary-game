@@ -107,7 +107,7 @@ export const PictionAILogo: React.FC<PictionAILogoProps> = ({
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="#51ABFF" />
-          <stop offset="1" stopColor="#572A95" />
+          <stop offset="1" stopColor="#9252EB" />
         </linearGradient>
         <linearGradient
           id="paint1_linear_3314_65"
@@ -118,7 +118,7 @@ export const PictionAILogo: React.FC<PictionAILogoProps> = ({
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="#51ABFF" />
-          <stop offset="1" stopColor="#572A95" />
+          <stop offset="1" stopColor="#9252EB" />
         </linearGradient>
         <linearGradient
           id="paint2_linear_3314_65"
@@ -129,7 +129,7 @@ export const PictionAILogo: React.FC<PictionAILogoProps> = ({
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="#51ABFF" />
-          <stop offset="1" stopColor="#572A95" />
+          <stop offset="1" stopColor="#9252EB" />
         </linearGradient>
         <linearGradient
           id="paint3_linear_3314_65"
@@ -140,7 +140,7 @@ export const PictionAILogo: React.FC<PictionAILogoProps> = ({
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="#51ABFF" />
-          <stop offset="1" stopColor="#572A95" />
+          <stop offset="1" stopColor="#9252EB" />
         </linearGradient>
       </defs>
     </svg>
