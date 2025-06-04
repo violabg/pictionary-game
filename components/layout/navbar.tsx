@@ -36,7 +36,7 @@ export function Navbar() {
     { name: "Home", href: "/" },
     { name: "Gioca", href: "/gioca" },
     { name: "Classifica", href: "/leaderboard" },
-  ];
+  ] as const;
 
   return (
     <header className="border-b">
@@ -56,7 +56,7 @@ export function Navbar() {
             {navItems.map((item) => (
               <Link
                 key={item.href}
-                href={item.href as any}
+                href={item.href}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   pathname === item.href
                     ? "text-primary"
@@ -84,7 +84,7 @@ export function Navbar() {
                   {navItems.map((item) => (
                     <Link
                       key={item.href}
-                      href={item.href as any}
+                      href={item.href}
                       className={`block px-4 py-2 rounded-md text-base font-medium transition-colors hover:bg-primary/10 hover:text-primary ${
                         pathname === item.href
                           ? "text-primary bg-primary/5"

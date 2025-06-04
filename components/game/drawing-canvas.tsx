@@ -26,7 +26,7 @@ export default function DrawingCanvas({
   currentDrawer,
   turnStarted,
 }: DrawingCanvasProps) {
-  const { id: currentDrawerId, profile } = currentDrawer;
+  const { id: currentDrawerId } = currentDrawer;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const supabase = createClient();
   const [isDrawing, setIsDrawing] = useState(false);
@@ -359,7 +359,7 @@ export default function DrawingCanvas({
     const drawingSubscription = supabase
       .channel(`drawing:${gameId}`)
       .on("broadcast", { event: "drawing" }, (payload) => {
-        const { type, data } = payload.payload as any;
+        const { type, data } = payload.payload;
         const canvas = canvasRef.current;
         if (!canvas) return;
 
