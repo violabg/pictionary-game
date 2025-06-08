@@ -95,8 +95,29 @@ CREATE TABLE IF NOT EXISTS public.drawings (
   card_id UUID REFERENCES cards(id) ON DELETE CASCADE,
   drawer_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   data JSONB NOT NULL,
+  turn_id UUID REFERENCES turns(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+-- Create turns table to track each turn and its winner
+CREATE TABLE IF NOT EXISTS public.turns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID REFERENCES games(id) ON DELETE CASCADE,
+  card_id UUID REFERENCES cards(id) ON DELETE CASCADE,
+  drawer_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  winner_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  drawing_image_url TEXT, -- URL to the screenshot stored in Supabase Storage
+  points_awarded INTEGER NOT NULL DEFAULT 0,
+  turn_number INTEGER NOT NULL,
+  completed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Add index for efficient queries
+CREATE INDEX IF NOT EXISTS idx_turns_game_id ON public.turns(game_id);
+CREATE INDEX IF NOT EXISTS idx_turns_completed_at ON public.turns(completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_turns_winner_id ON public.turns(winner_id);
+
 
 -- Create function to generate unique game codes
 CREATE OR REPLACE FUNCTION public.generate_unique_game_code()
@@ -177,6 +198,7 @@ alter publication supabase_realtime add table public.players;
 alter publication supabase_realtime add table public.cards;
 alter publication supabase_realtime add table public.guesses;
 alter publication supabase_realtime add table public.drawings;
+alter publication supabase_realtime add table public.turns;
 
 -- Set up row level security policies
 alter table public.profiles enable row level security;
@@ -185,6 +207,7 @@ ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guesses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drawings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.turns ENABLE ROW LEVEL SECURITY;
 
 
 -- RLS policies for table: profiles
@@ -361,6 +384,39 @@ WITH CHECK (true);
 -- Explanation: Allow authenticated and anonymous users to delete row.
 CREATE POLICY "Allow authenticated and anonymous users to delete row"
 ON drawings
+FOR DELETE
+TO authenticated, anon
+USING (true);
+
+-- RLS policies for table: turns
+-- Enable RLS for turns table
+ALTER TABLE public.turns ENABLE ROW LEVEL SECURITY;
+
+-- Allow all users to read turns (for history page)
+CREATE POLICY "Allow authenticated and anonymous users to select turns"
+ON turns
+FOR SELECT
+TO authenticated, anon
+USING (true);
+
+-- Allow authenticated users to insert turns
+CREATE POLICY "Allow authenticated users to insert turns"
+ON turns
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Allow authenticated users to update turns
+CREATE POLICY "Allow authenticated users to update turns"
+ON turns
+FOR UPDATE
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+-- Explanation: Allow authenticated users to delete turns.
+CREATE POLICY "Allow authenticated users to delete turns"
+ON turns
 FOR DELETE
 TO authenticated, anon
 USING (true);

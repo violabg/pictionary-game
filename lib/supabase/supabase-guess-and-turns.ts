@@ -15,6 +15,7 @@ import {
   getPlayersForGameOrdered,
   updatePlayerScore,
 } from "./supabase-players";
+import { createTurn, getNextTurnNumber } from "./supabase-turns";
 
 // Submit a guess
 export const submitGuess = async (
@@ -36,13 +37,31 @@ export const submitGuess = async (
     // Insert guess
     await insertGuess(gameId, playerId, guessText, isCorrect);
 
-    // If the guess is correct, automatically award points
+    // If the guess is correct, automatically award points and record turn
     if (isCorrect) {
       // Get current score
       const currentScore = await getPlayerScore(playerId);
 
       // Update player score
       await updatePlayerScore(playerId, currentScore + timeRemaining);
+
+      // Get current drawer ID for turn record
+      const drawerId = await getGameCurrentDrawerId(gameId);
+      if (drawerId) {
+        // Get next turn number
+        const turnNumber = await getNextTurnNumber(gameId);
+
+        // Create turn record
+        await createTurn(
+          gameId,
+          currentCardId,
+          drawerId,
+          playerId,
+          timeRemaining,
+          turnNumber
+        );
+      }
+
       // Move to next turn
       await nextTurn(gameId);
     }

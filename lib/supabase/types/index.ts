@@ -47,6 +47,7 @@ export type Database = {
           drawer_id: string;
           game_id: string;
           id: string;
+          turn_id: string | null;
         };
         Insert: {
           card_id: string;
@@ -55,6 +56,7 @@ export type Database = {
           drawer_id: string;
           game_id: string;
           id?: string;
+          turn_id?: string | null;
         };
         Update: {
           card_id?: string;
@@ -63,8 +65,17 @@ export type Database = {
           drawer_id?: string;
           game_id?: string;
           id?: string;
+          turn_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "drawings_turn_id_fkey";
+            columns: ["turn_id"];
+            isOneToOne: false;
+            referencedRelation: "turns";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       games: {
         Row: {
@@ -221,6 +232,74 @@ export type Database = {
         };
         Relationships: [];
       };
+      turns: {
+        Row: {
+          id: string;
+          game_id: string;
+          card_id: string;
+          drawer_id: string;
+          winner_id: string;
+          drawing_image_url: string | null;
+          points_awarded: number;
+          turn_number: number;
+          completed_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          game_id: string;
+          card_id: string;
+          drawer_id: string;
+          winner_id: string;
+          drawing_image_url?: string | null;
+          points_awarded?: number;
+          turn_number: number;
+          completed_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          game_id?: string;
+          card_id?: string;
+          drawer_id?: string;
+          winner_id?: string;
+          drawing_image_url?: string | null;
+          points_awarded?: number;
+          turn_number?: number;
+          completed_at?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "turns_game_id_fkey";
+            columns: ["game_id"];
+            isOneToOne: false;
+            referencedRelation: "games";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "turns_card_id_fkey";
+            columns: ["card_id"];
+            isOneToOne: false;
+            referencedRelation: "cards";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "turns_drawer_id_fkey";
+            columns: ["drawer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "turns_winner_id_fkey";
+            columns: ["winner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -372,10 +451,18 @@ export type Game = Tables<"games">;
 export type Guess = Tables<"guesses">;
 export type Player = Tables<"players">;
 export type Profile = Tables<"profiles">;
+export type Turn = Tables<"turns">;
 
 export type PlayerWithProfile = Player & { profile: Profile };
 
 export type GameWithPlayers = Game & {
   players: PlayerWithProfile[];
   host: Profile;
+};
+
+export type TurnWithDetails = Turn & {
+  card: Card;
+  drawer: Profile;
+  winner: Profile;
+  game: Game;
 };
