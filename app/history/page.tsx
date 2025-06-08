@@ -16,7 +16,7 @@ interface SearchParams {
 export default async function HistoryPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
@@ -34,8 +34,9 @@ export default async function HistoryPage({
     );
   }
 
-  const category = searchParams.category;
-  const page = Number(searchParams.page) || 1;
+  const resolvedSearchParams = await searchParams;
+  const category = resolvedSearchParams.category;
+  const page = Number(resolvedSearchParams.page) || 1;
 
   try {
     const [gameHistoryData, categories] = await Promise.all([
