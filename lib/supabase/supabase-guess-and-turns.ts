@@ -45,25 +45,13 @@ export const submitGuess = async (
       // Update player score
       await updatePlayerScore(playerId, currentScore + timeRemaining);
 
-      // Get current drawer ID for turn record
-      const drawerId = await getGameCurrentDrawerId(gameId);
-      if (drawerId) {
-        // Get next turn number
-        const turnNumber = await getNextTurnNumber(gameId);
-
-        // Create turn record
-        await createTurn(
-          gameId,
-          currentCardId,
-          drawerId,
-          playerId,
-          timeRemaining,
-          turnNumber
-        );
-      }
-
       // Move to next turn
-      await nextTurn(gameId);
+      await nextTurn({
+        gameId,
+        cardId: currentCardId,
+        pointsAwarded: currentScore + timeRemaining,
+        winnerId: playerId,
+      });
     }
   } catch (error: unknown) {
     console.error("Error in submitGuess:", error);
@@ -74,13 +62,33 @@ export const submitGuess = async (
 };
 
 // Move to the next turn
-export async function nextTurn(gameId: string): Promise<void> {
+export async function nextTurn(params: {
+  gameId: string;
+  cardId: string;
+  pointsAwarded: number;
+  winnerId?: string;
+  drawingImageUrl?: string;
+}): Promise<void> {
+  const { gameId, cardId, winnerId, pointsAwarded, drawingImageUrl } = params;
   try {
     // Get current game state
     const currentDrawerId = await getGameCurrentDrawerId(gameId);
+
     if (!currentDrawerId) {
       throw new Error("No current drawer found for the game");
     }
+    const turnNumber = await getNextTurnNumber(gameId);
+
+    // Create turn record
+    await createTurn({
+      gameId,
+      cardId,
+      drawerId: currentDrawerId,
+      winnerId,
+      pointsAwarded,
+      turnNumber,
+      drawingImageUrl,
+    });
 
     // Get all players ordered by order_index
     const players = await getPlayersForGameOrdered(gameId);

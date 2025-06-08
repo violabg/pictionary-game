@@ -2,7 +2,6 @@ import type { Player, Profile } from "@/lib/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 import { nextTurn } from "./supabase-guess-and-turns";
-import { createTurn, getNextTurnNumber } from "./supabase-turns";
 
 const supabase = createClient();
 
@@ -72,11 +71,20 @@ export async function updatePlayerScore(playerId: string, newScore: number) {
 }
 
 // Select a winner for a correct guess
-export async function selectWinner(
-  gameId: string,
-  winnerId: string,
-  timeRemaining: number
-): Promise<void> {
+export async function selectWinner(params: {
+  gameId: string;
+  winnerId: string;
+  cardId: string;
+  timeRemaining: number;
+  drawingImageUrl?: string;
+}): Promise<void> {
+  const {
+    gameId,
+    winnerId,
+    cardId: currentCardId,
+    timeRemaining,
+    drawingImageUrl,
+  } = params;
   try {
     // Get current score
     const currentScore = await getPlayerScore(winnerId);
@@ -85,53 +93,17 @@ export async function selectWinner(
     await updatePlayerScore(winnerId, currentScore + timeRemaining);
 
     // Move to next turn
-    await nextTurn(gameId);
+    await nextTurn({
+      gameId,
+      cardId: currentCardId,
+      pointsAwarded: currentScore + timeRemaining,
+      winnerId,
+      drawingImageUrl,
+    });
   } catch (error: unknown) {
     console.error("Error in selectWinner:", error);
     const message =
       error instanceof Error ? error.message : "Failed to select winner";
-    throw new Error(message);
-  }
-}
-
-// Select a winner and create turn record with optional drawing image
-export async function selectWinnerWithTurn(
-  gameId: string,
-  winnerId: string,
-  drawerId: string,
-  cardId: string,
-  timeRemaining: number,
-  drawingImageUrl?: string
-): Promise<void> {
-  try {
-    // Get current score
-    const currentScore = await getPlayerScore(winnerId);
-
-    // Update player score
-    await updatePlayerScore(winnerId, currentScore + timeRemaining);
-
-    // Get next turn number
-    const turnNumber = await getNextTurnNumber(gameId);
-
-    // Create turn record
-    await createTurn(
-      gameId,
-      cardId,
-      drawerId,
-      winnerId,
-      timeRemaining,
-      turnNumber,
-      drawingImageUrl
-    );
-
-    // Move to next turn
-    await nextTurn(gameId);
-  } catch (error: unknown) {
-    console.error("Error in selectWinnerWithTurn:", error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to select winner with turn";
     throw new Error(message);
   }
 }

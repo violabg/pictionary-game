@@ -250,7 +250,7 @@ export type Database = {
           game_id: string;
           card_id: string;
           drawer_id: string;
-          winner_id: string;
+          winner_id?: string | null;
           drawing_image_url?: string | null;
           points_awarded?: number;
           turn_number: number;

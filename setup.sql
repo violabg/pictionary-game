@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.turns (
   game_id UUID REFERENCES games(id) ON DELETE CASCADE,
   card_id UUID REFERENCES cards(id) ON DELETE CASCADE,
   drawer_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  winner_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  winner_id UUID REFERENCES players(id) ON DELETE CASCADE NULL,
   drawing_image_url TEXT, -- URL to the screenshot stored in Supabase Storage
   points_awarded INTEGER NOT NULL DEFAULT 0,
   turn_number INTEGER NOT NULL,
@@ -400,10 +400,10 @@ TO authenticated, anon
 USING (true);
 
 -- Allow authenticated users to insert turns
-CREATE POLICY "Allow authenticated users to insert turns"
+CREATE POLICY "Allow authenticated and anonymous users to insert turns"
 ON turns
 FOR INSERT
-TO authenticated
+TO authenticated, anon
 WITH CHECK (true);
 
 -- Allow authenticated users to update turns

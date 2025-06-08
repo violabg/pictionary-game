@@ -4,15 +4,24 @@ import type { Turn, TurnWithDetails } from "./types";
 const supabase = await createClient();
 
 // Create a new turn record
-export async function createTurn(
-  gameId: string,
-  cardId: string,
-  drawerId: string,
-  winnerId: string,
-  pointsAwarded: number,
-  turnNumber: number,
-  drawingImageUrl?: string
-): Promise<Turn> {
+export async function createTurn(params: {
+  gameId: string;
+  cardId: string;
+  drawerId: string;
+  pointsAwarded: number;
+  turnNumber: number;
+  winnerId?: string;
+  drawingImageUrl?: string;
+}): Promise<Turn> {
+  const {
+    gameId,
+    cardId,
+    drawerId,
+    winnerId,
+    pointsAwarded,
+    turnNumber,
+    drawingImageUrl = null, // Default to null if not provided
+  } = params;
   const { data, error } = await supabase
     .from("turns")
     .insert({

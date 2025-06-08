@@ -109,7 +109,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
           if (diff <= 0 && isDrawer) {
             // If time's up and we're the drawer, move to next turn
-            nextTurn(game.id).catch((error) => {
+            nextTurn({
+              gameId: game.id,
+              cardId: currentCard?.id || "",
+              pointsAwarded: timeRemaining,
+              winnerId: currentDrawer?.id || "",
+            }).catch((error) => {
               console.error("Error moving to next turn:", error);
               toast.error("Error", {
                 description: "Failed to move to the next turn",
@@ -136,6 +141,8 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     game.current_card_id,
     game.timer_end,
     game.id,
+    timeRemaining,
+    currentDrawer?.id,
   ]);
 
   // Subscribe to guesses
@@ -194,7 +201,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
   const handleSelectWinner = async (winnerId: string) => {
     try {
-      await selectWinner(game.id, winnerId, timeRemaining);
+      await selectWinner({
+        gameId: game.id,
+        cardId: currentCard?.id || "",
+        winnerId,
+        timeRemaining,
+      });
       setShowSelectWinnerModal(false);
       setCorrectGuessers([]);
       setIsTimerPaused(false); // Resume timer if winner is selected (timer will end anyway)
