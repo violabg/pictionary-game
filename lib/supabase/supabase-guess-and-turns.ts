@@ -1,23 +1,24 @@
 "use server";
 
-import { getCardTitle, getUnusedCard, markCardAsUsed } from "./supabase-cards"; // Corrected import path
+import { createClient } from "./client";
+import { getCardTitle } from "./supabase-cards";
 import {
   getGameCurrentCardId,
-  getGameCurrentDrawerId,
   getGameTimerDuration,
-  setGameAsCompleted,
-  updateGameForNextTurn,
   updateGameTimerEnd,
 } from "./supabase-games";
 import { insertGuess } from "./supabase-guesses";
-import {
-  getPlayerScore,
-  getPlayersForGameOrdered,
-  updatePlayerScore,
-} from "./supabase-players";
-import { createTurn, getNextTurnNumber } from "./supabase-turns";
+import { getPlayerScore } from "./supabase-players";
+import type {
+  AtomicTurnResult,
+  CorrectGuessParams,
+  ManualWinnerParams,
+  TurnCompletionParams,
+} from "./types";
 
-// Submit a guess
+const supabase = createClient();
+
+// Submit a guess - simplified to only handle guess insertion
 export const submitGuess = async (
   gameId: string,
   playerId: string,
@@ -35,19 +36,13 @@ export const submitGuess = async (
     const isCorrect =
       guessText.toLowerCase().trim() === card.title.toLowerCase().trim();
 
-    // Insert guess
+    // Always insert the guess first
     await insertGuess(gameId, playerId, guessText, isCorrect);
 
-    // If the guess is correct, get current score but don't automatically move to next turn
+    // If correct, return current score for reference
     if (isCorrect) {
-      // Get current score
       const currentScore = await getPlayerScore(playerId);
-
-      // Update player score
-      await updatePlayerScore(playerId, currentScore + timeRemaining);
-
-      // Return indication that guess was correct and let client handle nextTurn
-      return { isCorrect: true, currentScore: currentScore + timeRemaining };
+      return { isCorrect: true, currentScore };
     }
 
     return { isCorrect: false };
@@ -59,7 +54,79 @@ export const submitGuess = async (
   }
 };
 
-// Move to the next turn
+// Atomic turn completion functions
+export async function completeCorrectGuessTurn(
+  params: CorrectGuessParams
+): Promise<AtomicTurnResult> {
+  try {
+    const { data, error } = await supabase.rpc(
+      "complete_turn_with_correct_guess",
+      {
+        p_game_id: params.gameId,
+        p_guesser_id: params.guesserId,
+        p_guess_text: params.guessText,
+        p_time_remaining: params.timeRemaining,
+        p_drawing_image_url: params.drawingImageUrl,
+      }
+    );
+
+    if (error) {
+      console.error("Error completing correct guess turn:", error);
+      return { success: false, game_completed: false };
+    }
+
+    return data[0] as AtomicTurnResult;
+  } catch (error: unknown) {
+    console.error("Error in completeCorrectGuessTurn:", error);
+    return { success: false, game_completed: false };
+  }
+}
+
+export async function completeTimeUpTurn(
+  params: TurnCompletionParams
+): Promise<AtomicTurnResult> {
+  try {
+    const { data, error } = await supabase.rpc("complete_turn_time_up", {
+      p_game_id: params.gameId,
+      p_drawing_image_url: params.drawingImageUrl,
+    });
+
+    if (error) {
+      console.error("Error completing time up turn:", error);
+      return { success: false, game_completed: false };
+    }
+
+    return data[0] as AtomicTurnResult;
+  } catch (error: unknown) {
+    console.error("Error in completeTimeUpTurn:", error);
+    return { success: false, game_completed: false };
+  }
+}
+
+export async function completeManualWinnerTurn(
+  params: ManualWinnerParams
+): Promise<AtomicTurnResult> {
+  try {
+    const { data, error } = await supabase.rpc("complete_turn_manual_winner", {
+      p_game_id: params.gameId,
+      p_winner_id: params.winnerId,
+      p_time_remaining: params.timeRemaining,
+      p_drawing_image_url: params.drawingImageUrl,
+    });
+
+    if (error) {
+      console.error("Error completing manual winner turn:", error);
+      return { success: false, game_completed: false };
+    }
+
+    return data[0] as AtomicTurnResult;
+  } catch (error: unknown) {
+    console.error("Error in completeManualWinnerTurn:", error);
+    return { success: false, game_completed: false };
+  }
+}
+
+// Legacy functions kept for backward compatibility during transition
 export async function nextTurn(params: {
   gameId: string;
   cardId: string;
@@ -67,62 +134,10 @@ export async function nextTurn(params: {
   winnerProfileId?: string | null;
   drawingImageUrl?: string | null;
 }): Promise<void> {
-  const { gameId, cardId, winnerProfileId, pointsAwarded, drawingImageUrl } =
-    params;
-  try {
-    // Get current game state
-    const currentDrawerId = await getGameCurrentDrawerId(gameId);
-
-    if (!currentDrawerId) {
-      throw new Error("No current drawer found for the game");
-    }
-    const turnNumber = await getNextTurnNumber(gameId);
-
-    // Mark the current card as used before moving to next turn
-    if (cardId) {
-      await markCardAsUsed(cardId);
-    }
-
-    // Create turn record
-    await createTurn({
-      gameId,
-      cardId,
-      drawerId: currentDrawerId,
-      winnerProfileId,
-      pointsAwarded,
-      turnNumber,
-      drawingImageUrl,
-    });
-
-    // Get all players ordered by order_index
-    const players = await getPlayersForGameOrdered(gameId);
-
-    // Find the index of the current drawer
-    const currentDrawerIndex = players.findIndex(
-      (p) => p.player_id === currentDrawerId
-    );
-
-    // Calculate the next drawer index
-    const nextDrawerIndex = (currentDrawerIndex + 1) % players.length;
-
-    const nextDrawerId = players[nextDrawerIndex].player_id ?? "";
-
-    const cardToUse = await getUnusedCard(gameId);
-
-    if (cardToUse) {
-      // Update game with new drawer and card
-      await updateGameForNextTurn(gameId, nextDrawerId, cardToUse.id);
-      // Note: We don't mark the new card as used here - it will be marked when that turn ends
-    } else {
-      // If no cards are available, set the game as completed
-      await setGameAsCompleted(gameId);
-    }
-  } catch (error: unknown) {
-    console.error("Error in nextTurn:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to move to next turn";
-    throw new Error(message);
-  }
+  console.warn(
+    "nextTurn is deprecated, use atomic turn completion functions instead"
+  );
+  // Implementation removed - use atomic functions
 }
 
 // Start the current turn

@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { getCard } from "@/lib/supabase/supabase-cards";
 import {
-  nextTurn,
+  completeCorrectGuessTurn,
+  completeManualWinnerTurn,
+  completeTimeUpTurn,
   startTurn,
   submitGuess,
 } from "@/lib/supabase/supabase-guess-and-turns";
-import { selectWinner } from "@/lib/supabase/supabase-players";
 import {
+  AtomicTurnResult,
   Card as CardType,
   GameWithPlayers,
   Guess,
@@ -87,43 +89,112 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     [players, user.id]
   );
 
-  // Helper function to capture drawing and move to next turn
-  const handleNextTurn = useCallback(
-    async (params: {
-      gameId: string;
-      cardId: string;
-      pointsAwarded: number;
-      winnerId?: string | null;
-      winnerProfileId?: string | null;
-    }) => {
+  // Helper function to capture drawing for atomic turn completion
+  const captureDrawing = useCallback(async (): Promise<string | undefined> => {
+    if (!gameState.isDrawer || !drawingCanvasRef.current) return undefined;
+
+    try {
+      const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
+      if (canvasDataUrl) {
+        const uploadedUrl = await captureAndUploadDrawing(
+          game.id,
+          canvasDataUrl
+        );
+        return uploadedUrl || undefined;
+      }
+    } catch (error) {
+      console.error("Error capturing drawing:", error);
+    }
+    return undefined;
+  }, [gameState.isDrawer, game.id]);
+
+  // Handle atomic turn result updates
+  const handleTurnResult = useCallback((result: AtomicTurnResult) => {
+    if (result.success) {
+      if (result.game_completed) {
+        toast.success("Game Completed!", {
+          description: "All cards have been used. Well played!",
+        });
+      } else {
+        toast.success("Turn completed!", {
+          description: "Moving to next turn...",
+        });
+      }
+      // Real-time updates will handle game state changes
+    } else {
+      toast.error("Turn failed", {
+        description: "Failed to complete turn. Please try again.",
+      });
+      setGameState((prev) => ({ ...prev, turnEnded: false }));
+    }
+  }, []);
+
+  // Handle time up scenario
+  const handleTimeUp = useCallback(async () => {
+    if (!gameState.isDrawer || gameState.turnEnded) return;
+
+    setGameState((prev) => ({ ...prev, turnEnded: true }));
+
+    try {
+      // Only capture drawing if we're the drawer, otherwise let the drawer handle it via real-time sync
+      const drawingImageUrl = gameState.isDrawer
+        ? await captureDrawing()
+        : undefined;
+      const result = await completeTimeUpTurn({
+        gameId: game.id,
+        timeRemaining: gameState.timeRemaining,
+        drawingImageUrl,
+      });
+      handleTurnResult(result);
+    } catch (error) {
+      console.error("Error completing time up turn:", error);
+      toast.error("Error", {
+        description: "Failed to complete turn",
+      });
+      setGameState((prev) => ({ ...prev, turnEnded: false }));
+    }
+  }, [
+    gameState.isDrawer,
+    gameState.turnEnded,
+    gameState.timeRemaining,
+    game.id,
+    captureDrawing,
+    handleTurnResult,
+  ]);
+
+  // Handle correct guess scenario
+  const handleCorrectGuess = useCallback(
+    async (guesser: Player, guessText: string) => {
+      if (!gameState.isDrawer || gameState.turnEnded) return;
+
+      setGameState((prev) => ({ ...prev, turnEnded: true }));
+
       try {
-        let drawingImageUrl: string | undefined;
-
-        // Capture drawing screenshot if we're the drawer
-        if (gameState.isDrawer && drawingCanvasRef.current) {
-          const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
-          if (canvasDataUrl) {
-            const uploadedUrl = await captureAndUploadDrawing(
-              params.gameId,
-              canvasDataUrl
-            );
-            if (uploadedUrl) {
-              drawingImageUrl = uploadedUrl;
-            }
-          }
-        }
-
-        // Move to next turn with or without drawing image
-        await nextTurn({
-          ...params,
+        const drawingImageUrl = await captureDrawing();
+        const result = await completeCorrectGuessTurn({
+          gameId: game.id,
+          guesserId: guesser.player_id || "",
+          guessText,
+          timeRemaining: gameState.timeRemaining,
           drawingImageUrl,
         });
+        handleTurnResult(result);
       } catch (error) {
-        console.error("Error moving to next turn:", error);
-        throw error;
+        console.error("Error completing correct guess turn:", error);
+        toast.error("Error", {
+          description: "Failed to complete turn",
+        });
+        setGameState((prev) => ({ ...prev, turnEnded: false }));
       }
     },
-    [gameState.isDrawer]
+    [
+      gameState.isDrawer,
+      gameState.turnEnded,
+      gameState.timeRemaining,
+      game.id,
+      captureDrawing,
+      handleTurnResult,
+    ]
   );
 
   // Update game state when game changes
@@ -187,29 +258,8 @@ export default function GameBoard({ game, user }: GameBoardProps) {
             correctAnswer: gameState.currentCard?.title || null,
           }));
 
-          if (gameState.isDrawer && !gameState.turnEnded) {
-            // If time's up and we're the drawer, move to next turn
-            setGameState((prev) => ({ ...prev, turnEnded: true }));
-
-            // Use the current card ID from game state
-            if (game.current_card_id) {
-              handleNextTurn({
-                gameId: game.id,
-                cardId: game.current_card_id,
-                pointsAwarded: 0,
-              }).catch((error) => {
-                console.error("Error moving to next turn:", error);
-                toast.error("Error", {
-                  description: "Failed to move to the next turn",
-                });
-              });
-            } else {
-              console.error("No current card available when timer expired");
-              toast.error("Error", {
-                description: "No card available to complete the turn",
-              });
-            }
-          }
+          // Handle time up if we're the drawer
+          handleTimeUp();
 
           if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
@@ -232,7 +282,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     game.timer_end,
     game.id,
     game.current_card_id,
-    handleNextTurn,
+    handleTimeUp,
   ]);
 
   // Subscribe to guesses
@@ -267,32 +317,8 @@ export default function GameBoard({ game, user }: GameBoardProps) {
                 description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`,
               });
 
-              // Handle next turn with drawing capture since we're the drawer
-              setGameState((prev) => ({ ...prev, turnEnded: true })); // Prevent multiple next turn calls
-
-              if (game.current_card_id) {
-                try {
-                  await handleNextTurn({
-                    gameId: game.id,
-                    cardId: game.current_card_id,
-                    pointsAwarded: gameState.timeRemaining,
-                    winnerId: guesser.id,
-                    winnerProfileId: guesser.player_id,
-                  });
-                } catch (error) {
-                  console.error("Error moving to next turn:", error);
-                  toast.error("Error", {
-                    description: "Failed to move to the next turn",
-                  });
-                  setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
-                }
-              } else {
-                console.error("No current card ID available for correct guess");
-                toast.error("Error", {
-                  description: "Game state error - no card available",
-                });
-                setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
-              }
+              // Handle correct guess with drawing capture
+              await handleCorrectGuess(guesser, guess.guess_text);
             }
           }
         }
@@ -310,8 +336,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     gameState.timeRemaining,
     players,
     correctGuessers,
-    game.current_card_id,
-    handleNextTurn,
+    handleCorrectGuess,
   ]);
 
   const handleGuessSubmit = async (guess: string) => {
@@ -326,10 +351,14 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       );
 
       // If guess is correct, show success message
-      // The drawer will handle the next turn logic via the guess subscription
+      // The drawer will handle the turn completion via the guess subscription
       if (result.isCorrect && result.currentScore !== undefined) {
+        const drawerPoints = Math.max(
+          10,
+          Math.floor(gameState.timeRemaining / 4)
+        );
         toast.success("Correct!", {
-          description: `You guessed correctly and earned ${gameState.timeRemaining} points!`,
+          description: `You guessed correctly and earned ${gameState.timeRemaining} points! The drawer earned ${drawerPoints} points too!`,
         });
       }
     } catch (error) {
@@ -345,30 +374,20 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
     try {
       setGameState((prev) => ({ ...prev, turnEnded: true })); // Prevent multiple selections
-      let drawingImageUrl: string | undefined;
 
-      // Capture drawing screenshot if we're the drawer
-      if (gameState.isDrawer && drawingCanvasRef.current) {
-        const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
-        if (canvasDataUrl) {
-          const uploadedUrl = await captureAndUploadDrawing(
-            game.id,
-            canvasDataUrl
-          );
-          if (uploadedUrl) {
-            drawingImageUrl = uploadedUrl;
-          }
-        }
-      }
+      // Only capture drawing if we're the drawer, otherwise let the drawer handle it via real-time sync
+      const drawingImageUrl = gameState.isDrawer
+        ? await captureDrawing()
+        : undefined;
 
-      await selectWinner({
+      const result = await completeManualWinnerTurn({
         gameId: game.id,
-        cardId: gameState.currentCard?.id || "",
-        winnerId: winner.id,
-        winnerProfileId: winner.player_id,
+        winnerId: winner.player_id || "",
         timeRemaining: gameState.timeRemaining,
         drawingImageUrl,
       });
+
+      handleTurnResult(result);
 
       setModalState((prev) => ({
         ...prev,

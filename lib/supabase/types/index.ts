@@ -238,9 +238,10 @@ export type Database = {
           game_id: string;
           card_id: string;
           drawer_id: string;
-          winner_id: string;
+          winner_id: string | null;
           drawing_image_url: string | null;
           points_awarded: number;
+          drawer_points_awarded: number;
           turn_number: number;
           completed_at: string;
           created_at: string;
@@ -253,6 +254,7 @@ export type Database = {
           winner_id?: string | null;
           drawing_image_url?: string | null;
           points_awarded?: number;
+          drawer_points_awarded?: number;
           turn_number: number;
           completed_at?: string;
           created_at?: string;
@@ -262,9 +264,10 @@ export type Database = {
           game_id?: string;
           card_id?: string;
           drawer_id?: string;
-          winner_id?: string;
+          winner_id?: string | null;
           drawing_image_url?: string | null;
           points_awarded?: number;
+          drawer_points_awarded?: number;
           turn_number?: number;
           completed_at?: string;
           created_at?: string;
@@ -322,6 +325,54 @@ export type Database = {
           user_name: string;
           avatar_url: string;
           total_score: number;
+        }[];
+      };
+      complete_turn_with_correct_guess: {
+        Args: {
+          p_game_id: string;
+          p_guesser_id: string;
+          p_guess_text: string;
+          p_time_remaining: number;
+          p_drawing_image_url?: string;
+        };
+        Returns: {
+          success: boolean;
+          next_drawer_id: string | null;
+          next_card_id: string | null;
+          guesser_new_score: number;
+          drawer_new_score: number;
+          turn_id: string | null;
+          game_completed: boolean;
+        }[];
+      };
+      complete_turn_time_up: {
+        Args: {
+          p_game_id: string;
+          p_drawing_image_url?: string;
+        };
+        Returns: {
+          success: boolean;
+          next_drawer_id: string | null;
+          next_card_id: string | null;
+          turn_id: string | null;
+          game_completed: boolean;
+        }[];
+      };
+      complete_turn_manual_winner: {
+        Args: {
+          p_game_id: string;
+          p_winner_id: string;
+          p_time_remaining: number;
+          p_drawing_image_url?: string;
+        };
+        Returns: {
+          success: boolean;
+          next_drawer_id: string | null;
+          next_card_id: string | null;
+          winner_new_score: number;
+          drawer_new_score: number;
+          turn_id: string | null;
+          game_completed: boolean;
         }[];
       };
     };
@@ -466,3 +517,30 @@ export type TurnWithDetails = Turn & {
   winner: Profile | null;
   game: Game;
 };
+
+// Atomic turn completion types
+export interface AtomicTurnResult {
+  success: boolean;
+  next_drawer_id?: string;
+  next_card_id?: string;
+  guesser_new_score?: number;
+  drawer_new_score?: number;
+  winner_new_score?: number;
+  turn_id?: string;
+  game_completed: boolean;
+}
+
+export interface TurnCompletionParams {
+  gameId: string;
+  timeRemaining: number;
+  drawingImageUrl?: string;
+}
+
+export interface CorrectGuessParams extends TurnCompletionParams {
+  guesserId: string;
+  guessText: string;
+}
+
+export interface ManualWinnerParams extends TurnCompletionParams {
+  winnerId: string;
+}

@@ -1,7 +1,6 @@
 import type { Player, Profile } from "@/lib/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
-import { nextTurn } from "./supabase-guess-and-turns";
 
 const supabase = createClient();
 
@@ -70,45 +69,7 @@ export async function updatePlayerScore(playerId: string, newScore: number) {
   }
 }
 
-// Select a winner for a correct guess
-export async function selectWinner(params: {
-  gameId: string;
-  winnerId: string;
-  winnerProfileId: string | null;
-  cardId: string;
-  timeRemaining: number;
-  drawingImageUrl?: string;
-}): Promise<void> {
-  const {
-    gameId,
-    winnerId,
-    winnerProfileId,
-    cardId: currentCardId,
-    timeRemaining,
-    drawingImageUrl,
-  } = params;
-  try {
-    // Get current score
-    const currentScore = await getPlayerScore(winnerId);
-
-    // Update player score
-    await updatePlayerScore(winnerId, currentScore + timeRemaining);
-
-    // Move to next turn
-    await nextTurn({
-      gameId,
-      cardId: currentCardId,
-      pointsAwarded: currentScore + timeRemaining,
-      winnerProfileId: winnerProfileId,
-      drawingImageUrl,
-    });
-  } catch (error: unknown) {
-    console.error("Error in selectWinner:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to select winner";
-    throw new Error(message);
-  }
-}
+// selectWinner function removed - now using atomic turn completion functions
 
 export async function getPlayersForGameOrdered(gameId: string) {
   const { data: players, error: playersError } = await supabase
