@@ -462,7 +462,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         </div>
         {gameState.turnStarted ? (
           <div className="flex items-center gap-4">
-            <Timer seconds={gameState.timeRemaining} />
+            <Timer seconds={gameState.timeRemaining} totalTime={game.timer} />
           </div>
         ) : (
           <div className="font-medium text-muted-foreground text-lg">
