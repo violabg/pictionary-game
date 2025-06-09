@@ -8,14 +8,17 @@ import { Eraser, Pen, Trash2, Undo2 } from "lucide-react";
 import React from "react";
 
 const colors = [
-  "#000000",
-  "#FF0000",
-  "#0000FF",
-  "#008000",
-  "#FFA500",
-  "#800080",
-  "#A52A2A",
-  "#FFD700",
+  "#000000", // Black
+  "#FF0000", // Red
+  "#0000FF", // Blue
+  "#008000", // Green
+  "#FFFF00", // Yellow
+  "#FFA500", // Orange
+  "#800080", // Purple
+  "#A52A2A", // Brown
+  "#00FFFF", // Cyan
+  "#FFC0CB", // Pink
+  "#808080", // Gray
 ];
 
 interface ToolBarProps {
