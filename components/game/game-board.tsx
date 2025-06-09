@@ -251,7 +251,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   }, [game.id, supabase, isDrawer, players, correctGuessers, timeRemaining]);
 
   const handleGuessSubmit = async (guess: string) => {
-    if (!currentPlayer || !currentCard || turnEnded) return;
+    if (!currentPlayer || turnEnded) return;
 
     try {
       const result = await submitGuess(
@@ -264,13 +264,21 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       // If guess is correct, handle next turn with drawing capture
       if (result.isCorrect && result.currentScore !== undefined) {
         setTurnEnded(true); // Prevent multiple submissions
-        await handleNextTurn({
-          gameId: game.id,
-          cardId: currentCard.id,
-          pointsAwarded: result.currentScore,
-          winnerId: currentPlayer.id,
-          winnerProfileId: currentPlayer.player_id,
-        });
+
+        if (game.current_card_id) {
+          await handleNextTurn({
+            gameId: game.id,
+            cardId: game.current_card_id,
+            pointsAwarded: result.currentScore,
+            winnerId: currentPlayer.id,
+            winnerProfileId: currentPlayer.player_id,
+          });
+        } else {
+          console.error("No current card ID available for correct guess");
+          toast.error("Error", {
+            description: "Game state error - no card available",
+          });
+        }
       }
     } catch (error) {
       console.error("Error submitting guess:", error);
@@ -420,7 +428,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
             )}
           </div>
 
-          {!isDrawer && turnStarted && (
+          {!isDrawer && turnStarted && game.current_card_id && (
             <div className="mt-4">
               <GuessInput onSubmit={handleGuessSubmit} disabled={isDrawer} />
             </div>

@@ -31,8 +31,9 @@ export const submitGuess = async (
     // Get the card to check if guess is correct
     const card = await getCardTitle(currentCardId);
 
-    // Check if guess is correct (case insensitive)
-    const isCorrect = guessText.toLowerCase() === card.title.toLowerCase();
+    // Check if guess is correct (case insensitive, trimmed)
+    const isCorrect =
+      guessText.toLowerCase().trim() === card.title.toLowerCase().trim();
 
     // Insert guess
     await insertGuess(gameId, playerId, guessText, isCorrect);
