@@ -46,6 +46,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   const [isTimerPaused, setIsTimerPaused] = useState(false);
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
+  const [turnEnded, setTurnEnded] = useState(false);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
 
@@ -77,7 +78,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
           if (canvasDataUrl) {
             const uploadedUrl = await captureAndUploadDrawing(
-              game.id,
+              params.gameId,
               canvasDataUrl
             );
             if (uploadedUrl) {
@@ -96,13 +97,16 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         throw error;
       }
     },
-    [isDrawer, game.id]
+    [isDrawer] // Only depend on isDrawer, not game.id since it's passed in params
   );
 
   useEffect(() => {
     // Check if current player is the drawer
     setIsDrawer(game.current_drawer_id === user.id);
+  }, [game.current_drawer_id, user.id]);
 
+  // Separate effect for card fetching
+  useEffect(() => {
     const fetchCard = async (cardId: string) => {
       try {
         const newCardData = await getCard(cardId);
@@ -119,50 +123,72 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         setCurrentCard(null);
       }
     };
+
     // Load the current card if we're the drawer
     if (game.current_drawer_id === user.id && game.current_card_id) {
       fetchCard(game.current_card_id);
     } else {
       setCurrentCard(null);
     }
+  }, [game.current_drawer_id, user.id, game.current_card_id]);
 
+  // Separate effect for timer logic
+  useEffect(() => {
     // Check if turn has started based on timer_end
     setTurnStarted(!!game.timer_end);
+
+    // Reset turn ended flag only when the game state actually changes (new turn)
+    setTurnEnded(false);
 
     // Calculate time remaining if turn has started
     if (game.timer_end) {
       const endTime = new Date(game.timer_end).getTime();
+      let timerEndedFlag = false; // Local flag to prevent multiple calls
+
       const updateTimer = () => {
-        if (!isTimerPaused) {
+        if (!isTimerPaused && !timerEndedFlag) {
           const now = new Date().getTime();
           const diff = Math.max(0, Math.floor((endTime - now) / 1000));
           setTimeRemaining(diff);
 
           if (diff <= 0) {
+            timerEndedFlag = true; // Set local flag immediately
+
             // Show time up modal and correct answer
             if (currentCard && currentCard.title) {
               setCorrectAnswer(currentCard.title);
             } else {
-              // Avoid fetching card inside timer; rely on currentCard state
-              setCorrectAnswer(null); // Or a placeholder like "N/A"
+              setCorrectAnswer(null);
             }
             setShowTimeUpModal(true);
-          }
 
-          if (diff <= 0 && isDrawer) {
-            // If time's up and we're the drawer, move to next turn
-            handleNextTurn({
-              gameId: game.id,
-              cardId: currentCard?.id || "",
-              pointsAwarded: timeRemaining,
-            }).catch((error) => {
-              console.error("Error moving to next turn:", error);
-              toast.error("Error", {
-                description: "Failed to move to the next turn",
-              });
-            });
-            if (timerIntervalRef.current)
+            if (isDrawer) {
+              // If time's up and we're the drawer, move to next turn
+              setTurnEnded(true); // Set state flag
+
+              // Use the current card ID from game state
+              if (game.current_card_id) {
+                handleNextTurn({
+                  gameId: game.id,
+                  cardId: game.current_card_id,
+                  pointsAwarded: 0,
+                }).catch((error) => {
+                  console.error("Error moving to next turn:", error);
+                  toast.error("Error", {
+                    description: "Failed to move to the next turn",
+                  });
+                });
+              } else {
+                console.error("No current card available when timer expired");
+                toast.error("Error", {
+                  description: "No card available to complete the turn",
+                });
+              }
+            }
+
+            if (timerIntervalRef.current) {
               clearInterval(timerIntervalRef.current);
+            }
           }
         }
       };
@@ -174,16 +200,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       };
     }
   }, [
-    user.id,
     isDrawer,
     isTimerPaused,
-    currentCard,
-    game.current_drawer_id,
-    game.current_card_id,
     game.timer_end,
     game.id,
-    timeRemaining,
-    currentDrawer?.id,
+    game.current_card_id,
+    currentCard,
     handleNextTurn,
   ]);
 
@@ -229,7 +251,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   }, [game.id, supabase, isDrawer, players, correctGuessers, timeRemaining]);
 
   const handleGuessSubmit = async (guess: string) => {
-    if (!currentPlayer || !currentCard) return;
+    if (!currentPlayer || !currentCard || turnEnded) return;
 
     try {
       const result = await submitGuess(
@@ -241,6 +263,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
       // If guess is correct, handle next turn with drawing capture
       if (result.isCorrect && result.currentScore !== undefined) {
+        setTurnEnded(true); // Prevent multiple submissions
         await handleNextTurn({
           gameId: game.id,
           cardId: currentCard.id,
@@ -258,7 +281,10 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   };
 
   const handleSelectWinner = async (winner: PlayerWithProfile) => {
+    if (turnEnded) return;
+
     try {
+      setTurnEnded(true); // Prevent multiple selections
       let drawingImageUrl: string | undefined;
 
       // Capture drawing screenshot if we're the drawer
@@ -288,6 +314,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       setIsTimerPaused(false); // Resume timer if winner is selected (timer will end anyway)
     } catch (error) {
       console.error("Error selecting winner:", error);
+      setTurnEnded(false); // Reset flag on error
       toast.error("Error", {
         description: "Failed to select winner",
       });

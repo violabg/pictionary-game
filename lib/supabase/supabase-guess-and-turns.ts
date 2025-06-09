@@ -77,6 +77,11 @@ export async function nextTurn(params: {
     }
     const turnNumber = await getNextTurnNumber(gameId);
 
+    // Mark the current card as used before moving to next turn
+    if (cardId) {
+      await markCardAsUsed(cardId);
+    }
+
     // Create turn record
     await createTurn({
       gameId,
@@ -106,8 +111,7 @@ export async function nextTurn(params: {
     if (cardToUse) {
       // Update game with new drawer and card
       await updateGameForNextTurn(gameId, nextDrawerId, cardToUse.id);
-      // Mark the new card as used
-      await markCardAsUsed(cardToUse.id);
+      // Note: We don't mark the new card as used here - it will be marked when that turn ends
     } else {
       // If no cards are available, set the game as completed
       await setGameAsCompleted(gameId);
