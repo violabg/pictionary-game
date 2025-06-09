@@ -10,8 +10,9 @@ import {
 import { insertGuess } from "./supabase-guesses";
 import { getPlayerScore } from "./supabase-players";
 import type {
+  AtomicGuessParams,
+  AtomicGuessResult,
   AtomicTurnResult,
-  CorrectGuessParams,
   ManualWinnerParams,
   TurnCompletionParams,
 } from "./types";
@@ -52,34 +53,6 @@ export const submitGuess = async (
     throw new Error(message);
   }
 };
-
-// Atomic turn completion functions
-export async function completeCorrectGuessTurn(
-  params: CorrectGuessParams
-): Promise<AtomicTurnResult> {
-  try {
-    const { data, error } = await supabase.rpc(
-      "complete_turn_with_correct_guess",
-      {
-        p_game_id: params.gameId,
-        p_guesser_id: params.guesserId,
-        p_guess_text: params.guessText,
-        p_time_remaining: params.timeRemaining,
-        p_drawing_image_url: params.drawingImageUrl,
-      }
-    );
-
-    if (error) {
-      console.error("Error completing correct guess turn:", error);
-      return { success: false, game_completed: false };
-    }
-
-    return data[0] as AtomicTurnResult;
-  } catch (error: unknown) {
-    console.error("Error in completeCorrectGuessTurn:", error);
-    return { success: false, game_completed: false };
-  }
-}
 
 export async function completeTimeUpTurn(
   params: TurnCompletionParams
@@ -143,3 +116,42 @@ export async function startTurn(gameId: string): Promise<void> {
     throw new Error(message);
   }
 }
+
+// Atomic guess submission that handles both guess insertion and turn completion
+// This prevents race conditions by doing everything in a single database transaction
+export const submitGuessAtomic = async (
+  params: AtomicGuessParams
+): Promise<AtomicGuessResult> => {
+  try {
+    const { data, error } = await supabase.rpc(
+      "submit_guess_and_complete_turn_if_correct",
+      {
+        p_game_id: params.gameId,
+        p_guesser_profile_id: params.guesserProfileId,
+        p_guess_text: params.guessText,
+        p_time_remaining: params.timeRemaining,
+        p_drawing_image_url: params.drawingImageUrl,
+      }
+    );
+
+    if (error) {
+      console.error("Error in atomic guess submission:", error);
+      return {
+        guess_id: null,
+        is_correct: false,
+        success: false,
+        game_completed: false,
+      };
+    }
+
+    return data[0] as AtomicGuessResult;
+  } catch (error: unknown) {
+    console.error("Error in submitGuessAtomic:", error);
+    return {
+      guess_id: null,
+      is_correct: false,
+      success: false,
+      game_completed: false,
+    };
+  }
+};

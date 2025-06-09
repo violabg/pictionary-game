@@ -323,24 +323,6 @@ export type Database = {
           total_score: number;
         }[];
       };
-      complete_turn_with_correct_guess: {
-        Args: {
-          p_game_id: string;
-          p_guesser_id: string;
-          p_guess_text: string;
-          p_time_remaining: number;
-          p_drawing_image_url?: string;
-        };
-        Returns: {
-          success: boolean;
-          next_drawer_id: string | null;
-          next_card_id: string | null;
-          guesser_new_score: number;
-          drawer_new_score: number;
-          turn_id: string | null;
-          game_completed: boolean;
-        }[];
-      };
       complete_turn_time_up: {
         Args: {
           p_game_id: string;
@@ -366,6 +348,26 @@ export type Database = {
           next_drawer_id: string | null;
           next_card_id: string | null;
           winner_new_score: number;
+          drawer_new_score: number;
+          turn_id: string | null;
+          game_completed: boolean;
+        }[];
+      };
+      submit_guess_and_complete_turn_if_correct: {
+        Args: {
+          p_game_id: string;
+          p_guesser_profile_id: string;
+          p_guess_text: string;
+          p_time_remaining: number;
+          p_drawing_image_url?: string;
+        };
+        Returns: {
+          guess_id: string | null;
+          is_correct: boolean;
+          success: boolean;
+          next_drawer_id: string | null;
+          next_card_id: string | null;
+          guesser_new_score: number;
           drawer_new_score: number;
           turn_id: string | null;
           game_completed: boolean;
@@ -539,4 +541,25 @@ export interface CorrectGuessParams extends TurnCompletionParams {
 
 export interface ManualWinnerParams extends TurnCompletionParams {
   winnerId: string;
+}
+
+// Atomic guess submission types
+export interface AtomicGuessResult {
+  guess_id: string | null;
+  is_correct: boolean;
+  success: boolean;
+  next_drawer_id?: string;
+  next_card_id?: string;
+  guesser_new_score?: number;
+  drawer_new_score?: number;
+  turn_id?: string;
+  game_completed: boolean;
+}
+
+export interface AtomicGuessParams {
+  gameId: string;
+  guesserProfileId: string;
+  guessText: string;
+  timeRemaining: number;
+  drawingImageUrl?: string;
 }

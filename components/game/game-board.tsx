@@ -4,11 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { getCard } from "@/lib/supabase/supabase-cards";
 import {
-  completeCorrectGuessTurn,
   completeManualWinnerTurn,
   completeTimeUpTurn,
   startTurn,
-  submitGuess,
+  submitGuessAtomic,
 } from "@/lib/supabase/supabase-guess-and-turns";
 import {
   AtomicTurnResult,
@@ -81,11 +80,14 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   const players = game.players;
 
   const currentDrawer = useMemo(
-    () => players.find((p) => p.player_id === game.current_drawer_id),
+    () =>
+      players.find(
+        (p: PlayerWithProfile) => p.player_id === game.current_drawer_id
+      ),
     [players, game.current_drawer_id]
   );
   const currentPlayer = useMemo(
-    () => players.find((p) => p.player_id === user.id),
+    () => players.find((p: PlayerWithProfile) => p.player_id === user.id),
     [players, user.id]
   );
 
@@ -115,11 +117,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         toast.success("Game Completed!", {
           description: "All cards have been used. Well played!",
         });
-      } else {
-        toast.success("Turn completed!", {
-          description: "Moving to next turn...",
-        });
       }
+      // else {
+      //   toast.success("Turn completed!", {
+      //     description: "Moving to next turn...",
+      //   });
+      // }
       // Real-time updates will handle game state changes
     } else {
       toast.error("Turn failed", {
@@ -161,41 +164,6 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     captureDrawing,
     handleTurnResult,
   ]);
-
-  // Handle correct guess scenario
-  const handleCorrectGuess = useCallback(
-    async (guesser: Player, guessText: string) => {
-      if (!gameState.isDrawer || gameState.turnEnded) return;
-
-      setGameState((prev) => ({ ...prev, turnEnded: true }));
-
-      try {
-        const drawingImageUrl = await captureDrawing();
-        const result = await completeCorrectGuessTurn({
-          gameId: game.id,
-          guesserId: guesser.player_id || "",
-          guessText,
-          timeRemaining: gameState.timeRemaining,
-          drawingImageUrl,
-        });
-        handleTurnResult(result);
-      } catch (error) {
-        console.error("Error completing correct guess turn:", error);
-        toast.error("Error", {
-          description: "Failed to complete turn",
-        });
-        setGameState((prev) => ({ ...prev, turnEnded: false }));
-      }
-    },
-    [
-      gameState.isDrawer,
-      gameState.turnEnded,
-      gameState.timeRemaining,
-      game.id,
-      captureDrawing,
-      handleTurnResult,
-    ]
-  );
 
   // Update game state when game changes
   useEffect(() => {
@@ -285,7 +253,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     handleTimeUp,
   ]);
 
-  // Subscribe to guesses
+  // Subscribe to guesses for UI updates only
   useEffect(() => {
     const guessSubscription = supabase
       .channel(`guesses:${game.id}`)
@@ -300,27 +268,26 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         async (payload) => {
           const guess = payload.new as Guess;
 
-          // If we're the drawer and this is a correct guess
-          if (
-            gameState.isDrawer &&
-            guess.is_correct &&
-            !correctGuessers.some((p) => p.id === guess.player_id) &&
-            !gameState.turnEnded
-          ) {
-            // Find the player who made the guess
-            const guesser = players.find((p) => p.id === guess.player_id);
-            if (guesser) {
+          // If this is a correct guess, add to correct guessers for UI
+          if (guess.is_correct) {
+            const guesser = players.find(
+              (p: PlayerWithProfile) => p.id === guess.player_id
+            );
+            if (
+              guesser &&
+              !correctGuessers.some((p) => p.id === guess.player_id)
+            ) {
               setCorrectGuessers((prev) => [...prev, guesser]);
 
-              // Show toast notification
-              toast.success("Correct Guess!", {
-                description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`,
-              });
-
-              // Handle correct guess with drawing capture
-              await handleCorrectGuess(guesser, guess.guess_text);
+              // Show toast notification for the drawer
+              if (gameState.isDrawer) {
+                toast.success("Correct Guess!", {
+                  description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`,
+                });
+              }
             }
           }
+          // Note: Turn completion is now handled atomically by the guesser
         }
       )
       .subscribe();
@@ -332,28 +299,59 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     game.id,
     supabase,
     gameState.isDrawer,
-    gameState.turnEnded,
     gameState.timeRemaining,
     players,
     correctGuessers,
-    handleCorrectGuess,
   ]);
 
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer || gameState.turnEnded) return;
 
     try {
-      const result = await submitGuess(game.id, currentPlayer.id, guess);
+      // Use atomic function to handle both guess submission and turn completion
+      const result = await submitGuessAtomic({
+        gameId: game.id,
+        guesserProfileId: currentPlayer.player_id || "",
+        guessText: guess,
+        timeRemaining: gameState.timeRemaining,
+        drawingImageUrl: undefined, // Will be handled by drawer if needed
+      });
 
-      // If guess is correct, show success message
-      // The drawer will handle the turn completion via the guess subscription
-      if (result.isCorrect && result.currentScore !== undefined) {
-        const drawerPoints = Math.max(
-          10,
-          Math.floor(gameState.timeRemaining / 4)
-        );
-        toast.success("Correct!", {
-          description: `You guessed correctly and earned ${gameState.timeRemaining} points! The drawer earned ${drawerPoints} points too!`,
+      if (!result.success) {
+        toast.error("Error", {
+          description: "Failed to submit guess",
+        });
+        return;
+      }
+
+      // If guess is correct, handle turn completion
+      if (result.is_correct) {
+        setGameState((prev) => ({ ...prev, turnEnded: true }));
+
+        const drawerPoints = result.drawer_new_score
+          ? result.drawer_new_score -
+            (players.find(
+              (p: PlayerWithProfile) => p.player_id === game.current_drawer_id
+            )?.score || 0)
+          : Math.max(10, Math.floor(gameState.timeRemaining / 4));
+
+        toast.success("Corretto!", {
+          description: `Hai indovinato e guadagnato ${gameState.timeRemaining} punti! Il disegnatore ha guadagnato ${drawerPoints} punti!`,
+        });
+
+        // Handle the turn result (similar to what drawer was doing)
+        handleTurnResult({
+          success: true,
+          next_drawer_id: result.next_drawer_id,
+          next_card_id: result.next_card_id,
+          guesser_new_score: result.guesser_new_score,
+          drawer_new_score: result.drawer_new_score,
+          turn_id: result.turn_id,
+          game_completed: result.game_completed,
+        });
+      } else {
+        toast.error("Risposta inviata", {
+          description: "Risposta errata, riprova!",
         });
       }
     } catch (error) {
@@ -561,7 +559,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       {modalState.showSelectWinner && (
         <SelectWinnerModal
           players={players.filter(
-            (p) => p.player_id !== game.current_drawer_id
+            (p: PlayerWithProfile) => p.player_id !== game.current_drawer_id
           )}
           onSelectWinner={handleSelectWinner}
           onClose={handleCloseSelectWinner}

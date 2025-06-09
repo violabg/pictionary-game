@@ -897,3 +897,206 @@ EXCEPTION
     RETURN QUERY SELECT FALSE, NULL::UUID, NULL::UUID, 0, 0, NULL::UUID, FALSE;
 END;
 $$;
+
+-- Atomic function that combines guess submission and turn completion to prevent race conditions
+CREATE OR REPLACE FUNCTION submit_guess_and_complete_turn_if_correct(
+  p_game_id UUID,
+  p_guesser_profile_id UUID,
+  p_guess_text TEXT,
+  p_time_remaining INTEGER,
+  p_drawing_image_url TEXT DEFAULT NULL
+) RETURNS TABLE(
+  guess_id UUID,
+  is_correct BOOLEAN,
+  success BOOLEAN,
+  next_drawer_id UUID,
+  next_card_id UUID,
+  guesser_new_score INTEGER,
+  drawer_new_score INTEGER,
+  turn_id UUID,
+  game_completed BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE
+  v_current_drawer_id UUID;
+  v_current_card_id UUID;
+  v_card_title TEXT;
+  v_guesser_current_score INTEGER;
+  v_drawer_current_score INTEGER;
+  v_guesser_points INTEGER;
+  v_drawer_points INTEGER;
+  v_turn_number INTEGER;
+  v_new_turn_id UUID;
+  v_new_guess_id UUID;
+  v_next_drawer_id UUID;
+  v_next_card RECORD;
+  v_game_completed BOOLEAN := FALSE;
+  v_is_correct BOOLEAN := FALSE;
+BEGIN
+  -- Lock the game row for update to prevent race conditions
+  SELECT current_drawer_id, current_card_id
+  INTO v_current_drawer_id, v_current_card_id
+  FROM public.games
+  WHERE id = p_game_id
+  FOR UPDATE;
+
+  -- Validate game state
+  IF v_current_drawer_id IS NULL OR v_current_card_id IS NULL THEN
+    RETURN QUERY SELECT NULL::UUID, FALSE, FALSE, NULL::UUID, NULL::UUID, 0, 0, NULL::UUID, FALSE;
+    RETURN;
+  END IF;
+
+  -- Get card title for guess validation
+  SELECT title INTO v_card_title
+  FROM public.cards
+  WHERE id = v_current_card_id;
+
+  -- Check if guess is correct (case insensitive)
+  v_is_correct := LOWER(TRIM(p_guess_text)) = LOWER(TRIM(v_card_title));
+
+  -- Always insert the guess first
+  INSERT INTO public.guesses (
+    game_id,
+    player_id,
+    guess_text,
+    is_correct
+  ) VALUES (
+    p_game_id,
+    p_guesser_profile_id,
+    p_guess_text,
+    v_is_correct
+  ) RETURNING id INTO v_new_guess_id;
+
+  -- If guess is incorrect, just return the guess info
+  IF NOT v_is_correct THEN
+    RETURN QUERY SELECT 
+      v_new_guess_id as guess_id,
+      FALSE as is_correct,
+      TRUE as success,
+      NULL::UUID as next_drawer_id,
+      NULL::UUID as next_card_id,
+      0 as guesser_new_score,
+      0 as drawer_new_score,
+      NULL::UUID as turn_id,
+      FALSE as game_completed;
+    RETURN;
+  END IF;
+
+  -- Guess is correct, proceed with turn completion
+  -- Calculate points for guesser and drawer
+  v_guesser_points := p_time_remaining;
+  v_drawer_points := GREATEST(10, p_time_remaining / 4); -- Drawer gets 25% of time remaining, min 10 points
+
+  -- Get current scores
+  SELECT score INTO v_guesser_current_score
+  FROM public.players
+  WHERE game_id = p_game_id AND player_id = p_guesser_profile_id;
+
+  SELECT score INTO v_drawer_current_score
+  FROM public.players
+  WHERE game_id = p_game_id AND player_id = v_current_drawer_id;
+
+  -- Update scores atomically
+  UPDATE public.players
+  SET score = score + v_guesser_points
+  WHERE game_id = p_game_id AND player_id = p_guesser_profile_id;
+
+  UPDATE public.players
+  SET score = score + v_drawer_points
+  WHERE game_id = p_game_id AND player_id = v_current_drawer_id;
+
+  -- Get next turn number
+  SELECT COALESCE(MAX(turn_number), 0) + 1
+  INTO v_turn_number
+  FROM public.turns
+  WHERE game_id = p_game_id;
+
+  -- Create turn record
+  INSERT INTO public.turns (
+    game_id,
+    card_id,
+    drawer_id,
+    winner_id,
+    points_awarded,
+    drawer_points_awarded,
+    turn_number,
+    drawing_image_url
+  ) VALUES (
+    p_game_id,
+    v_current_card_id,
+    v_current_drawer_id,
+    p_guesser_profile_id,
+    v_guesser_points,
+    v_drawer_points,
+    v_turn_number,
+    p_drawing_image_url
+  ) RETURNING id INTO v_new_turn_id;
+
+  -- Mark current card as used
+  UPDATE public.cards SET used = TRUE WHERE id = v_current_card_id;
+
+  -- Determine next drawer (round-robin)
+  WITH ordered_players AS (
+    SELECT player_id, order_index,
+           ROW_NUMBER() OVER (ORDER BY order_index) as rn
+    FROM public.players
+    WHERE game_id = p_game_id
+    ORDER BY order_index
+  ),
+  current_drawer_rank AS (
+    SELECT rn as current_rn
+    FROM ordered_players
+    WHERE player_id = v_current_drawer_id
+  ),
+  total_players AS (
+    SELECT COUNT(*) as total
+    FROM ordered_players
+  )
+  SELECT player_id INTO v_next_drawer_id
+  FROM ordered_players, current_drawer_rank, total_players
+  WHERE rn = (current_rn % total) + 1;
+
+  -- Get next unused card
+  SELECT id, title INTO v_next_card
+  FROM public.cards
+  WHERE game_id = p_game_id AND used = FALSE
+  ORDER BY RANDOM()
+  LIMIT 1;
+
+  IF v_next_card.id IS NULL THEN
+    -- No more cards, complete the game
+    UPDATE public.games
+    SET status = 'completed',
+        current_drawer_id = NULL,
+        current_card_id = NULL,
+        timer_end = NULL
+    WHERE id = p_game_id;
+    
+    v_game_completed := TRUE;
+  ELSE
+    -- Set up next turn
+    UPDATE public.games
+    SET current_drawer_id = v_next_drawer_id,
+        current_card_id = v_next_card.id,
+        timer_end = NULL  -- Reset timer
+    WHERE id = p_game_id;
+  END IF;
+
+  -- Return results for correct guess with turn completion
+  RETURN QUERY SELECT
+    v_new_guess_id as guess_id,
+    TRUE as is_correct,
+    TRUE as success,
+    v_next_drawer_id as next_drawer_id,
+    v_next_card.id as next_card_id,
+    (v_guesser_current_score + v_guesser_points) as guesser_new_score,
+    (v_drawer_current_score + v_drawer_points) as drawer_new_score,
+    v_new_turn_id as turn_id,
+    v_game_completed as game_completed;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Log error and return failure
+    RAISE NOTICE 'Error in submit_guess_and_complete_turn_if_correct: %', SQLERRM;
+    RETURN QUERY SELECT NULL::UUID, FALSE, FALSE, NULL::UUID, NULL::UUID, 0, 0, NULL::UUID, FALSE;
+END;
+$$;
