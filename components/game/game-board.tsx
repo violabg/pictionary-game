@@ -34,21 +34,47 @@ interface GameBoardProps {
   user: User;
 }
 
+// Consolidated game state interface
+interface GameState {
+  currentCard: CardType | null;
+  isDrawer: boolean;
+  turnStarted: boolean;
+  turnEnded: boolean;
+  timeRemaining: number;
+  isStartingTurn: boolean;
+}
+
+// Consolidated modal state interface
+interface ModalState {
+  showSelectWinner: boolean;
+  showTimeUp: boolean;
+  correctAnswer: string | null;
+  isTimerPaused: boolean;
+}
+
 export default function GameBoard({ game, user }: GameBoardProps) {
   const supabase = createClient();
-  const [currentCard, setCurrentCard] = useState<CardType | null>(null);
-  const [isDrawer, setIsDrawer] = useState(false);
-  const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
-  const [showSelectWinnerModal, setShowSelectWinnerModal] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(game.timer);
-  const [turnStarted, setTurnStarted] = useState(false);
-  const [isStartingTurn, setIsStartingTurn] = useState(false);
-  const [isTimerPaused, setIsTimerPaused] = useState(false);
-  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
-  const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
-  const [turnEnded, setTurnEnded] = useState(false);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Consolidated state
+  const [gameState, setGameState] = useState<GameState>({
+    currentCard: null,
+    isDrawer: game.current_drawer_id === user.id,
+    turnStarted: !!game.timer_end,
+    turnEnded: false,
+    timeRemaining: game.timer,
+    isStartingTurn: false,
+  });
+
+  const [modalState, setModalState] = useState<ModalState>({
+    showSelectWinner: false,
+    showTimeUp: false,
+    correctAnswer: null,
+    isTimerPaused: false,
+  });
+
+  const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
 
   const players = game.players;
 
@@ -74,7 +100,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         let drawingImageUrl: string | undefined;
 
         // Capture drawing screenshot if we're the drawer
-        if (isDrawer && drawingCanvasRef.current) {
+        if (gameState.isDrawer && drawingCanvasRef.current) {
           const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
           if (canvasDataUrl) {
             const uploadedUrl = await captureAndUploadDrawing(
@@ -97,115 +123,115 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         throw error;
       }
     },
-    [isDrawer] // Only depend on isDrawer, not game.id since it's passed in params
+    [gameState.isDrawer]
   );
 
+  // Update game state when game changes
   useEffect(() => {
-    // Check if current player is the drawer
-    setIsDrawer(game.current_drawer_id === user.id);
-  }, [game.current_drawer_id, user.id]);
+    setGameState((prev) => ({
+      ...prev,
+      isDrawer: game.current_drawer_id === user.id,
+      turnStarted: !!game.timer_end,
+      turnEnded: false, // Reset on game state change
+    }));
+  }, [game.current_drawer_id, user.id, game.timer_end]);
 
-  // Separate effect for card fetching
+  // Load card when needed
   useEffect(() => {
     const fetchCard = async (cardId: string) => {
       try {
         const newCardData = await getCard(cardId);
-
-        setCurrentCard((prevCard) => {
+        setGameState((prev) => {
           // Prevent loop if getCard returns new ref for same data
-          if (JSON.stringify(prevCard) === JSON.stringify(newCardData)) {
-            return prevCard;
+          if (
+            JSON.stringify(prev.currentCard) === JSON.stringify(newCardData)
+          ) {
+            return prev;
           }
-          return newCardData;
+          return { ...prev, currentCard: newCardData };
         });
       } catch (error) {
         console.error("Error fetching card:", error);
-        setCurrentCard(null);
+        setGameState((prev) => ({ ...prev, currentCard: null }));
       }
     };
 
     // Load the current card if we're the drawer
-    if (game.current_drawer_id === user.id && game.current_card_id) {
+    if (gameState.isDrawer && game.current_card_id) {
       fetchCard(game.current_card_id);
     } else {
-      setCurrentCard(null);
+      setGameState((prev) => ({ ...prev, currentCard: null }));
     }
-  }, [game.current_drawer_id, user.id, game.current_card_id]);
+  }, [gameState.isDrawer, game.current_card_id]);
 
-  // Separate effect for timer logic
+  // Timer logic effect
   useEffect(() => {
-    // Check if turn has started based on timer_end
-    setTurnStarted(!!game.timer_end);
+    if (!gameState.turnStarted || !game.timer_end) return;
 
-    // Reset turn ended flag only when the game state actually changes (new turn)
-    setTurnEnded(false);
+    const endTime = new Date(game.timer_end).getTime();
+    let timerEndedFlag = false; // Local flag to prevent multiple calls
 
-    // Calculate time remaining if turn has started
-    if (game.timer_end) {
-      const endTime = new Date(game.timer_end).getTime();
-      let timerEndedFlag = false; // Local flag to prevent multiple calls
+    const updateTimer = () => {
+      if (!modalState.isTimerPaused && !timerEndedFlag) {
+        const now = new Date().getTime();
+        const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+        setGameState((prev) => ({ ...prev, timeRemaining: diff }));
 
-      const updateTimer = () => {
-        if (!isTimerPaused && !timerEndedFlag) {
-          const now = new Date().getTime();
-          const diff = Math.max(0, Math.floor((endTime - now) / 1000));
-          setTimeRemaining(diff);
+        if (diff <= 0) {
+          timerEndedFlag = true; // Set local flag immediately
 
-          if (diff <= 0) {
-            timerEndedFlag = true; // Set local flag immediately
+          // Show time up modal and correct answer
+          setModalState((prev) => ({
+            ...prev,
+            showTimeUp: true,
+            correctAnswer: gameState.currentCard?.title || null,
+          }));
 
-            // Show time up modal and correct answer
-            if (currentCard && currentCard.title) {
-              setCorrectAnswer(currentCard.title);
-            } else {
-              setCorrectAnswer(null);
-            }
-            setShowTimeUpModal(true);
+          if (gameState.isDrawer && !gameState.turnEnded) {
+            // If time's up and we're the drawer, move to next turn
+            setGameState((prev) => ({ ...prev, turnEnded: true }));
 
-            if (isDrawer) {
-              // If time's up and we're the drawer, move to next turn
-              setTurnEnded(true); // Set state flag
-
-              // Use the current card ID from game state
-              if (game.current_card_id) {
-                handleNextTurn({
-                  gameId: game.id,
-                  cardId: game.current_card_id,
-                  pointsAwarded: 0,
-                }).catch((error) => {
-                  console.error("Error moving to next turn:", error);
-                  toast.error("Error", {
-                    description: "Failed to move to the next turn",
-                  });
-                });
-              } else {
-                console.error("No current card available when timer expired");
+            // Use the current card ID from game state
+            if (game.current_card_id) {
+              handleNextTurn({
+                gameId: game.id,
+                cardId: game.current_card_id,
+                pointsAwarded: 0,
+              }).catch((error) => {
+                console.error("Error moving to next turn:", error);
                 toast.error("Error", {
-                  description: "No card available to complete the turn",
+                  description: "Failed to move to the next turn",
                 });
-              }
-            }
-
-            if (timerIntervalRef.current) {
-              clearInterval(timerIntervalRef.current);
+              });
+            } else {
+              console.error("No current card available when timer expired");
+              toast.error("Error", {
+                description: "No card available to complete the turn",
+              });
             }
           }
-        }
-      };
 
-      updateTimer();
-      timerIntervalRef.current = setInterval(updateTimer, 1000);
-      return () => {
-        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      };
-    }
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+          }
+        }
+      }
+    };
+
+    updateTimer();
+    timerIntervalRef.current = setInterval(updateTimer, 1000);
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
   }, [
-    isDrawer,
-    isTimerPaused,
+    gameState.turnStarted,
+    gameState.isDrawer,
+    gameState.turnEnded,
+    gameState.currentCard?.title,
+    modalState.isTimerPaused,
     game.timer_end,
     game.id,
     game.current_card_id,
-    currentCard,
     handleNextTurn,
   ]);
 
@@ -226,10 +252,10 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
           // If we're the drawer and this is a correct guess
           if (
-            isDrawer &&
+            gameState.isDrawer &&
             guess.is_correct &&
             !correctGuessers.some((p) => p.id === guess.player_id) &&
-            !turnEnded
+            !gameState.turnEnded
           ) {
             // Find the player who made the guess
             const guesser = players.find((p) => p.id === guess.player_id);
@@ -238,18 +264,18 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
               // Show toast notification
               toast.success("Correct Guess!", {
-                description: `${guesser.profile.user_name} guessed correctly and earned ${timeRemaining} points!`,
+                description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`,
               });
 
               // Handle next turn with drawing capture since we're the drawer
-              setTurnEnded(true); // Prevent multiple next turn calls
+              setGameState((prev) => ({ ...prev, turnEnded: true })); // Prevent multiple next turn calls
 
               if (game.current_card_id) {
                 try {
                   await handleNextTurn({
                     gameId: game.id,
                     cardId: game.current_card_id,
-                    pointsAwarded: timeRemaining,
+                    pointsAwarded: gameState.timeRemaining,
                     winnerId: guesser.id,
                     winnerProfileId: guesser.player_id,
                   });
@@ -258,14 +284,14 @@ export default function GameBoard({ game, user }: GameBoardProps) {
                   toast.error("Error", {
                     description: "Failed to move to the next turn",
                   });
-                  setTurnEnded(false); // Reset flag on error
+                  setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
                 }
               } else {
                 console.error("No current card ID available for correct guess");
                 toast.error("Error", {
                   description: "Game state error - no card available",
                 });
-                setTurnEnded(false); // Reset flag on error
+                setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
               }
             }
           }
@@ -279,31 +305,31 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   }, [
     game.id,
     supabase,
-    isDrawer,
+    gameState.isDrawer,
+    gameState.turnEnded,
+    gameState.timeRemaining,
     players,
     correctGuessers,
-    timeRemaining,
-    turnEnded,
     game.current_card_id,
     handleNextTurn,
   ]);
 
   const handleGuessSubmit = async (guess: string) => {
-    if (!currentPlayer || turnEnded) return;
+    if (!currentPlayer || gameState.turnEnded) return;
 
     try {
       const result = await submitGuess(
         game.id,
         currentPlayer.id,
         guess,
-        timeRemaining
+        gameState.timeRemaining
       );
 
       // If guess is correct, show success message
       // The drawer will handle the next turn logic via the guess subscription
       if (result.isCorrect && result.currentScore !== undefined) {
         toast.success("Correct!", {
-          description: `You guessed correctly and earned ${timeRemaining} points!`,
+          description: `You guessed correctly and earned ${gameState.timeRemaining} points!`,
         });
       }
     } catch (error) {
@@ -315,14 +341,14 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   };
 
   const handleSelectWinner = async (winner: PlayerWithProfile) => {
-    if (turnEnded) return;
+    if (gameState.turnEnded) return;
 
     try {
-      setTurnEnded(true); // Prevent multiple selections
+      setGameState((prev) => ({ ...prev, turnEnded: true })); // Prevent multiple selections
       let drawingImageUrl: string | undefined;
 
       // Capture drawing screenshot if we're the drawer
-      if (isDrawer && drawingCanvasRef.current) {
+      if (gameState.isDrawer && drawingCanvasRef.current) {
         const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
         if (canvasDataUrl) {
           const uploadedUrl = await captureAndUploadDrawing(
@@ -337,18 +363,22 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
       await selectWinner({
         gameId: game.id,
-        cardId: currentCard?.id || "",
+        cardId: gameState.currentCard?.id || "",
         winnerId: winner.id,
         winnerProfileId: winner.player_id,
-        timeRemaining,
+        timeRemaining: gameState.timeRemaining,
         drawingImageUrl,
       });
-      setShowSelectWinnerModal(false);
+
+      setModalState((prev) => ({
+        ...prev,
+        showSelectWinner: false,
+        isTimerPaused: false, // Resume timer if winner is selected (timer will end anyway)
+      }));
       setCorrectGuessers([]);
-      setIsTimerPaused(false); // Resume timer if winner is selected (timer will end anyway)
     } catch (error) {
       console.error("Error selecting winner:", error);
-      setTurnEnded(false); // Reset flag on error
+      setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
       toast.error("Error", {
         description: "Failed to select winner",
       });
@@ -356,32 +386,38 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   };
 
   const handleStartTurn = async () => {
-    if (!isDrawer) return;
+    if (!gameState.isDrawer) return;
 
-    setIsStartingTurn(true);
+    setGameState((prev) => ({ ...prev, isStartingTurn: true }));
     try {
       await startTurn(game.id);
-      setTurnStarted(true);
+      setGameState((prev) => ({ ...prev, turnStarted: true }));
     } catch (error) {
       console.error("Error starting turn:", error);
       toast.error("Error", {
         description: "Failed to start turn",
       });
     } finally {
-      setIsStartingTurn(false);
+      setGameState((prev) => ({ ...prev, isStartingTurn: false }));
     }
   };
 
   const handleOpenSelectWinner = () => {
-    if (!isDrawer || !turnStarted) return;
-    setShowSelectWinnerModal(true);
-    setIsTimerPaused(true); // Pause timer when modal opens
+    if (!gameState.isDrawer || !gameState.turnStarted) return;
+    setModalState((prev) => ({
+      ...prev,
+      showSelectWinner: true,
+      isTimerPaused: true, // Pause timer when modal opens
+    }));
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
   };
 
   const handleCloseSelectWinner = () => {
-    setShowSelectWinnerModal(false);
-    setIsTimerPaused(false); // Resume timer if modal closed without winner
+    setModalState((prev) => ({
+      ...prev,
+      showSelectWinner: false,
+      isTimerPaused: false, // Resume timer if modal closed without winner
+    }));
   };
 
   return (
@@ -412,13 +448,13 @@ export default function GameBoard({ game, user }: GameBoardProps) {
             N° parole: {game.card_title_length}
           </span>
         </div>
-        {turnStarted ? (
+        {gameState.turnStarted ? (
           <div className="flex items-center gap-4">
-            <Timer seconds={timeRemaining} />
+            <Timer seconds={gameState.timeRemaining} />
           </div>
         ) : (
           <div className="font-medium text-muted-foreground text-lg">
-            {isDrawer
+            {gameState.isDrawer
               ? "È il tuo turno di disegnare"
               : `In attesa che ${currentDrawer?.profile.name} inizi`}
           </div>
@@ -432,33 +468,40 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               <DrawingCanvas
                 ref={drawingCanvasRef}
                 gameId={game.id}
-                isDrawer={isDrawer}
+                isDrawer={gameState.isDrawer}
                 currentDrawer={currentDrawer}
-                turnStarted={turnStarted}
+                turnStarted={gameState.turnStarted}
               />
             )}
 
-            {isDrawer && !turnStarted && (
+            {gameState.isDrawer && !gameState.turnStarted && (
               <div className="flex justify-center mt-4">
                 <Button
                   variant="gradient"
                   size="lg"
                   onClick={handleStartTurn}
-                  disabled={isStartingTurn}
+                  disabled={gameState.isStartingTurn}
                   className="flex items-center gap-2"
                 >
                   <PlayCircle className="w-5 h-5" />
-                  {isStartingTurn ? "Avvio turno..." : "Inizia il tuo turno"}
+                  {gameState.isStartingTurn
+                    ? "Avvio turno..."
+                    : "Inizia il tuo turno"}
                 </Button>
               </div>
             )}
           </div>
 
-          {!isDrawer && turnStarted && game.current_card_id && (
-            <div className="mt-4">
-              <GuessInput onSubmit={handleGuessSubmit} disabled={isDrawer} />
-            </div>
-          )}
+          {!gameState.isDrawer &&
+            gameState.turnStarted &&
+            game.current_card_id && (
+              <div className="mt-4">
+                <GuessInput
+                  onSubmit={handleGuessSubmit}
+                  disabled={gameState.isDrawer}
+                />
+              </div>
+            )}
         </div>
 
         <div className="flex flex-col space-y-4">
@@ -469,7 +512,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
             />
           )}
           {/* Show time's up card above the player list */}
-          {showTimeUpModal && timeRemaining === 0 && (
+          {modalState.showTimeUp && gameState.timeRemaining === 0 && (
             <Card className="gradient-border glass-card">
               <CardHeader className="pb-2">
                 <CardTitle className="font-bold text-red-500 text-lg">
@@ -479,12 +522,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               <CardContent className="text-center">
                 <p className="mb-2">La risposta corretta era:</p>
                 <div className="mb-4 font-semibold text-xl">
-                  {correctAnswer || ""}
+                  {modalState.correctAnswer || ""}
                 </div>
               </CardContent>
             </Card>
           )}
-          {isDrawer && (
+          {gameState.isDrawer && (
             <Button
               variant="gradient"
               size="sm"
@@ -495,18 +538,20 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               Seleziona Vincitore
             </Button>
           )}
-          {isDrawer && currentCard && <CardDisplay card={currentCard} />}
+          {gameState.isDrawer && gameState.currentCard && (
+            <CardDisplay card={gameState.currentCard} />
+          )}
         </div>
       </div>
 
-      {showSelectWinnerModal && (
+      {modalState.showSelectWinner && (
         <SelectWinnerModal
           players={players.filter(
             (p) => p.player_id !== game.current_drawer_id
           )}
           onSelectWinner={handleSelectWinner}
           onClose={handleCloseSelectWinner}
-          timeRemaining={timeRemaining}
+          timeRemaining={gameState.timeRemaining}
         />
       )}
     </div>
