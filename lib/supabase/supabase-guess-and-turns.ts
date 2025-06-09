@@ -22,8 +22,7 @@ const supabase = createClient();
 export const submitGuess = async (
   gameId: string,
   playerId: string,
-  guessText: string,
-  timeRemaining: number
+  guessText: string
 ): Promise<{ isCorrect: boolean; currentScore?: number }> => {
   try {
     // Get current card ID
@@ -124,20 +123,6 @@ export async function completeManualWinnerTurn(
     console.error("Error in completeManualWinnerTurn:", error);
     return { success: false, game_completed: false };
   }
-}
-
-// Legacy functions kept for backward compatibility during transition
-export async function nextTurn(params: {
-  gameId: string;
-  cardId: string;
-  pointsAwarded: number;
-  winnerProfileId?: string | null;
-  drawingImageUrl?: string | null;
-}): Promise<void> {
-  console.warn(
-    "nextTurn is deprecated, use atomic turn completion functions instead"
-  );
-  // Implementation removed - use atomic functions
 }
 
 // Start the current turn

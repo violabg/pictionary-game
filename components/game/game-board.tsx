@@ -343,12 +343,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     if (!currentPlayer || gameState.turnEnded) return;
 
     try {
-      const result = await submitGuess(
-        game.id,
-        currentPlayer.id,
-        guess,
-        gameState.timeRemaining
-      );
+      const result = await submitGuess(game.id, currentPlayer.id, guess);
 
       // If guess is correct, show success message
       // The drawer will handle the turn completion via the guess subscription
