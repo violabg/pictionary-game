@@ -198,9 +198,9 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
           }`}
           onClick={closeImageModal}
         >
-          <div
+          <Card
             ref={modalRef}
-            className="relative"
+            className="relative p-[2px] pt-8 gradient-border glass-card"
             onClick={(e) => e.stopPropagation()}
             style={{
               transform:
@@ -230,7 +230,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                 : "transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)",
             }}
           >
-            <div className="relative bg-white shadow-2xl rounded-lg overflow-hidden">
+            <CardHeader className="relativeoverflow-hidden">
               {/* Close button */}
               <div className="top-4 right-4 z-10 absolute">
                 <button
@@ -242,24 +242,21 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
               </div>
 
               {/* Header */}
-              <div className="p-4 border-b">
-                <h3 className="pr-12 font-semibold text-black text-lg">
-                  {selectedImage.title}
-                </h3>
-              </div>
-
-              {/* Image container with fixed aspect ratio */}
-              <div className="relative bg-gray-50 w-[600px] h-[450px]">
-                <Image
-                  src={selectedImage.url}
-                  alt={selectedImage.title}
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </div>
-          </div>
+              <h3 className="pr-12 font-semibold text-lg">
+                {selectedImage.title}
+              </h3>
+            </CardHeader>
+            {/* Image container with fixed aspect ratio */}
+            <CardContent className="relative bg-gray-50 p-2 w-[600px] h-[450px]">
+              <Image
+                src={selectedImage.url}
+                alt={selectedImage.title}
+                fill
+                className="object-contain"
+                priority
+              />
+            </CardContent>
+          </Card>
         </div>
       )}
     </>
