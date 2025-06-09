@@ -193,14 +193,14 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
       {/* Image Modal */}
       {selectedImage && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300 ease-out ${
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300 ease-out p-4 ${
             isClosing ? "animate-out fade-out-0" : "animate-in fade-in-0"
           }`}
           onClick={closeImageModal}
         >
           <Card
             ref={modalRef}
-            className="relative p-[2px] pt-8 gradient-border glass-card"
+            className="relative p-[2px] pt-8 gradient-border w-full min-w-[300px] max-w-[800px] glass-card"
             onClick={(e) => e.stopPropagation()}
             style={{
               transform:
@@ -213,7 +213,10 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                       selectedImage.thumbnailRect.top +
                       selectedImage.thumbnailRect.height / 2 -
                       window.innerHeight / 2
-                    }px) scale(${selectedImage.thumbnailRect.width / 600})`
+                    }px) scale(${
+                      selectedImage.thumbnailRect.width /
+                      Math.min(800, Math.max(300, window.innerWidth * 0.8))
+                    })`
                   : isClosing && selectedImage.thumbnailRect
                   ? `translate(${
                       selectedImage.thumbnailRect.left +
@@ -223,7 +226,10 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                       selectedImage.thumbnailRect.top +
                       selectedImage.thumbnailRect.height / 2 -
                       window.innerHeight / 2
-                    }px) scale(${selectedImage.thumbnailRect.width / 600})`
+                    }px) scale(${
+                      selectedImage.thumbnailRect.width /
+                      Math.min(800, Math.max(300, window.innerWidth * 0.8))
+                    })`
                   : "translate(0, 0) scale(1)",
               transition: isClosing
                 ? "transform 300ms cubic-bezier(0.4, 0.0, 1, 1)"
@@ -232,7 +238,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
           >
             <CardHeader className="relativeoverflow-hidden">
               {/* Close button */}
-              <div className="top-4 right-4 z-10 absolute">
+              <div className="top-7 right-4 z-10 absolute">
                 <button
                   onClick={closeImageModal}
                   className="bg-black/50 hover:bg-black/70 p-2 rounded-full text-white hover:scale-110 transition-all duration-200 ease-out"
@@ -246,13 +252,13 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                 {selectedImage.title}
               </h3>
             </CardHeader>
-            {/* Image container with fixed aspect ratio */}
-            <CardContent className="relative bg-gray-50 p-2 w-[600px] h-[450px]">
+            {/* Image container with responsive aspect ratio */}
+            <CardContent className="relative bg-gray-50 p-2 rounded-b-xl w-full min-w-[300px] max-w-[800px] aspect-[4/3] overflow-hidden">
               <Image
                 src={selectedImage.url}
                 alt={selectedImage.title}
                 fill
-                className="object-contain"
+                className="rounded-lg object-contain"
                 priority
               />
             </CardContent>
