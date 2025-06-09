@@ -463,6 +463,6 @@ export type GameWithPlayers = Game & {
 export type TurnWithDetails = Turn & {
   card: Card;
   drawer: Profile;
-  winner: Profile;
+  winner: Profile | null;
   game: Game;
 };

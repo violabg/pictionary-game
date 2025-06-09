@@ -9,14 +9,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GameWithPlayers } from "@/lib/supabase/types";
+import { GameWithPlayers, PlayerWithProfile } from "@/lib/supabase/types";
 import { getInitials } from "@/lib/utils";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 interface SelectWinnerModalProps {
   players: GameWithPlayers["players"];
-  onSelectWinner: (playerId: string) => void;
+  onSelectWinner: (player: PlayerWithProfile) => void;
   onClose: () => void;
   timeRemaining: number;
 }
@@ -29,10 +29,10 @@ export default function SelectWinnerModal({
 }: SelectWinnerModalProps) {
   const [loading, setLoading] = useState(false);
 
-  const handleSelectWinner = async (playerId: string) => {
+  const handleSelectWinner = async (player: PlayerWithProfile) => {
     setLoading(true);
     try {
-      await onSelectWinner(playerId);
+      await onSelectWinner(player);
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function SelectWinnerModal({
                   key={player.player_id}
                   variant="outline"
                   className="justify-start w-full h-auto text-left"
-                  onClick={() => handleSelectWinner(player.id)}
+                  onClick={() => handleSelectWinner(player)}
                   disabled={loading}
                 >
                   <div className="flex justify-between items-center w-full">

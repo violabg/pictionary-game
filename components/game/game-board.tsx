@@ -14,14 +14,16 @@ import {
   GameWithPlayers,
   Guess,
   Player,
+  PlayerWithProfile,
 } from "@/lib/supabase/types";
+import { captureAndUploadDrawing } from "@/lib/utils/drawing-utils";
 import { User } from "@supabase/supabase-js";
 import { Crown, PlayCircle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import CardDisplay from "./card-display";
-import DrawingCanvas from "./drawing-canvas";
+import DrawingCanvas, { DrawingCanvasRef } from "./drawing-canvas";
 import GuessInput from "./guess-input";
 import PlayerList from "./player-list";
 import SelectWinnerModal from "./select-winner-modal";
@@ -45,6 +47,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
 
   const players = game.players;
 
@@ -55,6 +58,45 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   const currentPlayer = useMemo(
     () => players.find((p) => p.player_id === user.id),
     [players, user.id]
+  );
+
+  // Helper function to capture drawing and move to next turn
+  const handleNextTurn = useCallback(
+    async (params: {
+      gameId: string;
+      cardId: string;
+      pointsAwarded: number;
+      winnerId?: string | null;
+      winnerProfileId?: string | null;
+    }) => {
+      try {
+        let drawingImageUrl: string | undefined;
+
+        // Capture drawing screenshot if we're the drawer
+        if (isDrawer && drawingCanvasRef.current) {
+          const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
+          if (canvasDataUrl) {
+            const uploadedUrl = await captureAndUploadDrawing(
+              game.id,
+              canvasDataUrl
+            );
+            if (uploadedUrl) {
+              drawingImageUrl = uploadedUrl;
+            }
+          }
+        }
+
+        // Move to next turn with or without drawing image
+        await nextTurn({
+          ...params,
+          drawingImageUrl,
+        });
+      } catch (error) {
+        console.error("Error moving to next turn:", error);
+        throw error;
+      }
+    },
+    [isDrawer, game.id]
   );
 
   useEffect(() => {
@@ -109,11 +151,10 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
           if (diff <= 0 && isDrawer) {
             // If time's up and we're the drawer, move to next turn
-            nextTurn({
+            handleNextTurn({
               gameId: game.id,
               cardId: currentCard?.id || "",
               pointsAwarded: timeRemaining,
-              winnerId: currentDrawer?.id || "",
             }).catch((error) => {
               console.error("Error moving to next turn:", error);
               toast.error("Error", {
@@ -143,6 +184,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     game.id,
     timeRemaining,
     currentDrawer?.id,
+    handleNextTurn,
   ]);
 
   // Subscribe to guesses
@@ -187,10 +229,26 @@ export default function GameBoard({ game, user }: GameBoardProps) {
   }, [game.id, supabase, isDrawer, players, correctGuessers, timeRemaining]);
 
   const handleGuessSubmit = async (guess: string) => {
-    if (!currentPlayer) return;
+    if (!currentPlayer || !currentCard) return;
 
     try {
-      await submitGuess(game.id, currentPlayer.id, guess, timeRemaining);
+      const result = await submitGuess(
+        game.id,
+        currentPlayer.id,
+        guess,
+        timeRemaining
+      );
+
+      // If guess is correct, handle next turn with drawing capture
+      if (result.isCorrect && result.currentScore !== undefined) {
+        await handleNextTurn({
+          gameId: game.id,
+          cardId: currentCard.id,
+          pointsAwarded: result.currentScore,
+          winnerId: currentPlayer.id,
+          winnerProfileId: currentPlayer.player_id,
+        });
+      }
     } catch (error) {
       console.error("Error submitting guess:", error);
       toast.error("Error", {
@@ -199,13 +257,31 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     }
   };
 
-  const handleSelectWinner = async (winnerId: string) => {
+  const handleSelectWinner = async (winner: PlayerWithProfile) => {
     try {
+      let drawingImageUrl: string | undefined;
+
+      // Capture drawing screenshot if we're the drawer
+      if (isDrawer && drawingCanvasRef.current) {
+        const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
+        if (canvasDataUrl) {
+          const uploadedUrl = await captureAndUploadDrawing(
+            game.id,
+            canvasDataUrl
+          );
+          if (uploadedUrl) {
+            drawingImageUrl = uploadedUrl;
+          }
+        }
+      }
+
       await selectWinner({
         gameId: game.id,
         cardId: currentCard?.id || "",
-        winnerId,
+        winnerId: winner.id,
+        winnerProfileId: winner.player_id,
         timeRemaining,
+        drawingImageUrl,
       });
       setShowSelectWinnerModal(false);
       setCorrectGuessers([]);
@@ -293,6 +369,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           <div className="p-4 gradient-border rounded-lg glass-card grow">
             {currentDrawer && (
               <DrawingCanvas
+                ref={drawingCanvasRef}
                 gameId={game.id}
                 isDrawer={isDrawer}
                 currentDrawer={currentDrawer}

@@ -23,7 +23,7 @@ export const submitGuess = async (
   playerId: string,
   guessText: string,
   timeRemaining: number
-): Promise<void> => {
+): Promise<{ isCorrect: boolean; currentScore?: number }> => {
   try {
     // Get current card ID
     const currentCardId = await getGameCurrentCardId(gameId);
@@ -37,7 +37,7 @@ export const submitGuess = async (
     // Insert guess
     await insertGuess(gameId, playerId, guessText, isCorrect);
 
-    // If the guess is correct, automatically award points and record turn
+    // If the guess is correct, get current score but don't automatically move to next turn
     if (isCorrect) {
       // Get current score
       const currentScore = await getPlayerScore(playerId);
@@ -45,14 +45,11 @@ export const submitGuess = async (
       // Update player score
       await updatePlayerScore(playerId, currentScore + timeRemaining);
 
-      // Move to next turn
-      await nextTurn({
-        gameId,
-        cardId: currentCardId,
-        pointsAwarded: currentScore + timeRemaining,
-        winnerId: playerId,
-      });
+      // Return indication that guess was correct and let client handle nextTurn
+      return { isCorrect: true, currentScore: currentScore + timeRemaining };
     }
+
+    return { isCorrect: false };
   } catch (error: unknown) {
     console.error("Error in submitGuess:", error);
     const message =
@@ -66,10 +63,11 @@ export async function nextTurn(params: {
   gameId: string;
   cardId: string;
   pointsAwarded: number;
-  winnerId?: string;
-  drawingImageUrl?: string;
+  winnerProfileId?: string | null;
+  drawingImageUrl?: string | null;
 }): Promise<void> {
-  const { gameId, cardId, winnerId, pointsAwarded, drawingImageUrl } = params;
+  const { gameId, cardId, winnerProfileId, pointsAwarded, drawingImageUrl } =
+    params;
   try {
     // Get current game state
     const currentDrawerId = await getGameCurrentDrawerId(gameId);
@@ -84,7 +82,7 @@ export async function nextTurn(params: {
       gameId,
       cardId,
       drawerId: currentDrawerId,
-      winnerId,
+      winnerProfileId,
       pointsAwarded,
       turnNumber,
       drawingImageUrl,

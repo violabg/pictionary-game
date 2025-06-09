@@ -10,14 +10,14 @@ export async function createTurn(params: {
   drawerId: string;
   pointsAwarded: number;
   turnNumber: number;
-  winnerId?: string;
-  drawingImageUrl?: string;
+  winnerProfileId?: string | null;
+  drawingImageUrl?: string | null;
 }): Promise<Turn> {
   const {
     gameId,
     cardId,
     drawerId,
-    winnerId,
+    winnerProfileId: winnerId,
     pointsAwarded,
     turnNumber,
     drawingImageUrl = null, // Default to null if not provided
@@ -187,7 +187,7 @@ export async function getGameHistory(
   const total = count || 0;
   const hasMore = offset + limit < total;
 
-  // Process the data to format turns
+  // Process the data - winner information is already included in the query
   const processedGames =
     data?.map(
       (game: {
@@ -208,7 +208,7 @@ export async function getGameHistory(
           created_at: game.created_at,
           turns_count: game.turns.length,
           user_score: userScore,
-          total_turns: game.turns as unknown as TurnWithDetails[],
+          total_turns: game.turns,
         };
       }
     ) || [];
@@ -243,7 +243,6 @@ export async function uploadDrawingImage(
   turnNumber: number,
   imageBlob: Blob
 ): Promise<string> {
-  const supabase = await createClient();
   const fileName = `drawings/${gameId}/turn-${turnNumber}-${Date.now()}.png`;
 
   const { data, error } = await supabase.storage

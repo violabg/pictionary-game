@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.turns (
   game_id UUID REFERENCES games(id) ON DELETE CASCADE,
   card_id UUID REFERENCES cards(id) ON DELETE CASCADE,
   drawer_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  winner_id UUID REFERENCES players(id) ON DELETE CASCADE NULL,
+  winner_id UUID REFERENCES profiles(id) ON DELETE CASCADE NULL,
   drawing_image_url TEXT, -- URL to the screenshot stored in Supabase Storage
   points_awarded INTEGER NOT NULL DEFAULT 0,
   turn_number INTEGER NOT NULL,
@@ -420,3 +420,25 @@ ON turns
 FOR DELETE
 TO authenticated, anon
 USING (true);
+
+-- Create storage bucket for game drawings
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('game-drawings', 'game-drawings', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Create storage policies for game-drawings bucket
+CREATE POLICY "Allow public read access to game drawings"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'game-drawings');
+
+CREATE POLICY "Allow authenticated users to upload game drawings"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'game-drawings' AND auth.uid() IS NOT NULL);
+
+CREATE POLICY "Allow authenticated users to update game drawings"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'game-drawings' AND auth.uid() IS NOT NULL);
+
+CREATE POLICY "Allow authenticated users to delete game drawings"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'game-drawings' AND auth.uid() IS NOT NULL);

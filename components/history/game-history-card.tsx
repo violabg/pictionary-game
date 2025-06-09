@@ -84,11 +84,19 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                         {turn.drawer.name || turn.drawer.user_name}
                       </span>
                       {" • "}
-                      Vinto da{" "}
-                      <span className="flex items-center gap-1 font-medium">
-                        <Crown className="w-3 h-3 text-yellow-500" />
-                        {turn.winner.name || turn.winner.user_name}
-                      </span>
+                      {turn.winner ? (
+                        <>
+                          Vinto da{" "}
+                          <span className="flex items-center gap-1 font-medium">
+                            <Crown className="w-3 h-3 text-yellow-500" />
+                            {turn.winner.name || turn.winner.user_name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-medium text-muted-foreground">
+                          Nessun vincitore
+                        </span>
+                      )}
                     </div>
                   </div>
 

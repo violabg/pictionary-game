@@ -74,6 +74,7 @@ export async function updatePlayerScore(playerId: string, newScore: number) {
 export async function selectWinner(params: {
   gameId: string;
   winnerId: string;
+  winnerProfileId: string | null;
   cardId: string;
   timeRemaining: number;
   drawingImageUrl?: string;
@@ -81,6 +82,7 @@ export async function selectWinner(params: {
   const {
     gameId,
     winnerId,
+    winnerProfileId,
     cardId: currentCardId,
     timeRemaining,
     drawingImageUrl,
@@ -97,7 +99,7 @@ export async function selectWinner(params: {
       gameId,
       cardId: currentCardId,
       pointsAwarded: currentScore + timeRemaining,
-      winnerId,
+      winnerProfileId: winnerProfileId,
       drawingImageUrl,
     });
   } catch (error: unknown) {
