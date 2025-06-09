@@ -221,14 +221,15 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           table: "guesses",
           filter: `game_id=eq.${game.id}`,
         },
-        (payload) => {
+        async (payload) => {
           const guess = payload.new as Guess;
 
           // If we're the drawer and this is a correct guess
           if (
             isDrawer &&
             guess.is_correct &&
-            !correctGuessers.some((p) => p.id === guess.player_id)
+            !correctGuessers.some((p) => p.id === guess.player_id) &&
+            !turnEnded
           ) {
             // Find the player who made the guess
             const guesser = players.find((p) => p.id === guess.player_id);
@@ -239,6 +240,33 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               toast.success("Correct Guess!", {
                 description: `${guesser.profile.user_name} guessed correctly and earned ${timeRemaining} points!`,
               });
+
+              // Handle next turn with drawing capture since we're the drawer
+              setTurnEnded(true); // Prevent multiple next turn calls
+
+              if (game.current_card_id) {
+                try {
+                  await handleNextTurn({
+                    gameId: game.id,
+                    cardId: game.current_card_id,
+                    pointsAwarded: timeRemaining,
+                    winnerId: guesser.id,
+                    winnerProfileId: guesser.player_id,
+                  });
+                } catch (error) {
+                  console.error("Error moving to next turn:", error);
+                  toast.error("Error", {
+                    description: "Failed to move to the next turn",
+                  });
+                  setTurnEnded(false); // Reset flag on error
+                }
+              } else {
+                console.error("No current card ID available for correct guess");
+                toast.error("Error", {
+                  description: "Game state error - no card available",
+                });
+                setTurnEnded(false); // Reset flag on error
+              }
             }
           }
         }
@@ -248,7 +276,17 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     return () => {
       supabase.removeChannel(guessSubscription);
     };
-  }, [game.id, supabase, isDrawer, players, correctGuessers, timeRemaining]);
+  }, [
+    game.id,
+    supabase,
+    isDrawer,
+    players,
+    correctGuessers,
+    timeRemaining,
+    turnEnded,
+    game.current_card_id,
+    handleNextTurn,
+  ]);
 
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer || turnEnded) return;
@@ -261,24 +299,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         timeRemaining
       );
 
-      // If guess is correct, handle next turn with drawing capture
+      // If guess is correct, show success message
+      // The drawer will handle the next turn logic via the guess subscription
       if (result.isCorrect && result.currentScore !== undefined) {
-        setTurnEnded(true); // Prevent multiple submissions
-
-        if (game.current_card_id) {
-          await handleNextTurn({
-            gameId: game.id,
-            cardId: game.current_card_id,
-            pointsAwarded: result.currentScore,
-            winnerId: currentPlayer.id,
-            winnerProfileId: currentPlayer.player_id,
-          });
-        } else {
-          console.error("No current card ID available for correct guess");
-          toast.error("Error", {
-            description: "Game state error - no card available",
-          });
-        }
+        toast.success("Correct!", {
+          description: `You guessed correctly and earned ${timeRemaining} points!`,
+        });
       }
     } catch (error) {
       console.error("Error submitting guess:", error);
