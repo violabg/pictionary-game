@@ -570,7 +570,9 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Disegnatore:</span>
-                <span className="font-medium text-blue-600">Secondi ÷ 4</span>
+                <span className="font-medium text-blue-600">
+                  Secondi rimasti ÷ 4
+                </span>
               </div>
               <div className="space-y-1 pt-1 border-t text-muted-foreground text-xs">
                 <div>
