@@ -19,7 +19,7 @@ import {
 } from "@/lib/supabase/types";
 import { captureAndUploadDrawing } from "@/lib/utils/drawing-utils";
 import { User } from "@supabase/supabase-js";
-import { Crown, PlayCircle } from "lucide-react";
+import { Crown, InfoIcon, PlayCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -553,6 +553,40 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           {gameState.isDrawer && gameState.currentCard && (
             <CardDisplay card={gameState.currentCard} />
           )}
+          {/* Score Legend */}
+          <Card className="gradient-border glass-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 font-semibold text-sm">
+                <InfoIcon className="w-4 h-4" />
+                Come si guadagnano i punti
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Chi indovina:</span>
+                <span className="font-medium text-green-600">
+                  Secondi rimasti
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Disegnatore:</span>
+                <span className="font-medium text-blue-600">Secondi ÷ 4</span>
+              </div>
+              <div className="space-y-1 pt-1 border-t text-muted-foreground text-xs">
+                <div>
+                  <strong>Disegnatore:</strong> Guadagna punti = secondi rimasti
+                  ÷ 4 (minimo 10)
+                </div>
+                <div>
+                  <strong>Esempio:</strong> Se restano 40 secondi → 40 ÷ 4 = 10
+                  punti
+                </div>
+                <div className="font-medium text-orange-600">
+                  ⚠️ Il disegnatore guadagna punti solo se qualcuno indovina!
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
