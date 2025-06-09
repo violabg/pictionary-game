@@ -6,7 +6,7 @@ import { TurnWithDetails } from "@/lib/supabase/types";
 import { format } from "date-fns";
 import { Calendar, Crown, Trophy, Users, X } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 interface GameHistoryCardProps {
   game: {
@@ -25,20 +25,41 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
   const [selectedImage, setSelectedImage] = useState<{
     url: string;
     title: string;
+    thumbnailRect?: DOMRect;
   } | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [animationPhase, setAnimationPhase] = useState<
+    "initial" | "animating" | "final"
+  >("initial");
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  const openImageModal = (url: string, title: string) => {
-    setSelectedImage({ url, title });
+  const openImageModal = (
+    url: string,
+    title: string,
+    thumbnailElement: HTMLElement
+  ) => {
+    const thumbnailRect = thumbnailElement.getBoundingClientRect();
+    setSelectedImage({ url, title, thumbnailRect });
     setIsClosing(false);
+    setAnimationPhase("initial");
+
+    // Start animation on next frame
+    requestAnimationFrame(() => {
+      setAnimationPhase("animating");
+      setTimeout(() => {
+        setAnimationPhase("final");
+      }, 50);
+    });
   };
 
   const closeImageModal = () => {
     setIsClosing(true);
+    setAnimationPhase("initial");
     setTimeout(() => {
       setSelectedImage(null);
       setIsClosing(false);
-    }, 200); // Match the animation duration
+      setAnimationPhase("initial");
+    }, 300); // Match the animation duration
   };
 
   const totalScore = useMemo(
@@ -138,10 +159,11 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                       <div className="flex-shrink-0">
                         <div
                           className="relative bg-white hover:shadow-lg border rounded-lg w-16 h-16 overflow-hidden hover:scale-110 transition-all duration-200 ease-out cursor-pointer transform"
-                          onClick={() =>
+                          onClick={(e) =>
                             openImageModal(
                               turn.drawing_image_url!,
-                              turn.card.title
+                              turn.card.title,
+                              e.currentTarget
                             )
                           }
                         >
@@ -171,40 +193,69 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
       {/* Image Modal */}
       {selectedImage && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm transition-all duration-300 ease-out ${
-            isClosing
-              ? "animate-out fade-out-0 zoom-out-95"
-              : "animate-in fade-in-0"
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300 ease-out ${
+            isClosing ? "animate-out fade-out-0" : "animate-in fade-in-0"
           }`}
           onClick={closeImageModal}
         >
           <div
-            className={`relative bg-white rounded-lg max-w-4xl max-h-full overflow-hidden transform transition-all duration-300 ease-out ${
-              isClosing
-                ? "animate-out zoom-out-95 slide-out-to-bottom-4"
-                : "animate-in zoom-in-95 slide-in-from-bottom-4"
-            }`}
+            ref={modalRef}
+            className="relative"
             onClick={(e) => e.stopPropagation()}
+            style={{
+              transform:
+                selectedImage.thumbnailRect && animationPhase === "initial"
+                  ? `translate(${
+                      selectedImage.thumbnailRect.left +
+                      selectedImage.thumbnailRect.width / 2 -
+                      window.innerWidth / 2
+                    }px, ${
+                      selectedImage.thumbnailRect.top +
+                      selectedImage.thumbnailRect.height / 2 -
+                      window.innerHeight / 2
+                    }px) scale(${selectedImage.thumbnailRect.width / 600})`
+                  : isClosing && selectedImage.thumbnailRect
+                  ? `translate(${
+                      selectedImage.thumbnailRect.left +
+                      selectedImage.thumbnailRect.width / 2 -
+                      window.innerWidth / 2
+                    }px, ${
+                      selectedImage.thumbnailRect.top +
+                      selectedImage.thumbnailRect.height / 2 -
+                      window.innerHeight / 2
+                    }px) scale(${selectedImage.thumbnailRect.width / 600})`
+                  : "translate(0, 0) scale(1)",
+              transition: isClosing
+                ? "transform 300ms cubic-bezier(0.4, 0.0, 1, 1)"
+                : "transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)",
+            }}
           >
-            <div className="top-4 right-4 z-10 absolute">
-              <button
-                onClick={closeImageModal}
-                className="bg-black/50 hover:bg-black/70 p-2 rounded-full text-white hover:scale-110 transition-all duration-200 ease-out"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4">
-              <h3 className="mb-4 font-semibold text-lg">
-                {selectedImage.title}
-              </h3>
-              <div className="relative min-h-[300px] max-h-[70vh]">
+            <div className="relative bg-white shadow-2xl rounded-lg overflow-hidden">
+              {/* Close button */}
+              <div className="top-4 right-4 z-10 absolute">
+                <button
+                  onClick={closeImageModal}
+                  className="bg-black/50 hover:bg-black/70 p-2 rounded-full text-white hover:scale-110 transition-all duration-200 ease-out"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Header */}
+              <div className="p-4 border-b">
+                <h3 className="pr-12 font-semibold text-black text-lg">
+                  {selectedImage.title}
+                </h3>
+              </div>
+
+              {/* Image container with fixed aspect ratio */}
+              <div className="relative bg-gray-50 w-[600px] h-[450px]">
                 <Image
                   src={selectedImage.url}
                   alt={selectedImage.title}
-                  width={800}
-                  height={600}
-                  className="rounded w-full h-auto object-contain"
+                  fill
+                  className="object-contain"
+                  priority
                 />
               </div>
             </div>
