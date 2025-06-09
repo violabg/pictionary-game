@@ -421,16 +421,6 @@ BEFORE INSERT ON games
 FOR EACH ROW
 EXECUTE FUNCTION set_game_code();
 
--- Create function to increment score if it doesn't exist
-CREATE OR REPLACE FUNCTION increment_score(points INTEGER, row_id UUID)
-RETURNS INTEGER AS $$
-DECLARE
-  current_score INTEGER;
-BEGIN
-  SELECT score INTO current_score FROM public.players WHERE id = row_id;
-  RETURN current_score + points;
-END;
-$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = 'public';
 
 CREATE OR REPLACE FUNCTION get_user_profile_with_score(user_id uuid)
 RETURNS TABLE(profile_id uuid, name text, full_name text, user_name text, avatar_url text, total_score bigint) AS $$

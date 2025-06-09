@@ -312,10 +312,6 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: string;
       };
-      increment_score: {
-        Args: { points: number; row_id: string };
-        Returns: number;
-      };
       get_user_profile_with_score: {
         Args: { user_id: string };
         Returns: {
