@@ -22,6 +22,7 @@ import { seedCardsForGame } from "@/lib/groq";
 import { createGame } from "@/lib/supabase/supabase-games";
 import { addPlayerToGame } from "@/lib/supabase/supabase-players";
 import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
+import { categories } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { User } from "@supabase/supabase-js";
@@ -32,16 +33,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-const categories = [
-  "Animali",
-  "Cibo",
-  "Film",
-  "Sport",
-  "Tecnologia",
-  "Geografia",
-  "Musica",
-  "Arte",
-];
 const difficulties = [
   { value: "facile", label: "Facile" },
   { value: "medio", label: "Medio" },

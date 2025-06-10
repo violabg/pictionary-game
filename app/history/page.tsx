@@ -1,6 +1,7 @@
 import GameHistoryCard from "@/components/history/game-history-card";
 import HistoryFilters from "@/components/history/history-filters";
 import HistoryPagination from "@/components/history/history-pagination";
+import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { createClient } from "@/lib/supabase/server";
 import {
   getGameCategories,
@@ -76,11 +77,21 @@ export default async function HistoryPage({
               </div>
             ) : (
               <>
-                <div className="gap-4 grid">
+                <Accordion
+                  type="single"
+                  collapsible
+                  className="space-y-4 w-full"
+                >
                   {games.map((game) => (
-                    <GameHistoryCard key={game.id} game={game} />
+                    <AccordionItem
+                      key={game.id}
+                      value={game.id}
+                      className="bg-card shadow-sm border rounded-lg overflow-hidden text-card-foreground"
+                    >
+                      <GameHistoryCard game={game} />
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
 
                 {/* Pagination */}
                 {total > 10 && (

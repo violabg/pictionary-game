@@ -1,13 +1,39 @@
 "use client";
 
+import { AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TurnWithDetails } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar, Crown, Trophy, Users, X } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
+
+// Function to get category-specific styling
+const getCategoryStyle = (category: string) => {
+  const categoryStyles: Record<string, string> = {
+    Animali:
+      "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800",
+    Cibo: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800",
+    Film: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800",
+    Sport:
+      "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
+    Tecnologia:
+      "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800",
+    Geografia:
+      "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-800",
+    Musica:
+      "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-800",
+    Arte: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800",
+  };
+
+  return (
+    categoryStyles[category] ||
+    "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800"
+  );
+};
 
 interface GameHistoryCardProps {
   game: {
@@ -147,148 +173,148 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
 
   return (
     <>
-      <Card className="mb-4 w-full overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="flex items-center gap-2 font-bold text-lg">
-                <Trophy className="w-5 h-5 text-yellow-500" />
-                Partita #{game.code}
-              </CardTitle>
-              <div className="flex items-center gap-4 mt-2 text-muted-foreground text-sm">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {format(new Date(game.created_at), "dd/MM/yyyy HH:mm")}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  {game.turns_count} turni
-                </div>
+      <AccordionTrigger className="px-6 py-4 hover:no-underline">
+        <div className="flex justify-between items-start w-full">
+          <div>
+            <div className="flex items-center gap-2 font-bold text-lg">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              Partita #{game.code}
+            </div>
+            <div className="flex items-center gap-4 mt-2 text-muted-foreground text-sm">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {format(new Date(game.created_at), "dd/MM/yyyy HH:mm")}
+              </div>
+              <div className="flex items-center gap-1">
+                <Users className="w-4 h-4" />
+                {game.turns_count} turni
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <Badge variant="secondary">{game.category}</Badge>
-              {gameWinner ? (
-                <div className="text-right">
-                  <div className="flex items-center gap-2 mb-1">
-                    <PlayerAvatar profile={gameWinner} className="w-6 h-6" />
-                    <div className="text-muted-foreground text-xs">
-                      {gameWinner.name || gameWinner.user_name}
-                    </div>
-                    <Crown className="w-4 h-4 text-yellow-500" />
-                    <div className="font-bold text-primary text-xl">
-                      {gameWinner.score}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-right">
-                  <div className="font-bold text-muted-foreground text-xl">
-                    N/A
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    Nessun vincitore
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
-        </CardHeader>
-
-        <CardContent>
-          {game.total_turns.length > 0 ? (
-            <div className="space-y-3">
-              <h4 className="mb-3 font-semibold text-sm">
-                Turni della partita:
-              </h4>
-              <div className="gap-3 grid max-h-96 overflow-y-auto">
-                {game.total_turns.map((turn, index) => (
-                  <div
-                    key={turn.id}
-                    className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg"
-                  >
-                    <div className="flex-shrink-0">
-                      <div className="flex justify-center items-center bg-primary/10 rounded-full w-8 h-8 font-semibold text-sm">
-                        {index + 1}
-                      </div>
+          <div className="flex flex-col items-end gap-2">
+            <Badge
+              variant="outline"
+              className={cn("border", getCategoryStyle(game.category))}
+            >
+              {game.category}
+            </Badge>
+            {gameWinner ? (
+              <div className="text-right">
+                <div className="flex items-center gap-2 mb-1">
+                  <PlayerAvatar profile={gameWinner} className="w-6 h-6" />
+                  <div className="text-muted-foreground text-xs">
+                    {gameWinner.name || gameWinner.user_name}
+                  </div>
+                  <Crown className="w-4 h-4 text-yellow-500" />
+                  <div className="font-bold text-primary text-xl">
+                    {gameWinner.score}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-right">
+                <div className="font-bold text-muted-foreground text-xl">
+                  N/A
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  Nessun vincitore
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-6 pb-6">
+        {game.total_turns.length > 0 ? (
+          <div className="space-y-3">
+            <h4 className="mb-4 font-semibold text-sm">Turni della partita:</h4>
+            <div className="gap-3 grid overflow-y-auto">
+              {game.total_turns.map((turn, index) => (
+                <div
+                  key={turn.id}
+                  className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg"
+                >
+                  <div className="flex-shrink-0">
+                    <div className="flex justify-center items-center bg-primary/10 rounded-full w-8 h-8 font-semibold text-sm">
+                      {index + 1}
                     </div>
+                  </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">
-                          {turn.card.title}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm">
+                        {turn.card.title}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {turn.points_awarded} punti
+                      </Badge>
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      <div className="flex items-center gap-1 mb-1">
+                        <span>Disegnato da</span>
+                        <PlayerAvatar
+                          profile={turn.drawer}
+                          className="w-4 h-4"
+                          fallbackClassName="text-[8px]"
+                        />
+                        <span className="font-medium">
+                          {turn.drawer.name || turn.drawer.user_name}
                         </span>
-                        <Badge variant="outline" className="text-xs">
-                          {turn.points_awarded} punti
-                        </Badge>
                       </div>
-                      <div className="text-muted-foreground text-xs">
-                        <div className="flex items-center gap-1 mb-1">
-                          <span>Disegnato da</span>
+                      {turn.winner ? (
+                        <div className="flex items-center gap-1">
+                          <span>Vinto da</span>
                           <PlayerAvatar
-                            profile={turn.drawer}
+                            profile={turn.winner}
                             className="w-4 h-4"
                             fallbackClassName="text-[8px]"
                           />
                           <span className="font-medium">
-                            {turn.drawer.name || turn.drawer.user_name}
+                            {turn.winner.name || turn.winner.user_name}
                           </span>
+                          <Crown className="w-4 h-4 text-yellow-500" />
                         </div>
-                        {turn.winner ? (
-                          <div className="flex items-center gap-1">
-                            <span>Vinto da</span>
-                            <PlayerAvatar
-                              profile={turn.winner}
-                              className="w-4 h-4"
-                              fallbackClassName="text-[8px]"
-                            />
-                            <span className="font-medium">
-                              {turn.winner.name || turn.winner.user_name}
-                            </span>
-                            <Crown className="w-4 h-4 text-yellow-500" />
-                          </div>
-                        ) : (
-                          <span className="font-medium text-muted-foreground">
-                            Nessun vincitore
-                          </span>
-                        )}
+                      ) : (
+                        <span className="font-medium text-muted-foreground">
+                          Nessun vincitore
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {turn.drawing_image_url && (
+                    <div className="flex-shrink-0">
+                      <div
+                        className="relative bg-white hover:shadow-lg border rounded-lg w-16 h-16 overflow-hidden hover:scale-110 transition-all duration-200 ease-out cursor-pointer transform"
+                        onClick={(e) =>
+                          openImageModal(
+                            turn.drawing_image_url!,
+                            turn.card.title,
+                            e.currentTarget
+                          )
+                        }
+                      >
+                        <Image
+                          src={turn.drawing_image_url}
+                          alt={`Disegno per "${turn.card.title}"`}
+                          fill
+                          className="object-contain"
+                          sizes="64px"
+                        />
                       </div>
                     </div>
-
-                    {turn.drawing_image_url && (
-                      <div className="flex-shrink-0">
-                        <div
-                          className="relative bg-white hover:shadow-lg border rounded-lg w-16 h-16 overflow-hidden hover:scale-110 transition-all duration-200 ease-out cursor-pointer transform"
-                          onClick={(e) =>
-                            openImageModal(
-                              turn.drawing_image_url!,
-                              turn.card.title,
-                              e.currentTarget
-                            )
-                          }
-                        >
-                          <Image
-                            src={turn.drawing_image_url}
-                            alt={`Disegno per "${turn.card.title}"`}
-                            fill
-                            className="object-contain"
-                            sizes="64px"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="py-8 text-muted-foreground text-center">
-              <Trophy className="opacity-50 mx-auto mb-2 w-12 h-12" />
-              <p>Nessun turno registrato per questa partita</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        ) : (
+          <div className="py-8 text-muted-foreground text-center">
+            <Trophy className="opacity-50 mx-auto mb-2 w-12 h-12" />
+            <p>Nessun turno registrato per questa partita</p>
+          </div>
+        )}
+      </AccordionContent>
 
       {/* Image Modal */}
       {selectedImage && (
