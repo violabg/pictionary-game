@@ -86,6 +86,16 @@ export async function getGameHistory(
     turns_count: number;
     user_score: number;
     total_turns: TurnWithDetails[];
+    players: Array<{
+      id: string;
+      score: number;
+      profile: {
+        id: string;
+        name: string | null;
+        user_name: string | null;
+        avatar_url: string | null;
+      };
+    }>;
   }>;
   total: number;
   hasMore: boolean;
@@ -153,7 +163,22 @@ export async function getGameHistory(
 
   // Get user scores for each game
   const gameScores = new Map<string, number>();
+  const gamePlayersMap = new Map<
+    string,
+    Array<{
+      id: string;
+      score: number;
+      profile: {
+        id: string;
+        name: string | null;
+        user_name: string | null;
+        avatar_url: string | null;
+      };
+    }>
+  >();
+
   for (const gameId of gameIdList) {
+    // Get user score
     const { data: playerData } = await supabase
       .from("players")
       .select("score")
@@ -163,6 +188,34 @@ export async function getGameHistory(
 
     if (playerData) {
       gameScores.set(gameId, playerData.score);
+    }
+
+    // Get all players for the game
+    const { data: allPlayers } = await supabase
+      .from("players")
+      .select(
+        `
+        id,
+        score,
+        profile:player_id(id, name, user_name, avatar_url)
+      `
+      )
+      .eq("game_id", gameId);
+
+    if (allPlayers) {
+      gamePlayersMap.set(
+        gameId,
+        allPlayers as Array<{
+          id: string;
+          score: number;
+          profile: {
+            id: string;
+            name: string | null;
+            user_name: string | null;
+            avatar_url: string | null;
+          };
+        }>
+      );
     }
   }
 
@@ -199,6 +252,7 @@ export async function getGameHistory(
         turns: TurnWithDetails[];
       }) => {
         const userScore = gameScores.get(game.id) || 0;
+        const players = gamePlayersMap.get(game.id) || [];
 
         return {
           id: game.id,
@@ -209,6 +263,7 @@ export async function getGameHistory(
           turns_count: game.turns.length,
           user_score: userScore,
           total_turns: game.turns,
+          players: players,
         };
       }
     ) || [];

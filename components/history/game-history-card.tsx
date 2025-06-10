@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { TurnWithDetails } from "@/lib/supabase/types";
 import { format } from "date-fns";
 import { Calendar, Crown, Trophy, Users, X } from "lucide-react";
@@ -18,6 +19,16 @@ interface GameHistoryCardProps {
     turns_count: number;
     user_score: number;
     total_turns: TurnWithDetails[];
+    players?: Array<{
+      id: string;
+      score: number;
+      profile: {
+        id: string;
+        name: string | null;
+        user_name: string | null;
+        avatar_url: string | null;
+      };
+    }>;
   };
 }
 
@@ -62,14 +73,77 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
     }, 300); // Match the animation duration
   };
 
-  const totalScore = useMemo(
-    () =>
-      game.total_turns.reduce(
-        (acc, turn) => acc + (turn.points_awarded || 0),
-        0
-      ),
-    [game.total_turns]
-  );
+  const gameWinner = useMemo(() => {
+    if (!game.players || game.players.length === 0) {
+      // Fallback: find winner from turns data
+      const playerScores = new Map<
+        string,
+        {
+          score: number;
+          profile: {
+            id: string;
+            name: string | null;
+            user_name: string | null;
+            avatar_url: string | null;
+          };
+        }
+      >();
+
+      game.total_turns.forEach((turn) => {
+        // Add drawer points
+        if (!playerScores.has(turn.drawer.id)) {
+          playerScores.set(turn.drawer.id, {
+            score: 0,
+            profile: turn.drawer,
+          });
+        }
+        const drawerEntry = playerScores.get(turn.drawer.id)!;
+        drawerEntry.score += turn.drawer_points_awarded || 0;
+
+        // Add winner points
+        if (turn.winner) {
+          if (!playerScores.has(turn.winner.id)) {
+            playerScores.set(turn.winner.id, {
+              score: 0,
+              profile: turn.winner,
+            });
+          }
+          const winnerEntry = playerScores.get(turn.winner.id)!;
+          winnerEntry.score += turn.points_awarded || 0;
+        }
+      });
+
+      // Find highest score
+      let highestScore = 0;
+      let winner: {
+        id: string;
+        name: string | null;
+        user_name: string | null;
+        avatar_url: string | null;
+        score: number;
+      } | null = null;
+
+      for (const [, playerData] of playerScores) {
+        if (playerData.score > highestScore) {
+          highestScore = playerData.score;
+          winner = { ...playerData.profile, score: playerData.score };
+        }
+      }
+
+      return winner;
+    }
+
+    // Use players data if available
+    return game.players.reduce((winner, player) => {
+      if (!winner || player.score > winner.score) {
+        return {
+          ...player.profile,
+          score: player.score,
+        };
+      }
+      return winner;
+    }, null as { id: string; name: string | null; user_name: string | null; avatar_url: string | null; score: number } | null);
+  }, [game.players, game.total_turns]);
 
   return (
     <>
@@ -94,14 +168,29 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
             </div>
             <div className="flex flex-col items-end gap-2">
               <Badge variant="secondary">{game.category}</Badge>
-              <div className="text-right">
-                <div className="font-bold text-primary text-2xl">
-                  {totalScore}
+              {gameWinner ? (
+                <div className="text-right">
+                  <div className="flex items-center gap-2 mb-1">
+                    <PlayerAvatar profile={gameWinner} className="w-6 h-6" />
+                    <div className="text-muted-foreground text-xs">
+                      {gameWinner.name || gameWinner.user_name}
+                    </div>
+                    <Crown className="w-4 h-4 text-yellow-500" />
+                    <div className="font-bold text-primary text-xl">
+                      {gameWinner.score}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-muted-foreground text-xs">
-                  punti totali
+              ) : (
+                <div className="text-right">
+                  <div className="font-bold text-muted-foreground text-xl">
+                    N/A
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    Nessun vincitore
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -134,19 +223,30 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                         </Badge>
                       </div>
                       <div className="text-muted-foreground text-xs">
-                        Disegnato da{" "}
-                        <span className="font-medium">
-                          {turn.drawer.name || turn.drawer.user_name}
-                        </span>
-                        {" • "}
+                        <div className="flex items-center gap-1 mb-1">
+                          <span>Disegnato da</span>
+                          <PlayerAvatar
+                            profile={turn.drawer}
+                            className="w-4 h-4"
+                            fallbackClassName="text-[8px]"
+                          />
+                          <span className="font-medium">
+                            {turn.drawer.name || turn.drawer.user_name}
+                          </span>
+                        </div>
                         {turn.winner ? (
-                          <>
-                            Vinto da{" "}
-                            <span className="flex items-center gap-1 font-medium">
-                              <Crown className="w-3 h-3 text-yellow-500" />
+                          <div className="flex items-center gap-1">
+                            <span>Vinto da</span>
+                            <PlayerAvatar
+                              profile={turn.winner}
+                              className="w-4 h-4"
+                              fallbackClassName="text-[8px]"
+                            />
+                            <span className="font-medium">
                               {turn.winner.name || turn.winner.user_name}
                             </span>
-                          </>
+                            <Crown className="w-4 h-4 text-yellow-500" />
+                          </div>
                         ) : (
                           <span className="font-medium text-muted-foreground">
                             Nessun vincitore

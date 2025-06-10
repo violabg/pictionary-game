@@ -2,9 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerWithProfile } from "@/lib/supabase/types";
-import { getInitials } from "@/lib/utils";
 import { Pencil } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { PlayerAvatar } from "../ui/player-avatar";
 
 interface PlayerListProps {
   players: PlayerWithProfile[];
@@ -30,12 +29,7 @@ export default function PlayerList({
             className="flex justify-between items-center p-2 border rounded-lg"
           >
             <div className="flex items-center gap-2">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={player.profile.avatar_url || undefined} />
-                <AvatarFallback>
-                  {getInitials(player.profile.name)}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerAvatar profile={player.profile} className="w-8 h-8" />
               <span className="font-medium">{player.profile.full_name}</span>
             </div>
             <div className="flex items-center space-x-2">

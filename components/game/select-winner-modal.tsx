@@ -10,9 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GameWithPlayers, PlayerWithProfile } from "@/lib/supabase/types";
-import { getInitials } from "@/lib/utils";
 import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { PlayerAvatar } from "../ui/player-avatar";
 
 interface SelectWinnerModalProps {
   players: GameWithPlayers["players"];
@@ -66,14 +65,10 @@ export default function SelectWinnerModal({
                 >
                   <div className="flex justify-between items-center w-full">
                     <div className="flex justify-start items-center gap-2 w-full">
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage
-                          src={player.profile.avatar_url || undefined}
-                        />
-                        <AvatarFallback>
-                          {getInitials(player.profile.name)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <PlayerAvatar
+                        profile={player.profile}
+                        className="w-8 h-8"
+                      />
                       <span>{player.profile.name}</span>
                     </div>
                     <span className="text-muted-foreground text-sm">

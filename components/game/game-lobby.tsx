@@ -1,12 +1,12 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { GameWithPlayers } from "@/lib/supabase/types";
 import { Copy, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { PlayerAvatar } from "../ui/player-avatar";
 
 interface GameLobbyProps {
   game: GameWithPlayers;
@@ -88,12 +88,7 @@ export function GameLobby({
               key={player.id}
               className="flex items-center gap-3 p-3 border rounded-lg"
             >
-              <Avatar>
-                <AvatarImage src={player.profile.avatar_url || undefined} />
-                <AvatarFallback>
-                  {player.profile.user_name?.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerAvatar profile={player.profile} />
               <div className="flex-1">
                 <p className="font-medium">{player.profile.full_name}</p>
                 <p className="text-muted-foreground text-sm">
