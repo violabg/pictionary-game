@@ -94,7 +94,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
   // Helper function to capture drawing for atomic turn completion
   const captureDrawing = useCallback(async (): Promise<string | undefined> => {
-    if (!gameState.isDrawer || !drawingCanvasRef.current) return undefined;
+    if (!drawingCanvasRef.current) return undefined;
 
     try {
       const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
@@ -109,7 +109,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       console.error("Error capturing drawing:", error);
     }
     return undefined;
-  }, [gameState.isDrawer, game.id]);
+  }, [game.id]);
 
   // Handle atomic turn result updates
   const handleTurnResult = useCallback((result: AtomicTurnResult) => {
@@ -141,15 +141,15 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
     try {
       // Only capture drawing if we're the drawer, otherwise let the drawer handle it via real-time sync
-      const drawingImageUrl = gameState.isDrawer
-        ? await captureDrawing()
-        : undefined;
-      const result = await completeTimeUpTurn({
-        gameId: game.id,
-        timeRemaining: gameState.timeRemaining,
-        drawingImageUrl,
-      });
-      handleTurnResult(result);
+      if (gameState.isDrawer) {
+        const drawingImageUrl = await captureDrawing();
+        const result = await completeTimeUpTurn({
+          gameId: game.id,
+          timeRemaining: gameState.timeRemaining,
+          drawingImageUrl,
+        });
+        handleTurnResult(result);
+      }
     } catch (error) {
       console.error("Error completing time up turn:", error);
       toast.error("Error", {
@@ -305,58 +305,6 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     correctGuessers,
   ]);
 
-  // Subscribe to turns table to capture drawings when turns are completed
-  useEffect(() => {
-    const turnsSubscription = supabase
-      .channel(`turns:${game.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "turns",
-          filter: `game_id=eq.${game.id}`,
-        },
-        async (payload) => {
-          const newTurn = payload.new as {
-            id: string;
-            drawer_id: string;
-            drawing_image_url: string | null;
-          };
-
-          // If we're the drawer and this turn doesn't have a drawing image yet, capture and save it
-          if (
-            gameState.isDrawer &&
-            newTurn.drawer_id === user.id &&
-            !newTurn.drawing_image_url
-          ) {
-            try {
-              const drawingImageUrl = await captureDrawing();
-              if (drawingImageUrl) {
-                await updateTurnDrawingImage(newTurn.id, drawingImageUrl);
-                console.log("Drawing captured and saved for turn:", newTurn.id);
-                toast.success("Disegno salvato!", {
-                  description: "Il tuo disegno è stato salvato con successo.",
-                });
-              } else {
-                console.warn("No drawing to capture for turn:", newTurn.id);
-              }
-            } catch (error) {
-              console.error(
-                "Error capturing drawing for completed turn:",
-                error
-              );
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(turnsSubscription);
-    };
-  }, [game.id, gameState.isDrawer, user.id, supabase, captureDrawing]);
-
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer || gameState.turnEnded) return;
 
@@ -379,6 +327,21 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
       // If guess is correct, handle turn completion
       if (result.is_correct) {
+        try {
+          console.log("result.turn_id :>> ", result.turn_id);
+          const drawingImageUrl = await captureDrawing();
+          if (drawingImageUrl && result.turn_id) {
+            await updateTurnDrawingImage(result.turn_id, drawingImageUrl);
+            console.log("Drawing captured and saved for turn:", result.turn_id);
+            toast.success("Disegno salvato!", {
+              description: "Il tuo disegno è stato salvato con successo.",
+            });
+          } else {
+            console.warn("No drawing to capture for turn:", result.turn_id);
+          }
+        } catch (error) {
+          console.error("Error capturing drawing for completed turn:", error);
+        }
         setGameState((prev) => ({ ...prev, turnEnded: true }));
 
         const drawerPoints = result.drawer_new_score
