@@ -9,6 +9,7 @@ import {
   startTurn,
   submitGuessAtomic,
 } from "@/lib/supabase/supabase-guess-and-turns";
+import { updateTurnDrawingImage } from "@/lib/supabase/supabase-turns-client";
 import {
   AtomicTurnResult,
   Card as CardType,
@@ -304,6 +305,58 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     correctGuessers,
   ]);
 
+  // Subscribe to turns table to capture drawings when turns are completed
+  useEffect(() => {
+    const turnsSubscription = supabase
+      .channel(`turns:${game.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "turns",
+          filter: `game_id=eq.${game.id}`,
+        },
+        async (payload) => {
+          const newTurn = payload.new as {
+            id: string;
+            drawer_id: string;
+            drawing_image_url: string | null;
+          };
+
+          // If we're the drawer and this turn doesn't have a drawing image yet, capture and save it
+          if (
+            gameState.isDrawer &&
+            newTurn.drawer_id === user.id &&
+            !newTurn.drawing_image_url
+          ) {
+            try {
+              const drawingImageUrl = await captureDrawing();
+              if (drawingImageUrl) {
+                await updateTurnDrawingImage(newTurn.id, drawingImageUrl);
+                console.log("Drawing captured and saved for turn:", newTurn.id);
+                toast.success("Disegno salvato!", {
+                  description: "Il tuo disegno è stato salvato con successo.",
+                });
+              } else {
+                console.warn("No drawing to capture for turn:", newTurn.id);
+              }
+            } catch (error) {
+              console.error(
+                "Error capturing drawing for completed turn:",
+                error
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(turnsSubscription);
+    };
+  }, [game.id, gameState.isDrawer, user.id, supabase, captureDrawing]);
+
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer || gameState.turnEnded) return;
 
@@ -314,7 +367,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         guesserProfileId: currentPlayer.player_id || "",
         guessText: guess,
         timeRemaining: gameState.timeRemaining,
-        drawingImageUrl: undefined, // Will be handled by drawer if needed
+        drawingImageUrl: undefined, // Drawing will be captured separately by drawer
       });
 
       if (!result.success) {
