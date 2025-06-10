@@ -1,5 +1,6 @@
 "use server";
 
+import { validateGuess } from "@/lib/utils/guess-validation";
 import { createClient } from "./client";
 import { getCardTitle } from "./supabase-cards";
 import {
@@ -7,8 +8,6 @@ import {
   getGameTimerDuration,
   updateGameTimerEnd,
 } from "./supabase-games";
-import { insertGuess } from "./supabase-guesses";
-import { getPlayerScore } from "./supabase-players";
 import type {
   AtomicGuessParams,
   AtomicGuessResult,
@@ -18,41 +17,6 @@ import type {
 } from "./types";
 
 const supabase = createClient();
-
-// Submit a guess - simplified to only handle guess insertion
-export const submitGuess = async (
-  gameId: string,
-  playerId: string,
-  guessText: string
-): Promise<{ isCorrect: boolean; currentScore?: number }> => {
-  try {
-    // Get current card ID
-    const currentCardId = await getGameCurrentCardId(gameId);
-
-    // Get the card to check if guess is correct
-    const card = await getCardTitle(currentCardId);
-
-    // Check if guess is correct (case insensitive, trimmed)
-    const isCorrect =
-      guessText.toLowerCase().trim() === card.title.toLowerCase().trim();
-
-    // Always insert the guess first
-    await insertGuess(gameId, playerId, guessText, isCorrect);
-
-    // If correct, return current score for reference
-    if (isCorrect) {
-      const currentScore = await getPlayerScore(playerId);
-      return { isCorrect: true, currentScore };
-    }
-
-    return { isCorrect: false };
-  } catch (error: unknown) {
-    console.error("Error in submitGuess:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to submit guess";
-    throw new Error(message);
-  }
-};
 
 export async function completeTimeUpTurn(
   params: TurnCompletionParams
@@ -123,16 +87,52 @@ export const submitGuessAtomic = async (
   params: AtomicGuessParams
 ): Promise<AtomicGuessResult> => {
   try {
+    // Get the current card and game category for AI validation
+    const currentCardId = await getGameCurrentCardId(params.gameId);
+    const card = await getCardTitle(currentCardId);
+
+    const submissionTimestamp = Date.now();
+
+    // Validate with AI using direct function call
+    const validationResult = await validateGuess({
+      guess: params.guessText,
+      correctAnswer: card.title,
+      category: params.category,
+    });
+
+    // If guess is incorrect, return immediately without calling database
+    if (!validationResult.isCorrect) {
+      return {
+        guess_id: null,
+        is_correct: false,
+        success: true,
+        game_completed: false,
+      };
+    }
+
+    // Calculate actual time remaining based on submission timestamp
+    const actualTimeRemaining = submissionTimestamp
+      ? Math.max(
+          0,
+          params.timeRemaining -
+            Math.floor((Date.now() - submissionTimestamp) / 1000)
+        )
+      : params.timeRemaining;
+
+    // Submit guess and complete turn if correct
     const { data, error } = await supabase.rpc(
       "submit_guess_and_complete_turn_if_correct",
       {
         p_game_id: params.gameId,
         p_guesser_profile_id: params.guesserProfileId,
         p_guess_text: params.guessText,
-        p_time_remaining: params.timeRemaining,
+        p_time_remaining: actualTimeRemaining,
         p_drawing_image_url: params.drawingImageUrl,
+        p_is_correct: validationResult.isCorrect,
       }
     );
+    console.log("🚀 ~ error:", error);
+    console.log("🚀 ~ data:", data);
 
     if (error) {
       console.error("Error in atomic guess submission:", error);

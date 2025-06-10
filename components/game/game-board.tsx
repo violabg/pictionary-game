@@ -315,6 +315,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         guesserProfileId: currentPlayer.player_id || "",
         guessText: guess,
         timeRemaining: gameState.timeRemaining,
+        category: game.category,
         drawingImageUrl: undefined, // Drawing will be captured separately by drawer
       });
 
@@ -328,7 +329,6 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       // If guess is correct, handle turn completion
       if (result.is_correct) {
         try {
-          console.log("result.turn_id :>> ", result.turn_id);
           const drawingImageUrl = await captureDrawing();
           if (drawingImageUrl && result.turn_id) {
             await updateTurnDrawingImage(result.turn_id, drawingImageUrl);

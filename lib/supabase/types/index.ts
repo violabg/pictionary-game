@@ -360,6 +360,7 @@ export type Database = {
           p_guess_text: string;
           p_time_remaining: number;
           p_drawing_image_url?: string;
+          p_is_correct: boolean;
         };
         Returns: {
           guess_id: string | null;
@@ -561,5 +562,6 @@ export interface AtomicGuessParams {
   guesserProfileId: string;
   guessText: string;
   timeRemaining: number;
+  category: string;
   drawingImageUrl?: string;
 }
