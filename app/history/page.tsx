@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase/supabase-turns";
 import { Suspense } from "react";
 
+const ITEMS_PER_PAGE = 10;
 interface SearchParams {
   category?: string;
   page?: string;
@@ -41,7 +42,7 @@ export default async function HistoryPage({
 
   try {
     const [gameHistoryData, categories] = await Promise.all([
-      getGameHistory(user.id, page, 10, category),
+      getGameHistory(user.id, page, ITEMS_PER_PAGE, category),
       getGameCategories(),
     ]);
 
@@ -94,12 +95,12 @@ export default async function HistoryPage({
                 </Accordion>
 
                 {/* Pagination */}
-                {total > 10 && (
+                {total > ITEMS_PER_PAGE && (
                   <div className="mt-8">
                     <HistoryPagination
                       currentPage={page}
                       totalItems={total}
-                      itemsPerPage={10}
+                      itemsPerPage={ITEMS_PER_PAGE}
                       category={category}
                     />
                   </div>

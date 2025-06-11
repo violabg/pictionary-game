@@ -9,7 +9,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Loader2 } from "lucide-react";
 import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 
 interface HistoryPaginationProps {
   currentPage: number;
@@ -24,7 +27,15 @@ export default function HistoryPagination({
   itemsPerPage,
   category,
 }: HistoryPaginationProps) {
+  const [, startTransition] = useTransition();
+  const [loadingPage, setLoadingPage] = useState<number | null>(null);
+  const router = useRouter();
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Clear loading state when currentPage changes
+  useEffect(() => {
+    setLoadingPage(null);
+  }, [currentPage]);
 
   // Don't show pagination if there's only one page or less
   if (totalPages <= 1) return null;
@@ -36,6 +47,13 @@ export default function HistoryPagination({
       params.set("category", category);
     }
     return `/history?${params.toString()}` as Route;
+  };
+
+  const handlePageChange = (page: number) => {
+    setLoadingPage(page);
+    startTransition(() => {
+      router.push(createUrl(page));
+    });
   };
 
   const getVisiblePageNumbers = () => {
@@ -78,11 +96,23 @@ export default function HistoryPagination({
   const hasNext = currentPage < totalPages;
 
   return (
-    <Pagination>
+    <Pagination
+      className={loadingPage !== null ? "opacity-75 transition-opacity" : ""}
+    >
       <PaginationContent>
         {hasPrevious && (
           <PaginationItem>
-            <PaginationPrevious href={createUrl(currentPage - 1)} />
+            <PaginationPrevious
+              href={createUrl(currentPage - 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(currentPage - 1);
+              }}
+            >
+              {loadingPage === currentPage - 1 && (
+                <Loader2 className="mr-1 w-4 h-4 animate-spin" />
+              )}
+            </PaginationPrevious>
           </PaginationItem>
         )}
 
@@ -101,7 +131,14 @@ export default function HistoryPagination({
               <PaginationLink
                 href={createUrl(pageNumber)}
                 isActive={pageNumber === currentPage}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePageChange(pageNumber);
+                }}
               >
+                {loadingPage === pageNumber && (
+                  <Loader2 className="mr-1 w-4 h-4 animate-spin" />
+                )}
                 {pageNumber}
               </PaginationLink>
             </PaginationItem>
@@ -110,7 +147,17 @@ export default function HistoryPagination({
 
         {hasNext && (
           <PaginationItem>
-            <PaginationNext href={createUrl(currentPage + 1)} />
+            <PaginationNext
+              href={createUrl(currentPage + 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(currentPage + 1);
+              }}
+            >
+              {loadingPage === currentPage + 1 && (
+                <Loader2 className="mr-1 w-4 h-4 animate-spin" />
+              )}
+            </PaginationNext>
           </PaginationItem>
         )}
       </PaginationContent>
