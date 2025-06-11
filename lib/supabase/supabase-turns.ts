@@ -1,74 +1,7 @@
 import { createClient } from "./client";
-import type { Turn, TurnWithDetails } from "./types";
+import type { TurnWithDetails } from "./types";
 
 const supabase = await createClient();
-
-// Create a new turn record
-export async function createTurn(params: {
-  gameId: string;
-  cardId: string;
-  drawerId: string;
-  pointsAwarded: number;
-  turnNumber: number;
-  winnerProfileId?: string | null;
-  drawingImageUrl?: string | null;
-}): Promise<Turn> {
-  const {
-    gameId,
-    cardId,
-    drawerId,
-    winnerProfileId: winnerId,
-    pointsAwarded,
-    turnNumber,
-    drawingImageUrl = null, // Default to null if not provided
-  } = params;
-  const { data, error } = await supabase
-    .from("turns")
-    .insert({
-      game_id: gameId,
-      card_id: cardId,
-      drawer_id: drawerId,
-      winner_id: winnerId,
-      drawing_image_url: drawingImageUrl,
-      points_awarded: pointsAwarded,
-      turn_number: turnNumber,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating turn:", error);
-    throw new Error("Failed to create turn record");
-  }
-
-  return data;
-}
-
-// Get turns for a specific game
-export async function getTurnsForGame(
-  gameId: string
-): Promise<TurnWithDetails[]> {
-  const { data, error } = await supabase
-    .from("turns")
-    .select(
-      `
-      *,
-      card:cards(*),
-      drawer:profiles!turns_drawer_id_fkey(*),
-      winner:profiles!turns_winner_id_fkey(*),
-      game:games(*)
-    `
-    )
-    .eq("game_id", gameId)
-    .order("turn_number", { ascending: true });
-
-  if (error) {
-    console.error("Error fetching turns for game:", error);
-    throw new Error("Failed to fetch turns for game");
-  }
-
-  return data as unknown as TurnWithDetails[];
-}
 
 // Get paginated game history with turns
 export async function getGameHistory(
@@ -273,51 +206,6 @@ export async function getGameHistory(
     total,
     hasMore,
   };
-}
-
-// Get next turn number for a game
-export async function getNextTurnNumber(gameId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from("turns")
-    .select("turn_number")
-    .eq("game_id", gameId)
-    .order("turn_number", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    console.error("Error getting next turn number:", error);
-    throw new Error("Failed to get next turn number");
-  }
-
-  return data.length > 0 ? data[0].turn_number + 1 : 1;
-}
-
-// Upload drawing image to Supabase Storage
-export async function uploadDrawingImage(
-  gameId: string,
-  turnNumber: number,
-  imageBlob: Blob
-): Promise<string> {
-  const fileName = `drawings/${gameId}/turn-${turnNumber}-${Date.now()}.png`;
-
-  const { data, error } = await supabase.storage
-    .from("game-drawings")
-    .upload(fileName, imageBlob, {
-      contentType: "image/png",
-      upsert: false,
-    });
-
-  if (error) {
-    console.error("Error uploading drawing image:", error);
-    throw new Error("Failed to upload drawing image");
-  }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from("game-drawings")
-    .getPublicUrl(data.path);
-
-  return urlData.publicUrl;
 }
 
 // Get available categories for the filter

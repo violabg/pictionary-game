@@ -57,35 +57,6 @@ export const getGameCurrentCardId = async (gameId: string) => {
   return game.current_card_id;
 };
 
-export const getGameCurrentDrawerId = async (gameId: string) => {
-  const { data: game, error: gameError } = await supabase
-    .from("games")
-    .select("current_drawer_id")
-    .eq("id", gameId)
-    .single();
-
-  if (gameError) {
-    console.error("Error getting game:", gameError);
-    throw new Error("Failed to get game");
-  }
-
-  if (!game) {
-    throw new Error("Game not found");
-  }
-  return game.current_drawer_id;
-};
-
-export const updateGameStatus = async (
-  gameId: string,
-  status: "waiting" | "active" | "completed"
-) => {
-  const { error } = await supabase
-    .from("games")
-    .update({ status })
-    .eq("id", gameId);
-  return { error };
-};
-
 export const getRecentGamesForCategory = async (
   category: string,
   difficulty: string,
@@ -123,26 +94,6 @@ export const updateGamePostCardGeneration = async (
   }
 };
 
-export const updateGameForNextTurn = async (
-  gameId: string,
-  nextDrawerId: string,
-  nextCardId: string
-) => {
-  const { error: updateError } = await supabase
-    .from("games")
-    .update({
-      current_drawer_id: nextDrawerId,
-      current_card_id: nextCardId,
-      timer_end: null, // Reset timer for next turn
-    })
-    .eq("id", gameId);
-
-  if (updateError) {
-    console.error("Error updating game for next turn:", updateError);
-    throw new Error("Failed to update game for next turn");
-  }
-};
-
 export const getGameTimerDuration = async (gameId: string) => {
   const { data: game, error: gameError } = await supabase
     .from("games")
@@ -170,23 +121,6 @@ export const updateGameTimerEnd = async (gameId: string, timerEnd: string) => {
   if (updateError) {
     console.error("Error starting turn (updating timer_end):", updateError);
     throw new Error("Failed to start turn (updating timer_end)");
-  }
-};
-
-export const setGameAsCompleted = async (gameId: string) => {
-  const { error: endError } = await supabase
-    .from("games")
-    .update({
-      status: "completed",
-      current_drawer_id: null,
-      current_card_id: null,
-      timer_end: null,
-    })
-    .eq("id", gameId);
-
-  if (endError) {
-    console.error("Error ending game:", endError);
-    throw new Error("Failed to end game");
   }
 };
 

@@ -14,16 +14,6 @@ export const getProfileById = async (id: string) => {
   return data as Profile;
 };
 
-export const getProfileByUsername = async (user_name: string) => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_name", user_name)
-    .maybeSingle();
-  if (error) throw error;
-  return data as Profile | null;
-};
-
 export const createProfile = async (id: string, user_name: string) => {
   const { error } = await supabase.from("profiles").insert({ id, user_name });
   if (error) throw error;

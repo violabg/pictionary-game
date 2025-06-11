@@ -1,5 +1,4 @@
 import type { Player, Profile } from "@/lib/supabase/types";
-import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./client";
 
 const supabase = createClient();
@@ -37,40 +36,6 @@ export const getPlayerInGame = async (game_id: string, player_id: string) => {
   return data as Player | null;
 };
 
-export const getPlayerScore = async (playerId: string) => {
-  const { data: player, error: playerError } = await supabase
-    .from("players")
-    .select("score")
-    .eq("id", playerId)
-    .single();
-
-  if (playerError) {
-    console.error("Error getting player score:", playerError);
-    throw new Error("Failed to get player score");
-  }
-
-  if (!player) {
-    throw new Error("Player not found");
-  }
-  return player.score;
-};
-
-export async function updatePlayerScore(playerId: string, newScore: number) {
-  const { error: updateError } = await supabase
-    .from("players")
-    .update({
-      score: newScore,
-    })
-    .eq("id", playerId);
-
-  if (updateError) {
-    console.error("Error updating score:", updateError);
-    throw new Error("Failed to update score");
-  }
-}
-
-// selectWinner function removed - now using atomic turn completion functions
-
 export async function getPlayersForGameOrdered(gameId: string) {
   const { data: players, error: playersError } = await supabase
     .from("players")
@@ -87,22 +52,6 @@ export async function getPlayersForGameOrdered(gameId: string) {
     throw new Error("No players found");
   }
   return players;
-}
-
-export async function getLeaderboardPlayers(
-  supabase: SupabaseClient,
-  offset: number,
-  limit: number,
-  languageFilter?: string
-) {
-  // Use Supabase RPC to get leaderboard players (overall or by language)
-  const { data, error } = await supabase.rpc("get_leaderboard_players", {
-    offset_value: offset,
-    limit_value: limit,
-    language_filter: languageFilter ?? null,
-  });
-  if (error) throw error;
-  return data || [];
 }
 
 export function subscribeToGamePlayers(
