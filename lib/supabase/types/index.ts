@@ -562,6 +562,5 @@ export interface AtomicGuessParams {
   guesserProfileId: string;
   guessText: string;
   timeRemaining: number;
-  category: string;
   drawingImageUrl?: string;
 }

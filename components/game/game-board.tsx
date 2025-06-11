@@ -8,8 +8,8 @@ import {
   completeTimeUpTurn,
   startTurn,
   submitGuessAtomic,
+  validateGuessWithAI,
 } from "@/lib/supabase/supabase-guess-and-turns";
-import { updateTurnDrawingImage } from "@/lib/supabase/supabase-turns-client";
 import {
   AtomicTurnResult,
   Card as CardType,
@@ -309,14 +309,48 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     if (!currentPlayer || gameState.turnEnded) return;
 
     try {
-      // Use atomic function to handle both guess submission and turn completion
+      // Record the time when validation starts
+      const validationStartTime = Date.now();
+
+      // Step 1: Validate guess with AI first
+      const validationResult = await validateGuessWithAI(
+        game.id,
+        guess,
+        game.category
+      );
+
+      if (!validationResult.isCorrect) {
+        // Show error toast for incorrect guess
+        toast.error("Risposta errata", {
+          description: "Riprova con un'altra risposta!",
+        });
+        return;
+      }
+
+      // Calculate time spent on validation and adjust remaining time
+      const validationEndTime = Date.now();
+      const validationLatency = Math.floor(
+        (validationEndTime - validationStartTime) / 1000
+      );
+      const adjustedTimeRemaining = Math.max(
+        0,
+        gameState.timeRemaining - validationLatency
+      );
+
+      console.log(
+        `AI validation took ${validationLatency}s, adjusted time: ${gameState.timeRemaining} -> ${adjustedTimeRemaining}`
+      );
+
+      // Step 2: If validation passed, capture drawing (if drawer) and submit
+      const drawingImageUrl = await captureDrawing();
+
+      // Step 3: Submit the correct guess atomically with adjusted time
       const result = await submitGuessAtomic({
         gameId: game.id,
         guesserProfileId: currentPlayer.player_id || "",
         guessText: guess,
-        timeRemaining: gameState.timeRemaining,
-        category: game.category,
-        drawingImageUrl: undefined, // Drawing will be captured separately by drawer
+        timeRemaining: adjustedTimeRemaining,
+        drawingImageUrl: drawingImageUrl,
       });
 
       if (!result.success) {
@@ -326,54 +360,34 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         return;
       }
 
-      // If guess is correct, handle turn completion
-      if (result.is_correct) {
-        try {
-          const drawingImageUrl = await captureDrawing();
-          if (drawingImageUrl && result.turn_id) {
-            await updateTurnDrawingImage(result.turn_id, drawingImageUrl);
-            console.log("Drawing captured and saved for turn:", result.turn_id);
-            toast.success("Disegno salvato!", {
-              description: "Il tuo disegno è stato salvato con successo.",
-            });
-          } else {
-            console.warn("No drawing to capture for turn:", result.turn_id);
-          }
-        } catch (error) {
-          console.error("Error capturing drawing for completed turn:", error);
-        }
-        setGameState((prev) => ({ ...prev, turnEnded: true }));
+      // Step 4: Handle successful submission
+      setGameState((prev) => ({ ...prev, turnEnded: true }));
 
-        const drawerPoints = result.drawer_new_score
-          ? result.drawer_new_score -
-            (players.find(
-              (p: PlayerWithProfile) => p.player_id === game.current_drawer_id
-            )?.score || 0)
-          : Math.max(10, Math.floor(gameState.timeRemaining / 4));
+      const drawerPoints = result.drawer_new_score
+        ? result.drawer_new_score -
+          (players.find(
+            (p: PlayerWithProfile) => p.player_id === game.current_drawer_id
+          )?.score || 0)
+        : Math.max(10, Math.floor(gameState.timeRemaining / 4));
 
-        toast.success("Corretto!", {
-          description: `Hai indovinato e guadagnato ${gameState.timeRemaining} punti! Il disegnatore ha guadagnato ${drawerPoints} punti!`,
-        });
+      toast.success("Corretto!", {
+        description: `Hai indovinato e guadagnato ${adjustedTimeRemaining} punti! Il disegnatore ha guadagnato ${drawerPoints} punti!`,
+      });
 
-        // Handle the turn result (similar to what drawer was doing)
-        handleTurnResult({
-          success: true,
-          next_drawer_id: result.next_drawer_id,
-          next_card_id: result.next_card_id,
-          guesser_new_score: result.guesser_new_score,
-          drawer_new_score: result.drawer_new_score,
-          turn_id: result.turn_id,
-          game_completed: result.game_completed,
-        });
-      } else {
-        toast.error("Risposta inviata", {
-          description: "Risposta errata, riprova!",
-        });
-      }
+      // Handle the turn result
+      handleTurnResult({
+        success: true,
+        next_drawer_id: result.next_drawer_id,
+        next_card_id: result.next_card_id,
+        guesser_new_score: result.guesser_new_score,
+        drawer_new_score: result.drawer_new_score,
+        turn_id: result.turn_id,
+        game_completed: result.game_completed,
+      });
     } catch (error) {
-      console.error("Error submitting guess:", error);
+      console.error("Error in guess submission:", error);
       toast.error("Error", {
-        description: "Failed to submit guess",
+        description: "Failed to process guess",
       });
     }
   };

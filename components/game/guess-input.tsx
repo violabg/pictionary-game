@@ -1,14 +1,12 @@
 "use client";
 
-import type React from "react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { useState } from "react";
 
 interface GuessInputProps {
-  onSubmit: (guess: string) => void;
+  onSubmit: (guess: string) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -17,15 +15,20 @@ export default function GuessInput({
   disabled = false,
 }: GuessInputProps) {
   const [guess, setGuess] = useState("");
-  const [lastGuess, setLastGuess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guess.trim()) return;
+    if (!guess.trim() || isSubmitting) return;
 
-    setLastGuess(guess.trim());
-    onSubmit(guess.trim());
-    setGuess("");
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit(guess.trim());
+      setGuess("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -35,16 +38,25 @@ export default function GuessInput({
         placeholder="Scrivi qui il tuo tentativo..."
         value={guess}
         onChange={(e) => setGuess(e.target.value)}
-        disabled={disabled}
+        disabled={disabled || isSubmitting}
         className="grow glass-card"
       />
       <Button
         type="submit"
         variant="gradient"
-        disabled={disabled || !guess.trim()}
+        disabled={disabled || !guess.trim() || isSubmitting}
       >
-        <Send className="mr-2 w-4 h-4" />
-        Invia
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+            Verifica...
+          </>
+        ) : (
+          <>
+            <Send className="mr-2 w-4 h-4" />
+            Invia
+          </>
+        )}
       </Button>
     </form>
   );

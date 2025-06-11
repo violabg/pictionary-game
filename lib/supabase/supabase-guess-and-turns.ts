@@ -81,44 +81,42 @@ export async function startTurn(gameId: string): Promise<void> {
   }
 }
 
+// Validate guess with AI (separate function for better UX)
+export const validateGuessWithAI = async (
+  gameId: string,
+  guess: string,
+  category: string
+): Promise<{ isCorrect: boolean; explanation: string }> => {
+  try {
+    // Get the current card for validation
+    const currentCardId = await getGameCurrentCardId(gameId);
+    const card = await getCardTitle(currentCardId);
+
+    const validationResult = await validateGuess({
+      guess,
+      correctAnswer: card.title,
+      category,
+    });
+
+    return {
+      isCorrect: validationResult.isCorrect,
+      explanation: validationResult.explanation,
+    };
+  } catch (error: unknown) {
+    console.error("Error in validateGuessWithAI:", error);
+    return {
+      isCorrect: false,
+      explanation: "Validation failed due to an error",
+    };
+  }
+};
+
 // Atomic guess submission that handles both guess insertion and turn completion
 // This prevents race conditions by doing everything in a single database transaction
 export const submitGuessAtomic = async (
   params: AtomicGuessParams
 ): Promise<AtomicGuessResult> => {
   try {
-    // Get the current card and game category for AI validation
-    const currentCardId = await getGameCurrentCardId(params.gameId);
-    const card = await getCardTitle(currentCardId);
-
-    const submissionTimestamp = Date.now();
-
-    // Validate with AI using direct function call
-    const validationResult = await validateGuess({
-      guess: params.guessText,
-      correctAnswer: card.title,
-      category: params.category,
-    });
-
-    // If guess is incorrect, return immediately without calling database
-    if (!validationResult.isCorrect) {
-      return {
-        guess_id: null,
-        is_correct: false,
-        success: true,
-        game_completed: false,
-      };
-    }
-
-    // Calculate actual time remaining based on submission timestamp
-    const actualTimeRemaining = submissionTimestamp
-      ? Math.max(
-          0,
-          params.timeRemaining -
-            Math.floor((Date.now() - submissionTimestamp) / 1000)
-        )
-      : params.timeRemaining;
-
     // Submit guess and complete turn if correct
     const { data, error } = await supabase.rpc(
       "submit_guess_and_complete_turn_if_correct",
@@ -126,13 +124,11 @@ export const submitGuessAtomic = async (
         p_game_id: params.gameId,
         p_guesser_profile_id: params.guesserProfileId,
         p_guess_text: params.guessText,
-        p_time_remaining: actualTimeRemaining,
+        p_time_remaining: params.timeRemaining,
         p_drawing_image_url: params.drawingImageUrl,
-        p_is_correct: validationResult.isCorrect,
+        p_is_correct: true, // Only call this function if validation passed
       }
     );
-    console.log("🚀 ~ error:", error);
-    console.log("🚀 ~ data:", data);
 
     if (error) {
       console.error("Error in atomic guess submission:", error);

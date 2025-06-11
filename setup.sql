@@ -752,7 +752,11 @@ DECLARE
     v_card_title TEXT;
     v_is_correct BOOLEAN;
     v_guess_id UUID;
+    v_guesser_current_score INTEGER;
+    v_drawer_current_score INTEGER;
+    v_guesser_points INTEGER;
     v_drawer_points INTEGER;
+    v_turn_number INTEGER;
     v_turn_id UUID;
     v_next_drawer_id UUID;
     v_next_card_id UUID;
@@ -826,49 +830,56 @@ BEGIN
         SET used = TRUE
         WHERE id = v_current_card_id;
 
-        -- Get next card and drawer
-        WITH next_card AS (
-            SELECT id
-            FROM cards
-            WHERE game_id = p_game_id AND NOT used
-            ORDER BY RANDOM()
-            LIMIT 1
-        ),
-        next_drawer AS (
-            SELECT player_id
+        -- Determine next drawer (same logic as other functions)
+        WITH ordered_players AS (
+            SELECT player_id, order_index,
+                   ROW_NUMBER() OVER (ORDER BY order_index) as rn
             FROM players
             WHERE game_id = p_game_id
-            ORDER BY 
-                CASE WHEN order_index > (
-                    SELECT order_index 
-                    FROM players 
-                    WHERE game_id = p_game_id AND player_id = v_current_drawer_id
-                ) THEN order_index END ASC NULLS LAST,
-                order_index ASC
-            LIMIT 1
+            ORDER BY order_index
+        ),
+        current_drawer_rank AS (
+            SELECT rn as current_rn
+            FROM ordered_players
+            WHERE player_id = v_current_drawer_id
+        ),
+        total_players AS (
+            SELECT COUNT(*) as total
+            FROM ordered_players
         )
-        SELECT
-            next_drawer.player_id,
-            next_card.id,
-            next_card.id IS NULL
-        INTO
-            v_next_drawer_id,
-            v_next_card_id,
-            v_game_completed
-        FROM next_drawer
-        CROSS JOIN next_card;
+        SELECT player_id INTO v_next_drawer_id
+        FROM ordered_players, current_drawer_rank, total_players
+        WHERE rn = (current_rn % total) + 1;
+
+        -- Get next unused card
+        SELECT id INTO v_next_card_id
+        FROM cards
+        WHERE game_id = p_game_id AND used = FALSE
+        ORDER BY RANDOM()
+        LIMIT 1;
+
+        -- Check if game is completed
+        IF v_next_card_id IS NULL THEN
+            v_game_completed := TRUE;
+        END IF;
 
         -- Update game state
-        UPDATE games
-        SET
-            current_drawer_id = v_next_drawer_id,
-            current_card_id = v_next_card_id,
-            status = CASE 
-                WHEN v_game_completed THEN 'completed'
-                ELSE status
-            END,
-            timer_end = NULL
-        WHERE id = p_game_id;
+        IF v_game_completed THEN
+            -- No more cards, complete the game
+            UPDATE games
+            SET status = 'completed',
+                current_drawer_id = NULL,
+                current_card_id = NULL,
+                timer_end = NULL
+            WHERE id = p_game_id;
+        ELSE
+            -- Set up next turn
+            UPDATE games
+            SET current_drawer_id = v_next_drawer_id,
+                current_card_id = v_next_card_id,
+                timer_end = NULL
+            WHERE id = p_game_id;
+        END IF;
 
         RETURN QUERY
         SELECT
