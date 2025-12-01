@@ -2,6 +2,7 @@
 
 import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import {
   CardInsert,
@@ -69,7 +70,7 @@ export async function seedCardsForGame(
     }
 
     const cardsToInsert: CardInsert[] = cards.map((card) => ({
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       game_id: gameId,
       title: card.title,
       description: card.description,

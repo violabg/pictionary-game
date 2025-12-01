@@ -1,5 +1,4 @@
 import type { Profile } from "@/lib/supabase/types";
-import * as crypto from "crypto";
 import { createClient } from "./client";
 
 const supabase = createClient();
@@ -36,16 +35,6 @@ export const ensureUserProfile = async (user: {
       typeof (e as { code?: string }).code === "string" &&
       (e as { code: string }).code !== "PGRST116"
     ) {
-      return false;
-    }
-  }
-  if (!profile) {
-    const user_name =
-      user.email?.split("@")[0] ||
-      `user_${crypto.randomBytes(6).toString("base64url").substring(0, 6)}`;
-    try {
-      await createProfile(user.id, user_name);
-    } catch {
       return false;
     }
   }
