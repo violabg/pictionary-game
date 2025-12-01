@@ -44,12 +44,14 @@ const createGameSchema = z.object({
   maxPlayers: z.coerce
     .number()
     .min(2, "Il numero massimo di giocatori è obbligatorio"),
+
   category: z.string().min(1, "La categoria è obbligatoria"),
   difficulty: z.string().min(1, "La difficoltà è obbligatoria"),
+
   timer: z.coerce
     .number()
     .min(30, "Il timer deve essere almeno 30 secondi")
-    .max(600, "Il timer deve essere al massimo 600 secondi"),
+    .max(600, "Il timer deve essere al massimo 600 secondi")
 });
 
 type CreateGameForm = z.infer<typeof createGameSchema>;
@@ -95,7 +97,7 @@ export const CreateGameForm = ({ user }: { user: User }) => {
       router.push(`/game/${game.code}`);
     } catch (error: unknown) {
       toast.error("Error", {
-        description: error instanceof Error ? error.message : String(error),
+        description: error instanceof Error ? error.message : String(error)
       });
     } finally {
       setLoading(false);

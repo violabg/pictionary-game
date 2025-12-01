@@ -10,7 +10,11 @@ export const addPlayerToGame = async (
 ) => {
   const { error } = await supabase
     .from("players")
-    .insert({ game_id, player_id, order_index });
+    .insert({
+    game_id,
+    player_id,
+    order_index
+  });
   if (error) throw error;
   return true;
 };
@@ -20,7 +24,9 @@ export const getPlayersForGame = async (game_id: string) => {
     .from("players")
     .select("*, profile:player_id(id, name, full_name, user_name, avatar_url)")
     .eq("game_id", game_id)
-    .order("order_index", { ascending: true });
+    .order("order_index", {
+    ascending: true
+  });
   if (error) throw error;
   return data as (Player & { profile: Profile })[];
 };
@@ -41,7 +47,9 @@ export async function getPlayersForGameOrdered(gameId: string) {
     .from("players")
     .select("player_id, order_index")
     .eq("game_id", gameId)
-    .order("order_index", { ascending: true });
+    .order("order_index", {
+    ascending: true
+  });
 
   if (playersError) {
     console.error("Error getting players:", playersError);
@@ -70,7 +78,7 @@ export function subscribeToGamePlayers(
         event: "*",
         schema: "public",
         table: "players",
-        filter: `game_id=eq.${gameId}`,
+        filter: `game_id=eq.${gameId}`
       },
       (payload) => {
         handler({

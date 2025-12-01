@@ -27,7 +27,9 @@ import { z } from "zod";
 import PasswordInput from "../ui/password-input";
 
 const updatePasswordSchema = z.object({
-  password: z.string().min(6, { message: "Minimo 6 caratteri" }),
+  password: z.string().min(6, {
+    error: "Minimo 6 caratteri"
+  })
 });
 type UpdatePasswordFormValues = z.infer<typeof updatePasswordSchema>;
 
@@ -49,7 +51,7 @@ export function UpdatePasswordForm({
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({
-        password: values.password,
+        password: values.password
       });
       if (error) throw error;
       router.push("/");

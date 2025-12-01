@@ -30,30 +30,50 @@ import { z } from "zod";
 
 const signUpSchema = z
   .object({
-    first_name: z
-      .string()
-      .min(2, { message: "Nome deve essere almeno 2 caratteri" })
-      .max(30, { message: "Nome deve essere massimo 30 caratteri" }),
-    last_name: z
-      .string()
-      .min(2, { message: "Cognome deve essere almeno 2 caratteri" })
-      .max(30, { message: "Cognome deve essere massimo 30 caratteri" }),
-    user_name: z
-      .string()
-      .min(3, { message: "Username deve essere almeno 3 caratteri" })
-      .max(20, { message: "Username deve essere massimo 20 caratteri" })
-      .regex(/^[a-zA-Z0-9_-]+$/, {
-        message:
-          "Username può contenere solo lettere, numeri, underscore e trattini",
-      }),
-    email: z.string().email({ message: "Email non valida" }),
-    password: z.string().min(6, { message: "Minimo 6 caratteri" }),
-    repeatPassword: z.string().min(6, { message: "Minimo 6 caratteri" }),
+  first_name: z
+    .string()
+    .min(2, {
+    error: "Nome deve essere almeno 2 caratteri"
   })
+    .max(30, {
+    error: "Nome deve essere massimo 30 caratteri"
+  }),
+
+  last_name: z
+    .string()
+    .min(2, {
+    error: "Cognome deve essere almeno 2 caratteri"
+  })
+    .max(30, {
+    error: "Cognome deve essere massimo 30 caratteri"
+  }),
+
+  user_name: z
+    .string()
+    .min(3, {
+    error: "Username deve essere almeno 3 caratteri"
+  })
+    .max(20, {
+    error: "Username deve essere massimo 20 caratteri"
+  })
+    .regex(/^[a-zA-Z0-9_-]+$/, {
+    error: "Username può contenere solo lettere, numeri, underscore e trattini"
+  }),
+
+  email: z.email(),
+
+  password: z.string().min(6, {
+    error: "Minimo 6 caratteri"
+  }),
+
+  repeatPassword: z.string().min(6, {
+    error: "Minimo 6 caratteri"
+  })
+})
   .refine((data) => data.password === data.repeatPassword, {
-    message: "Passwords do not match",
-    path: ["repeatPassword"],
-  });
+  path: ["repeatPassword"],
+  error: "Passwords do not match"
+});
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export function SignUpForm({
@@ -83,6 +103,7 @@ export function SignUpForm({
       const { error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
+
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
@@ -90,7 +111,7 @@ export function SignUpForm({
             name: `${values.first_name} ${values.last_name}`,
             full_name: `${values.first_name} ${values.last_name}`,
           },
-        },
+        }
       });
       if (error) throw error;
       router.push("/auth/sign-up-success");

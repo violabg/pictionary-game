@@ -79,7 +79,9 @@ export async function getGameHistory(
     )
     .in("id", gameIdList)
     .eq("status", "completed")
-    .order("created_at", { ascending: false })
+    .order("created_at", {
+    ascending: false
+  })
     .range(offset, offset + limit - 1);
 
   // Add category filter if provided
@@ -155,7 +157,10 @@ export async function getGameHistory(
   // Get total count for pagination
   let countQuery = supabase
     .from("games")
-    .select("id", { count: "exact", head: true })
+    .select("id", {
+    count: "exact",
+    head: true
+  })
     .in("id", gameIdList)
     .eq("status", "completed");
 

@@ -14,7 +14,10 @@ export const getProfileById = async (id: string) => {
 };
 
 export const createProfile = async (id: string, user_name: string) => {
-  const { error } = await supabase.from("profiles").insert({ id, user_name });
+  const { error } = await supabase.from("profiles").insert({
+    id,
+    user_name
+  });
   if (error) throw error;
   return true;
 };
@@ -44,7 +47,7 @@ export const ensureUserProfile = async (user: {
 export async function getProfileWithScore(userId: string) {
   // Use Supabase RPC to get leaderboard players (summed score, unique per player, paginated)
   const { data, error } = await supabase.rpc("get_user_profile_with_score", {
-    user_id: userId,
+    user_id: userId
   });
   if (error) throw error;
   return data[0];
@@ -61,7 +64,11 @@ export function subscribeToProfiles(
     .channel("profiles-updates")
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "profiles" },
+      {
+        event: "*",
+        schema: "public",
+        table: "profiles"
+      },
       (payload) => {
         handler({
           eventType: payload.eventType,

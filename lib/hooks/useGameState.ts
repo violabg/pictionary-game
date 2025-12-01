@@ -41,11 +41,13 @@ const startGame = async (gameId: string): Promise<void> => {
     const { error: updateError } = await supabase
       .from("games")
       .update({
-        status: "active",
-        current_drawer_id: players[0].player_id,
-        current_card_id: card.id,
-        timer_end: null, // Don't set timer_end until drawer starts their turn
-      })
+      status: "active",
+      current_drawer_id: players[0].player_id,
+      current_card_id: card.id,
+
+      // Don't set timer_end until drawer starts their turn
+      timer_end: null
+    })
       .eq("id", gameId);
 
     if (updateError) {
@@ -97,7 +99,7 @@ export function useGameState({
         toast.error("Errore", {
           description:
             "Impossibile caricare i dati della partita: " +
-            (error instanceof Error ? error.message : String(error)),
+            (error instanceof Error ? error.message : String(error))
         });
         router.push("/gioca");
       } finally {
@@ -154,7 +156,7 @@ export function useGameState({
       toast.error("Errore", {
         description:
           "Impossibile avviare la partita: " +
-          (error instanceof Error ? error.message : String(error)),
+          (error instanceof Error ? error.message : String(error))
       });
     } finally {
       setLoadingState("idle");

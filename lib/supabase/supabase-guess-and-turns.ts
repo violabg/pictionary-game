@@ -24,7 +24,7 @@ export async function completeTimeUpTurn(
   try {
     const { data, error } = await supabase.rpc("complete_turn_time_up", {
       p_game_id: params.gameId,
-      p_drawing_image_url: params.drawingImageUrl,
+      p_drawing_image_url: params.drawingImageUrl
     });
 
     if (error) {
@@ -47,7 +47,7 @@ export async function completeManualWinnerTurn(
       p_game_id: params.gameId,
       p_winner_id: params.winnerId,
       p_time_remaining: params.timeRemaining,
-      p_drawing_image_url: params.drawingImageUrl,
+      p_drawing_image_url: params.drawingImageUrl
     });
 
     if (error) {
@@ -126,7 +126,9 @@ export const submitGuessAtomic = async (
         p_guess_text: params.guessText,
         p_time_remaining: params.timeRemaining,
         p_drawing_image_url: params.drawingImageUrl,
-        p_is_correct: true, // Only call this function if validation passed
+
+        // Only call this function if validation passed
+        p_is_correct: true
       }
     );
 

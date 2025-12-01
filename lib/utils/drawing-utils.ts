@@ -22,9 +22,9 @@ export const captureAndUploadDrawing = async (
     const { data, error } = await supabase.storage
       .from("game-drawings")
       .upload(fileName, blob, {
-        contentType: "image/png",
-        upsert: false,
-      });
+      contentType: "image/png",
+      upsert: false
+    });
 
     if (error) {
       console.error("Error uploading drawing image:", error);

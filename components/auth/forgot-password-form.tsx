@@ -27,7 +27,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email({ message: "Email non valida" }),
+  email: z.email()
 });
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
@@ -51,7 +51,7 @@ export function ForgotPasswordForm({
       const { error } = await supabase.auth.resetPasswordForEmail(
         values.email,
         {
-          redirectTo: `${window.location.origin}/auth/update-password`,
+          redirectTo: `${window.location.origin}/auth/update-password`
         }
       );
       if (error) throw error;

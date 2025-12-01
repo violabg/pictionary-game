@@ -117,7 +117,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     if (result.success) {
       if (result.game_completed) {
         toast.success("Game Completed!", {
-          description: "All cards have been used. Well played!",
+          description: "All cards have been used. Well played!"
         });
       }
       // else {
@@ -128,7 +128,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       // Real-time updates will handle game state changes
     } else {
       toast.error("Turn failed", {
-        description: "Failed to complete turn. Please try again.",
+        description: "Failed to complete turn. Please try again."
       });
       setGameState((prev) => ({ ...prev, turnEnded: false }));
     }
@@ -154,7 +154,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     } catch (error) {
       console.error("Error completing time up turn:", error);
       toast.error("Error", {
-        description: "Failed to complete turn",
+        description: "Failed to complete turn"
       });
       setGameState((prev) => ({ ...prev, turnEnded: false }));
     }
@@ -265,7 +265,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           event: "INSERT",
           schema: "public",
           table: "guesses",
-          filter: `game_id=eq.${game.id}`,
+          filter: `game_id=eq.${game.id}`
         },
         async (payload) => {
           const guess = payload.new as Guess;
@@ -284,7 +284,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
               // Show toast notification for the drawer
               if (gameState.isDrawer) {
                 toast.success("Correct Guess!", {
-                  description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`,
+                  description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`
                 });
               }
             }
@@ -323,7 +323,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       if (!validationResult.isCorrect) {
         // Show error toast for incorrect guess
         toast.error("Risposta errata", {
-          description: "Riprova con un'altra risposta!",
+          description: "Riprova con un'altra risposta!"
         });
         return;
       }
@@ -352,7 +352,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
       if (!result.success) {
         toast.error("Error", {
-          description: "Failed to submit guess",
+          description: "Failed to submit guess"
         });
         return;
       }
@@ -368,7 +368,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
         : Math.max(10, Math.floor(gameState.timeRemaining / 4));
 
       toast.success("Corretto!", {
-        description: `Hai indovinato e guadagnato ${adjustedTimeRemaining} punti! Il disegnatore ha guadagnato ${drawerPoints} punti!`,
+        description: `Hai indovinato e guadagnato ${adjustedTimeRemaining} punti! Il disegnatore ha guadagnato ${drawerPoints} punti!`
       });
 
       // Handle the turn result
@@ -384,7 +384,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     } catch (error) {
       console.error("Error in guess submission:", error);
       toast.error("Error", {
-        description: "Failed to process guess",
+        description: "Failed to process guess"
       });
     }
   };
@@ -419,7 +419,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       console.error("Error selecting winner:", error);
       setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
       toast.error("Error", {
-        description: "Failed to select winner",
+        description: "Failed to select winner"
       });
     }
   };
@@ -434,7 +434,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     } catch (error) {
       console.error("Error starting turn:", error);
       toast.error("Error", {
-        description: "Failed to start turn",
+        description: "Failed to start turn"
       });
     } finally {
       setGameState((prev) => ({ ...prev, isStartingTurn: false }));

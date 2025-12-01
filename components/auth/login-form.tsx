@@ -30,8 +30,11 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Email non valida" }),
-  password: z.string().min(6, { message: "Minimo 6 caratteri" }),
+  email: z.email(),
+
+  password: z.string().min(6, {
+    error: "Minimo 6 caratteri"
+  })
 });
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -54,7 +57,7 @@ export function LoginForm({
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: values.email,
-        password: values.password,
+        password: values.password
       });
       if (error) throw error;
       router.push("/");
@@ -75,9 +78,10 @@ export function LoginForm({
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
+
         options: {
           redirectTo: `${window.location.origin}/auth/oauth?next=/gioca`,
-        },
+        }
       });
 
       if (error) throw error;

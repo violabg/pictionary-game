@@ -154,6 +154,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       supabase.channel(`drawing:${gameId}`).send({
         type: "broadcast",
         event: "drawing",
+
         payload: {
           type: "draw",
           data: {
@@ -162,7 +163,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
             color: tool === "brush" ? color : "#ffffff",
             lineWidth: tool === "brush" ? lineWidth : eraserWidth,
           },
-        },
+        }
       });
       prevPointRef.current = normCurrent;
     };
@@ -178,10 +179,11 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           supabase.channel(`drawing:${gameId}`).send({
             type: "broadcast",
             event: "drawing",
+
             payload: {
               type: "strokes",
               data: newStrokes,
-            },
+            }
           });
           return newStrokes;
         });
@@ -229,17 +231,19 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         supabase.channel(`drawing:${gameId}`).send({
           type: "broadcast",
           event: "drawing",
+
           payload: {
             type: "clear",
-          },
+          }
         });
         supabase.channel(`drawing:${gameId}`).send({
           type: "broadcast",
           event: "drawing",
+
           payload: {
             type: "strokes",
             data: [],
-          },
+          }
         });
       }
     }, [canvasRef, isDrawer, supabase, gameId]);
@@ -258,10 +262,11 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         supabase.channel(`drawing:${gameId}`).send({
           type: "broadcast",
           event: "drawing",
+
           payload: {
             type: "strokes",
             data: newStrokes,
-          },
+          }
         });
         return newStrokes;
       });
@@ -387,7 +392,9 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
       const drawingSubscription = supabase
         .channel(`drawing:${gameId}`)
-        .on("broadcast", { event: "drawing" }, (payload) => {
+        .on("broadcast", {
+        event: "drawing"
+      }, (payload) => {
           const { type, data } = payload.payload;
           const canvas = canvasRef.current;
           if (!canvas) return;

@@ -25,7 +25,7 @@ export function GameLobby({
     navigator.clipboard.writeText(game.code);
     toast.success("Codice partita copiato", {
       description:
-        "Condividi questo codice con i tuoi amici per unirsi alla partita",
+        "Condividi questo codice con i tuoi amici per unirsi alla partita"
     });
   };
 

@@ -120,7 +120,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
         if (!playerScores.has(turn.drawer.id)) {
           playerScores.set(turn.drawer.id, {
             score: 0,
-            profile: turn.drawer,
+            profile: turn.drawer
           });
         }
         const drawerEntry = playerScores.get(turn.drawer.id)!;
@@ -131,7 +131,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
           if (!playerScores.has(turn.winner.id)) {
             playerScores.set(turn.winner.id, {
               score: 0,
-              profile: turn.winner,
+              profile: turn.winner
             });
           }
           const winnerEntry = playerScores.get(turn.winner.id)!;

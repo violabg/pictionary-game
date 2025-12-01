@@ -32,7 +32,7 @@ const joinGameSchema = z.object({
   gameCode: z
     .string()
     .length(6, "Il codice deve essere di 6 caratteri")
-    .regex(/^[A-Z0-9]{6}$/, "Codice non valido"),
+    .regex(/^[A-Z0-9]{6}$/, "Codice non valido")
 });
 type JoinGameForm = z.infer<typeof joinGameSchema>;
 
@@ -74,7 +74,7 @@ export const JoinGameForm = ({ user }: { user: User }) => {
       router.push(`/game/${values.gameCode}`);
     } catch (error: unknown) {
       toast.error("Error", {
-        description: error instanceof Error ? error.message : String(error),
+        description: error instanceof Error ? error.message : String(error)
       });
     } finally {
       setLoading(false);

@@ -14,15 +14,18 @@ export const createGame = async (
   const { data, error } = await supabase
     .from("games")
     .insert({
-      current_drawer_id,
-      max_players,
-      code: "",
-      category,
-      status: "waiting",
-      cards_generated: false,
-      difficulty: difficulty, // Store the difficulty level
-      timer,
-    })
+    current_drawer_id,
+    max_players,
+    code: "",
+    category,
+    status: "waiting",
+    cards_generated: false,
+
+    // Store the difficulty level
+    difficulty: difficulty,
+
+    timer
+  })
     .select()
     .single();
   if (error) throw error;
@@ -83,9 +86,9 @@ export const updateGamePostCardGeneration = async (
   const { error } = await supabase
     .from("games")
     .update({
-      cards_generated: true,
-      card_title_length: firstCardTitleLength,
-    })
+    cards_generated: true,
+    card_title_length: firstCardTitleLength
+  })
     .eq("id", gameId);
 
   if (error) {
@@ -115,7 +118,9 @@ export const getGameTimerDuration = async (gameId: string) => {
 export const updateGameTimerEnd = async (gameId: string, timerEnd: string) => {
   const { error: updateError } = await supabase
     .from("games")
-    .update({ timer_end: timerEnd })
+    .update({
+    timer_end: timerEnd
+  })
     .eq("id", gameId);
 
   if (updateError) {
@@ -141,7 +146,7 @@ export const subscribeToGame = (options: {
         event: "*",
         schema: "public",
         table: "games",
-        filter: `id=eq.${gameId}`,
+        filter: `id=eq.${gameId}`
       },
       (payload: {
         eventType: string;

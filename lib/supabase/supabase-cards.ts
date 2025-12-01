@@ -50,7 +50,9 @@ export async function getCardTitle(cardId: string) {
 export async function markCardAsUsed(cardId: string) {
   const { error } = await supabase
     .from("cards")
-    .update({ used: true })
+    .update({
+    used: true
+  })
     .eq("id", cardId);
   if (error) {
     console.error("Error marking card as used:", error);
