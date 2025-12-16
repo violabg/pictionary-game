@@ -11,6 +11,7 @@
 import type * as actions_generateCards from "../actions/generateCards.js";
 import type * as actions_uploadDrawing from "../actions/uploadDrawing.js";
 import type * as auth from "../auth.js";
+import type * as http from "../http.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as mutations_game from "../mutations/game.js";
 import type * as mutations_games from "../mutations/games.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   "actions/generateCards": typeof actions_generateCards;
   "actions/uploadDrawing": typeof actions_uploadDrawing;
   auth: typeof auth;
+  http: typeof http;
   "lib/permissions": typeof lib_permissions;
   "mutations/game": typeof mutations_game;
   "mutations/games": typeof mutations_games;

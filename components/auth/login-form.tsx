@@ -13,7 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useAuthActions } from "@convex-dev/auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
@@ -23,7 +22,6 @@ export function LoginForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { signIn } = useAuthActions();
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -32,17 +30,18 @@ export function LoginForm({
 
     try {
       const formData = new FormData(event.currentTarget as HTMLFormElement);
+      // Convex Auth handles the redirect internally
+      // Add redirectTo param to the form data
+      formData.append("redirectTo", "/gioca");
       await signIn("resend", formData);
-      router.push("/gioca");
     } catch (error: unknown) {
       console.log("🚀 ~ handleLogin ~ error:", error);
       toast.error("Errore", {
         description:
           error instanceof Error
             ? error.message
-            : "Failed to sign in with GitHub",
+            : "Failed to sign in with Resend",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -52,8 +51,11 @@ export function LoginForm({
     setIsLoading(true);
 
     try {
-      await signIn("github");
-      router.push("/gioca");
+      // Convex Auth handles the redirect internally
+      // GitHub doesn't need form data, just pass the provider and redirect
+      const formData = new FormData();
+      formData.append("redirectTo", "/gioca");
+      await signIn("github", formData);
     } catch (error: unknown) {
       console.log("🚀 ~ handleGitHubLogin ~ error:", error);
       toast.error("Errore", {
@@ -62,7 +64,6 @@ export function LoginForm({
             ? error.message
             : "Failed to sign in with GitHub",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -80,20 +81,19 @@ export function LoginForm({
             <Button type="submit">Signin with Resend</Button>
           </form>
           <Separator className="my-4" />
-          <form onSubmit={handleGitHubLogin}>
-            <div className="flex flex-col gap-6">
-              <Button
-                type="submit"
-                className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
-                disabled={isLoading}
-              >
-                <GithubIcon className="w-5 h-5" />
-                <span className="font-medium">
-                  {isLoading ? "Accesso in corso..." : "Accedi con GitHub"}
-                </span>
-              </Button>
-            </div>
-          </form>
+
+          <div className="flex flex-col gap-6">
+            <Button
+              className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
+              disabled={isLoading}
+              onClick={() => void signIn("github")}
+            >
+              <GithubIcon className="w-5 h-5" />
+              <span className="font-medium">
+                {isLoading ? "Accesso in corso..." : "Accedi con GitHub"}
+              </span>
+            </Button>
+          </div>
           <Separator className="my-4" />
           <div className="mt-4 text-sm text-center">
             Non hai un account?{" "}

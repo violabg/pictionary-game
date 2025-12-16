@@ -1,6 +1,5 @@
 "use server";
 
-import { getGameHistory } from "@/lib/supabase/supabase-turns";
 import { redirect } from "next/navigation";
 
 export async function searchGameHistory(formData: FormData) {
@@ -19,13 +18,8 @@ export async function searchGameHistory(formData: FormData) {
   const queryString = currentSearchParams.toString();
   const redirectPath = queryString ? `/history?${queryString}` : "/history";
 
-  redirect(redirectPath);
+  redirect(redirectPath as any);
 }
 
-export async function loadMoreGames(
-  userId: string,
-  page: number,
-  category?: string
-) {
-  return await getGameHistory(userId, page, 10, category);
-}
+// Game history is now fetched client-side using Convex queries
+// See app/history/page.tsx for the Convex implementation

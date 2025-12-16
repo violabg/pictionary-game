@@ -16,7 +16,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAuth } from "@/lib/supabase/supabase-provider";
+import { api } from "@/convex/_generated/api";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
 import { Loader2, LogOut, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -25,10 +27,13 @@ import { CurrentUserAvatar } from "../auth/current-user-avatar";
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { loading, supabase, user } = useAuth();
+  const profile = useQuery(api.queries.profiles.getCurrentUserProfile);
+  const isLoading = profile === undefined;
+  const isAuthenticated = profile !== null && profile !== undefined;
+  const authActions = useAuthActions();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await authActions.signOut();
     router.push("/auth/login");
   };
 
@@ -98,15 +103,14 @@ export function Navbar() {
               </PopoverContent>
             </Popover>
           </div>
-          {/* MobileNav component removed (inlined above) */}
         </div>
         <div className="flex items-center gap-4">
           <ModeToggle />
-          {loading ? (
+          {isLoading ? (
             <Loader2 className="mr-2 w-4 h-4 animate-spin" />
           ) : (
             <>
-              {user ? (
+              {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">

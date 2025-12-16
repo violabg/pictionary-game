@@ -7,12 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
+  // No server-side auth check needed; client will handle redirects via Convex Auth
   return (
     <div className="flex flex-col justify-center items-center space-y-8 py-12 min-h-screen container">
       <div className="flex flex-col items-center gap-4">
@@ -35,11 +33,9 @@ export default async function Home() {
             <Button asChild size="lg">
               <Link href="/gioca">Inizia a giocare</Link>
             </Button>
-            {!data?.user && (
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/auth/login">Sign In</Link>
-              </Button>
-            )}
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/auth/login">Sign In</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

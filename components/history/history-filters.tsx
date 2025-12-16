@@ -31,7 +31,7 @@ export default function HistoryFilters({
     params.set("page", "1"); // Reset to first page when changing filters
 
     const query = params.toString();
-    router.push(`/history${query ? `?${query}` : ""}`);
+    router.push(`/history${query ? `?${query}` : ""}` as any);
   };
 
   return (

@@ -4,7 +4,7 @@ import GameHistoryCard from "@/components/history/game-history-card";
 import HistoryFilters from "@/components/history/history-filters";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
 import { api } from "@/convex/_generated/api";
-import { useAuthenticatedUser } from "@/lib/hooks/useAuthenticatedUser";
+import { useAuthenticatedUser } from "@/hooks/useAuth";
 import { useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -54,7 +54,7 @@ export default function HistoryPage() {
   }
 
   const games = historyData?.page ?? [];
-  const hasMore = !historyData?.isDone ?? false;
+  const hasMore = !(historyData?.isDone ?? true);
 
   return (
     <main className="flex-1 py-8 container">

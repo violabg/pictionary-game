@@ -29,7 +29,7 @@ export async function validateGuess(
   // Schema for AI response
   const schema = z.object({
     isAcceptable: z.boolean(),
-    explanation: z.string()
+    explanation: z.string(),
   });
 
   // Category-specific validation instructions
@@ -84,9 +84,14 @@ export async function validateGuess(
   });
   console.log("🚀 ~ result:", result);
 
+  const validationResult = result.object as {
+    isAcceptable: boolean;
+    explanation: string;
+  };
+
   return {
-    isCorrect: result.object.isAcceptable,
+    isCorrect: validationResult.isAcceptable,
     submissionTimestamp: timestamp,
-    explanation: result.object.explanation,
+    explanation: validationResult.explanation,
   };
 }

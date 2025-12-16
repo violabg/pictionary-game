@@ -83,9 +83,9 @@ export function GameClientPage({
           />
         );
       case "started":
-        return <GameBoard gameId={gameId} game={game} isDrawer={isDrawer} />;
+        return <GameBoard gameId={gameId} code={code} />;
       case "finished":
-        return <GameOver gameId={gameId} game={game} />;
+        return <GameOver game={game} players={players || []} />;
       default:
         return (
           <>

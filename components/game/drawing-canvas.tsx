@@ -4,7 +4,6 @@ import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
 import { Doc, Id } from "@/convex/_generated/dataModel";
-import { createClient } from "@/lib/supabase/client";
 import { captureCanvasAsDataURL } from "@/lib/utils/canvas-utils";
 import {
   forwardRef,
@@ -37,7 +36,6 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
   ({ gameId, isDrawer, currentDrawer, turnStarted }, ref) => {
     const currentDrawerId = currentDrawer.player_id;
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const supabase = createClient();
     const [isDrawing, setIsDrawing] = useState(false);
     const [color, setColor] = useState("#000000");
     const [lineWidth, setLineWidth] = useState(2);
@@ -174,21 +172,20 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setCurrentStroke((stroke: Stroke | null) =>
         stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
       );
-      // Broadcast to other players (normalized)
-      supabase.channel(`drawing:${gameId}`).send({
-        type: "broadcast",
-        event: "drawing",
-
-        payload: {
-          type: "draw",
-          data: {
-            prevPoint,
-            currentPoint: normCurrent,
-            color: tool === "brush" ? color : "#ffffff",
-            lineWidth: tool === "brush" ? lineWidth : eraserWidth,
-          },
-        },
-      });
+      // TODO: Broadcast to other players via Convex real-time (normalized)
+      // supabase.channel(`drawing:${gameId}`).send({
+      //   type: "broadcast",
+      //   event: "drawing",
+      //   payload: {
+      //     type: "draw",
+      //     data: {
+      //       prevPoint,
+      //       currentPoint: normCurrent,
+      //       color: tool === "brush" ? color : "#ffffff",
+      //       lineWidth: tool === "brush" ? lineWidth : eraserWidth,
+      //     },
+      //   },
+      // });
       prevPointRef.current = normCurrent;
     };
 
@@ -199,16 +196,15 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       if (currentStroke && currentStroke.points.length > 1) {
         setStrokes((prev) => {
           const newStrokes = [...prev, currentStroke];
-          // Broadcast new strokes to others (normalized)
-          supabase.channel(`drawing:${gameId}`).send({
-            type: "broadcast",
-            event: "drawing",
-
-            payload: {
-              type: "strokes",
-              data: newStrokes,
-            },
-          });
+          // TODO: Broadcast new strokes to others via Convex real-time (normalized)
+          // supabase.channel(`drawing:${gameId}`).send({
+          //   type: "broadcast",
+          //   event: "drawing",
+          //   payload: {
+          //     type: "strokes",
+          //     data: newStrokes,
+          //   },
+          // });
           return newStrokes;
         });
       }
@@ -228,26 +224,19 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setStrokes([]); // Clear local strokes state
 
       if (isDrawer) {
-        // Broadcast clear and empty strokes to other players
-        supabase.channel(`drawing:${gameId}`).send({
-          type: "broadcast",
-          event: "drawing",
-
-          payload: {
-            type: "clear",
-          },
-        });
-        supabase.channel(`drawing:${gameId}`).send({
-          type: "broadcast",
-          event: "drawing",
-
-          payload: {
-            type: "strokes",
-            data: [],
-          },
-        });
+        // TODO: Broadcast clear and empty strokes to other players via Convex real-time
+        // supabase.channel(`drawing:${gameId}`).send({
+        //   type: "broadcast",
+        //   event: "drawing",
+        //   payload: { type: "clear" },
+        // });
+        // supabase.channel(`drawing:${gameId}`).send({
+        //   type: "broadcast",
+        //   event: "drawing",
+        //   payload: { type: "strokes", data: [] },
+        // });
       }
-    }, [canvasRef, isDrawer, supabase, gameId]);
+    }, [canvasRef, isDrawer]);
 
     // Undo logic
     const handleUndo = useCallback(() => {
@@ -259,19 +248,18 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         } else {
           redrawStrokes(newStrokes);
         }
-        // Broadcast new strokes to others (normalized)
-        supabase.channel(`drawing:${gameId}`).send({
-          type: "broadcast",
-          event: "drawing",
-
-          payload: {
-            type: "strokes",
-            data: newStrokes,
-          },
-        });
+        // TODO: Broadcast new strokes to others via Convex real-time
+        // supabase.channel(`drawing:${gameId}`).send({
+        //   type: "broadcast",
+        //   event: "drawing",
+        //   payload: {
+        //     type: "strokes",
+        //     data: newStrokes,
+        //   },
+        // });
         return newStrokes;
       });
-    }, [redrawStrokes, supabase, gameId, clearCanvas]);
+    }, [redrawStrokes, clearCanvas]);
 
     // Get mouse/touch point relative to canvas, scaled to canvas size
     const getPoint = (
@@ -394,37 +382,28 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     useEffect(() => {
       if (isDrawer) return; // Drawer doesn't need to subscribe
 
-      const drawingSubscription = supabase
-        .channel(`drawing:${gameId}`)
-        .on(
-          "broadcast",
-          {
-            event: "drawing",
-          },
-          (payload) => {
-            const { type, data } = payload.payload;
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            if (type === "clear") {
-              clearCanvas();
-            } else if (type === "draw") {
-              // Denormalize points for drawing
-              const p1 = denormalizePoint(data.prevPoint, canvas);
-              const p2 = denormalizePoint(data.currentPoint, canvas);
-              drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
-            } else if (type === "strokes") {
-              setStrokes(data);
-              redrawStrokes(data);
-            }
-          }
-        )
-        .subscribe();
+      // TODO: Subscribe to Convex real-time drawing updates
+      // const subscription = subscribeToDrawingUpdates({
+      //   gameId,
+      //   onDraw: ({ prevPoint, currentPoint, color, lineWidth }) => {
+      //     const canvas = canvasRef.current;
+      //     if (!canvas) return;
+      //     const p1 = denormalizePoint(prevPoint, canvas);
+      //     const p2 = denormalizePoint(currentPoint, canvas);
+      //     drawLine(p1.x, p1.y, p2.x, p2.y, color, lineWidth);
+      //   },
+      //   onClear: () => clearCanvas(),
+      //   onStrokes: (data) => {
+      //     setStrokes(data);
+      //     redrawStrokes(data);
+      //   },
+      // });
 
       return () => {
-        supabase.removeChannel(drawingSubscription);
+        // TODO: Unsubscribe from Convex real-time updates
+        // subscription?.unsubscribe();
       };
-    }, [gameId, supabase, isDrawer, clearCanvas, redrawStrokes]);
+    }, [gameId, isDrawer, clearCanvas, redrawStrokes]);
 
     return (
       <div className="flex flex-col rounded-md overflow-hidden">

@@ -29,7 +29,14 @@ export default function PlayerList({
             className="flex justify-between items-center p-2 border rounded-lg"
           >
             <div className="flex items-center gap-2">
-              <PlayerAvatar avatarUrl={player.avatar_url} className="w-8 h-8" />
+              <PlayerAvatar
+                profile={{
+                  id: player.player_id,
+                  user_name: player.username,
+                  avatar_url: player.avatar_url,
+                }}
+                className="w-8 h-8"
+              />
               <span className="font-medium">{player.username}</span>
             </div>
             <div className="flex items-center space-x-2">

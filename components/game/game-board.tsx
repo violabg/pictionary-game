@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { useAuthenticatedUser } from "@/hooks/useAuth";
 import { captureAndUploadDrawing } from "@/lib/utils/drawing-utils";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Crown, PlayCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -58,10 +58,10 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   });
   const currentCard = useQuery(
     api.queries.cards.getCurrentCard,
-    currentTurn?.card_id ? { game_id: gameId } : "skip"
+    currentTurn?.card_id ? { game_id: gameId } : { game_id: null as any }
   );
 
-  // Mutations
+  // Mutations and Actions
   const startNewTurnMutation = useMutation(api.mutations.game.startNewTurn);
   const submitGuessAndCompleteTurnMutation = useMutation(
     api.mutations.game.submitGuessAndCompleteTurn
@@ -69,6 +69,26 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   const completeGameTurnMutation = useMutation(
     api.mutations.game.completeGameTurn
   );
+  const uploadDrawingAction = useAction(
+    api.actions.uploadDrawing.uploadDrawingScreenshot
+  );
+
+  // Create upload function for drawing utils
+  const createUploadFn = useCallback(() => {
+    return async (blob: Blob): Promise<string | null> => {
+      try {
+        const buffer = await blob.arrayBuffer();
+        return await uploadDrawingAction({
+          gameId,
+          turnId: currentTurn?._id || ("" as any),
+          pngBlob: buffer,
+        });
+      } catch (error) {
+        console.error("Error uploading drawing:", error);
+        return null;
+      }
+    };
+  }, [uploadDrawingAction, gameId, currentTurn?._id]);
 
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -113,7 +133,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       if (canvasDataUrl) {
         const uploadedUrl = await captureAndUploadDrawing(
           gameId.toString(),
-          canvasDataUrl
+          canvasDataUrl,
+          createUploadFn()
         );
         return uploadedUrl || undefined;
       }
@@ -121,7 +142,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       console.error("Error capturing drawing:", error);
     }
     return undefined;
-  }, [gameId]);
+  }, [gameId, createUploadFn]);
 
   // Handle time up scenario
   const handleTimeUp = useCallback(async () => {

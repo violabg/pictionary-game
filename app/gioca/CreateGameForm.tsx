@@ -40,9 +40,9 @@ const createGameSchema = z.object({
   category: z.string().min(1, "La categoria è obbligatoria"),
   maxRounds: z.coerce
     .number()
+    .int()
     .min(1, "Il numero di round deve essere almeno 1")
-    .max(10, "Il numero di round deve essere al massimo 10")
-    .default(5),
+    .max(10, "Il numero di round deve essere al massimo 10"),
 });
 
 type CreateGameFormValues = z.infer<typeof createGameSchema>;
@@ -53,7 +53,7 @@ export const CreateGameForm = () => {
   const createGameMutation = useMutation(api.mutations.games.createGame);
 
   const form = useForm<CreateGameFormValues>({
-    resolver: zodResolver(createGameSchema),
+    resolver: zodResolver(createGameSchema) as any,
     defaultValues: {
       category: "",
       maxRounds: 5,
@@ -126,7 +126,6 @@ export const CreateGameForm = () => {
         />
         <FormField
           name="maxRounds"
-          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Numero di round</FormLabel>

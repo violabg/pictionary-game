@@ -7,14 +7,15 @@ import { useQuery } from "convex/react";
  * Returns game object that updates in real-time
  */
 export const useGameState = (gameId: Id<"games"> | null) => {
+  // Always call useQuery - the server-side query handles null gameId
   const game = useQuery(
-    gameId ? api.queries.games.getGame : "skip",
-    gameId ? { game_id: gameId } : "skip"
+    api.queries.games.getGame,
+    gameId ? { game_id: gameId } : { game_id: null as any }
   );
 
   return {
-    game,
-    isLoading: game === undefined,
+    game: gameId ? game : null,
+    isLoading: gameId ? game === undefined : false,
   };
 };
 
@@ -23,13 +24,13 @@ export const useGameState = (gameId: Id<"games"> | null) => {
  */
 export const useGamePlayers = (gameId: Id<"games"> | null) => {
   const players = useQuery(
-    gameId ? api.queries.players.getGamePlayers : "skip",
-    gameId ? { game_id: gameId } : "skip"
+    api.queries.players.getGamePlayers,
+    gameId ? { game_id: gameId } : { game_id: null as any }
   );
 
   return {
-    players,
-    isLoading: players === undefined,
+    players: gameId ? players : null,
+    isLoading: gameId ? players === undefined : false,
   };
 };
 
@@ -38,13 +39,13 @@ export const useGamePlayers = (gameId: Id<"games"> | null) => {
  */
 export const useGameGuesses = (gameId: Id<"games"> | null) => {
   const guesses = useQuery(
-    gameId ? api.queries.guesses.getGameGuesses : "skip",
-    gameId ? { game_id: gameId } : "skip"
+    api.queries.guesses.getGameGuesses,
+    gameId ? { game_id: gameId } : { game_id: null as any }
   );
 
   return {
-    guesses,
-    isLoading: guesses === undefined,
+    guesses: gameId ? guesses : null,
+    isLoading: gameId ? guesses === undefined : false,
   };
 };
 
@@ -53,15 +54,15 @@ export const useGameGuesses = (gameId: Id<"games"> | null) => {
  */
 export const useTurnsHistory = (gameId: Id<"games"> | null) => {
   const turns = useQuery(
-    gameId ? api.queries.turns.getGameTurns : "skip",
+    api.queries.turns.getGameTurns,
     gameId
       ? { game_id: gameId, paginationOpts: { numItems: 50, cursor: null } }
-      : "skip"
+      : { game_id: null as any, paginationOpts: { numItems: 50, cursor: null } }
   );
 
   return {
-    turns,
-    isLoading: turns === undefined,
+    turns: gameId ? turns : null,
+    isLoading: gameId ? turns === undefined : false,
   };
 };
 
@@ -70,13 +71,13 @@ export const useTurnsHistory = (gameId: Id<"games"> | null) => {
  */
 export const useCurrentTurn = (gameId: Id<"games"> | null) => {
   const turn = useQuery(
-    gameId ? api.queries.turns.getCurrentTurn : "skip",
-    gameId ? { game_id: gameId } : "skip"
+    api.queries.turns.getCurrentTurn,
+    gameId ? { game_id: gameId } : { game_id: null as any }
   );
 
   return {
-    turn,
-    isLoading: turn === undefined,
+    turn: gameId ? turn : null,
+    isLoading: gameId ? turn === undefined : false,
   };
 };
 
@@ -85,13 +86,13 @@ export const useCurrentTurn = (gameId: Id<"games"> | null) => {
  */
 export const useCurrentCard = (gameId: Id<"games"> | null) => {
   const card = useQuery(
-    gameId ? api.queries.cards.getCurrentCard : "skip",
-    gameId ? { game_id: gameId } : "skip"
+    api.queries.cards.getCurrentCard,
+    gameId ? { game_id: gameId } : { game_id: null as any }
   );
 
   return {
-    card,
-    isLoading: card === undefined,
+    card: gameId ? card : null,
+    isLoading: gameId ? card === undefined : false,
   };
 };
 
@@ -100,12 +101,12 @@ export const useCurrentCard = (gameId: Id<"games"> | null) => {
  */
 export const useGameLeaderboard = (gameId: Id<"games"> | null) => {
   const leaderboard = useQuery(
-    gameId ? api.queries.players.getGameLeaderboard : "skip",
-    gameId ? { game_id: gameId } : "skip"
+    api.queries.players.getGameLeaderboard,
+    gameId ? { game_id: gameId } : { game_id: null as any }
   );
 
   return {
-    leaderboard,
-    isLoading: leaderboard === undefined,
+    leaderboard: gameId ? leaderboard : null,
+    isLoading: gameId ? leaderboard === undefined : false,
   };
 };
