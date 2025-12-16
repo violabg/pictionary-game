@@ -1,6 +1,10 @@
 import { v } from "convex/values";
-import { internal } from "../_generated/api";
-import { internalMutation, mutation } from "../_generated/server";
+import { api, internal } from "../_generated/api";
+import {
+  internalAction,
+  internalMutation,
+  mutation,
+} from "../_generated/server";
 import { isGameHost, requireAuth } from "../lib/permissions";
 
 /**
@@ -16,7 +20,7 @@ export const createGame = mutation({
     code: v.string(),
   }),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     // Generate random 4-character code
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -84,7 +88,7 @@ export const joinGame = mutation({
   },
   returns: v.id("games"),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     // Find game by code
     const game = await ctx.db
@@ -147,7 +151,7 @@ export const startGame = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     const game = await ctx.db.get(args.game_id);
     if (!game) throw new Error("Game not found");
@@ -192,7 +196,7 @@ export const leaveGame = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     // Find and delete player record
     const player = await ctx.db
@@ -268,7 +272,7 @@ export const leaveGame = mutation({
 /**
  * Internal mutation to generate and store cards
  */
-export const generateAndStoreCards = internalMutation({
+export const generateAndStoreCards = internalAction({
   args: {
     gameId: v.id("games"),
     category: v.string(),
@@ -276,14 +280,40 @@ export const generateAndStoreCards = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Call the action to generate cards
-    const cards = await ctx.runAction(internal.actions.generateCards, {
+    // Generate cards via the public action in Node runtime
+    const cards = await ctx.runAction(api.actions.generateCards.generateCards, {
       category: args.category,
       count: args.count,
     });
 
-    // Store cards in database
-    for (const card of cards) {
+    // Store cards via an internal mutation (actions can't use ctx.db)
+    await ctx.runMutation(internal.mutations.games.storeCards, {
+      gameId: args.gameId,
+      category: args.category,
+      cards,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Internal mutation to persist generated cards
+ */
+export const storeCards = internalMutation({
+  args: {
+    gameId: v.id("games"),
+    category: v.string(),
+    cards: v.array(
+      v.object({
+        word: v.string(),
+        description: v.string(),
+      })
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const card of args.cards) {
       await ctx.db.insert("cards", {
         game_id: args.gameId,
         word: card.word,
@@ -293,7 +323,6 @@ export const generateAndStoreCards = internalMutation({
         created_at: Date.now(),
       });
     }
-
     return null;
   },
 });

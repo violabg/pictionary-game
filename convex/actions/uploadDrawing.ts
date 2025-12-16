@@ -1,3 +1,5 @@
+"use node";
+
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 
@@ -13,7 +15,8 @@ export const uploadDrawingScreenshot = action({
   returns: v.id("_storage"),
   handler: async (ctx, args) => {
     // Store the PNG blob in Convex file storage
-    const storageId = await ctx.storage.store(args.pngBlob);
+    const blob = new Blob([args.pngBlob], { type: "image/png" });
+    const storageId = await ctx.storage.store(blob);
     return storageId;
   },
 });

@@ -26,17 +26,20 @@ export const generateCards = action({
     })
   ),
   handler: async (ctx, args) => {
-    const { object: result } = await generateObject({
+    const schema = z.object({
+      cards: z.array(cardSchema),
+    });
+
+    const { object } = await generateObject({
       model: groq("mixtral-8x7b-32768"),
-      schema: z.object({
-        cards: z.array(cardSchema),
-      }),
+      schema,
       prompt: `Generate ${args.count} random drawing prompts for a Pictionary-like game in the "${args.category}" category. 
         Each card should have a word and a brief description. 
         Make them fun, varied difficulty, and appropriate for all ages.`,
       temperature: 0.7,
     });
 
-    return result.cards;
+    const parsed = schema.parse(object);
+    return parsed.cards;
   },
 });

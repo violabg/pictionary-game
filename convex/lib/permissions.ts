@@ -5,8 +5,10 @@ import { MutationCtx, QueryCtx } from "../_generated/server";
  * Requires authentication and returns the authenticated user ID.
  * Throws if user is not authenticated.
  */
-export const requireAuth = (ctx: QueryCtx | MutationCtx): string => {
-  const identity = ctx.auth.getUserIdentity();
+export const requireAuth = async (
+  ctx: QueryCtx | MutationCtx
+): Promise<string> => {
+  const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Unauthorized: User not authenticated");
   return identity.subject;
 };

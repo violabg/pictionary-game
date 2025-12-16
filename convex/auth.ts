@@ -1,6 +1,11 @@
-import { getUserIdentity } from "@convex-dev/auth/server";
+import GitHub from "@auth/core/providers/github";
+import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
+
+export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
+  providers: [GitHub],
+});
 
 /**
  * Creates a profile for the authenticated user.
@@ -14,13 +19,13 @@ export const createProfileIfNotExists = mutation({
   },
   returns: v.id("profiles"),
   handler: async (ctx, args) => {
-    const identity = await getUserIdentity(ctx);
-    if (!identity) throw new Error("Unauthorized");
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
 
     // Check if profile already exists
     const existingProfile = await ctx.db
       .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", identity.subject))
+      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
       .first();
 
     if (existingProfile) {
@@ -29,7 +34,7 @@ export const createProfileIfNotExists = mutation({
 
     // Create new profile
     const profileId = await ctx.db.insert("profiles", {
-      user_id: identity.subject,
+      user_id: userId,
       username: args.username,
       email: args.email,
       avatar_url: args.avatar_url,
@@ -58,12 +63,12 @@ export const getCurrentUserProfile = mutation({
     })
   ),
   handler: async (ctx) => {
-    const identity = await getUserIdentity(ctx);
-    if (!identity) return null;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
 
     const profile = await ctx.db
       .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", identity.subject))
+      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
       .first();
 
     return profile || null;

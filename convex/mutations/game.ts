@@ -22,7 +22,7 @@ export const submitGuessAndCompleteTurn = mutation({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     // Verify user can guess
     const canGuessResult = await canGuess(ctx, args.game_id, userId);
@@ -100,7 +100,7 @@ export const completeGameTurn = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     // Verify user is host
     const game = await ctx.db.get(args.game_id);
@@ -167,7 +167,7 @@ export const startNewTurn = mutation({
   },
   returns: v.id("turns"),
   handler: async (ctx, args) => {
-    const userId = requireAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     const game = await ctx.db.get(args.game_id);
     if (!game) throw new Error("Game not found");
