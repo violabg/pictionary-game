@@ -1,10 +1,11 @@
 import GitHub from "@auth/core/providers/github";
+import Resend from "@auth/core/providers/resend";
 import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [GitHub],
+  providers: [GitHub, Resend],
 });
 
 /**

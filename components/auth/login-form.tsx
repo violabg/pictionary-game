@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Input } from "../ui/input";
 
 export function LoginForm({
   className,
@@ -25,6 +26,27 @@ export function LoginForm({
   const router = useRouter();
   const { signIn } = useAuthActions();
 
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const formData = new FormData(event.currentTarget as HTMLFormElement);
+      await signIn("resend", formData);
+      router.push("/gioca");
+    } catch (error: unknown) {
+      console.log("🚀 ~ handleLogin ~ error:", error);
+      toast.error("Errore", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign in with GitHub",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGitHubLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -33,6 +55,7 @@ export function LoginForm({
       await signIn("github");
       router.push("/gioca");
     } catch (error: unknown) {
+      console.log("🚀 ~ handleGitHubLogin ~ error:", error);
       toast.error("Errore", {
         description:
           error instanceof Error
@@ -52,6 +75,11 @@ export function LoginForm({
           <CardDescription>Accedi con il tuo account GitHub</CardDescription>
         </CardHeader>
         <CardContent>
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <Input type="text" name="email" placeholder="Email" />
+            <Button type="submit">Signin with Resend</Button>
+          </form>
+          <Separator className="my-4" />
           <form onSubmit={handleGitHubLogin}>
             <div className="flex flex-col gap-6">
               <Button
