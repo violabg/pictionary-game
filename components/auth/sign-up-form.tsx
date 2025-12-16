@@ -1,6 +1,5 @@
 "use client";
 
-import { GithubIcon } from "@/components/icons/github";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,18 +32,14 @@ import { z } from "zod";
 const signUpSchema = z.object({
   username: z
     .string()
-    .min(3, {
-      error: "Username deve essere almeno 3 caratteri",
-    })
-    .max(20, {
-      error: "Username deve essere massimo 20 caratteri",
-    })
-    .regex(/^[a-zA-Z0-9_-]+$/, {
-      error:
-        "Username può contenere solo lettere, numeri, underscore e trattini",
-    }),
-
-  email: z.email("Email non valida"),
+    .min(3, "Username deve essere almeno 3 caratteri")
+    .max(20, "Username deve essere massimo 20 caratteri")
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "Username può contenere solo lettere, numeri, underscore e trattini"
+    ),
+  email: z.string().email("Email non valida"),
+  password: z.string().min(8, "La password deve essere almeno 8 caratteri"),
 });
 
 type SignUpFormValues = z.infer<typeof signUpSchema>;
@@ -65,30 +60,39 @@ export function SignUpForm({
     defaultValues: {
       username: "",
       email: "",
+      password: "",
     },
     mode: "onChange",
   });
 
-  const handleGitHubSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignUp = async (values: SignUpFormValues) => {
     setIsLoading(true);
 
     try {
-      const values = form.getValues();
-      await signIn("github");
+      // Sign up with email and password
+      const formData = new FormData();
+      formData.append("email", values.email);
+      formData.append("password", values.password);
+      formData.append("flow", "signUp");
 
-      // Create profile after GitHub auth
+      await signIn("password", formData);
+
+      // Create profile after successful signup
       await createProfileIfNotExists({
         username: values.username,
         email: values.email,
         avatar_url: undefined,
       });
 
+      toast.success("Registrazione completata!");
       router.push("/gioca");
     } catch (error: unknown) {
+      console.error("Sign up error:", error);
       toast.error("Errore", {
         description:
-          error instanceof Error ? error.message : "Failed to sign up",
+          error instanceof Error
+            ? error.message
+            : "Impossibile completare la registrazione",
       });
     } finally {
       setIsLoading(false);
@@ -100,12 +104,12 @@ export function SignUpForm({
       <Card className="gradient-border glass-card">
         <CardHeader>
           <CardTitle className="text-2xl">Registrati</CardTitle>
-          <CardDescription>Crea un nuovo account con GitHub</CardDescription>
+          <CardDescription>Crea un nuovo account per giocare</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form
-              onSubmit={handleGitHubSignUp}
+              onSubmit={form.handleSubmit(handleSignUp)}
               className="space-y-4"
               autoComplete="off"
             >
@@ -149,17 +153,32 @@ export function SignUpForm({
                 )}
               />
 
+              <FormField
+                name="password"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <Button
                 type="submit"
-                className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
+                className="w-full"
                 disabled={isLoading || !form.formState.isValid}
               >
-                <GithubIcon className="w-5 h-5" />
-                <span className="font-medium">
-                  {isLoading
-                    ? "Registrazione in corso..."
-                    : "Registrati con GitHub"}
-                </span>
+                {isLoading ? "Registrazione in corso..." : "Registrati"}
               </Button>
 
               <div className="mt-4 text-sm text-center">
