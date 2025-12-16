@@ -66,10 +66,9 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
       game_id: game._id,
     }) ?? [];
 
-  const players =
-    useQuery(api.queries.history.getGamePlayers, {
-      game_id: game._id,
-    }) ?? [];
+  const playersData = useQuery(api.queries.history.getGamePlayers, {
+    game_id: game._id,
+  });
 
   const openImageModal = (
     url: string,
@@ -101,6 +100,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
   };
 
   const gameWinner = useMemo(() => {
+    const players = playersData ?? [];
     if (players.length === 0) {
       return null;
     }
@@ -116,7 +116,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
       }
       return winner;
     }, null as { username: string; avatar_url?: string; score: number } | null);
-  }, [players]);
+  }, [playersData]);
 
   const turnsCount = turns.length;
 
