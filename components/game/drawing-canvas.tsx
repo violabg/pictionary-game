@@ -3,8 +3,8 @@
 import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
+import { Doc, Id } from "@/convex/_generated/dataModel";
 import { createClient } from "@/lib/supabase/client";
-import { PlayerWithProfile } from "@/lib/supabase/types";
 import { captureCanvasAsDataURL } from "@/lib/utils/canvas-utils";
 import {
   forwardRef,
@@ -23,9 +23,9 @@ type Stroke = {
 };
 
 interface DrawingCanvasProps {
-  gameId: string;
+  gameId: Id<"games">;
   isDrawer: boolean;
-  currentDrawer: PlayerWithProfile;
+  currentDrawer: Doc<"players">;
   turnStarted: boolean;
 }
 
@@ -35,7 +35,7 @@ export interface DrawingCanvasRef {
 }
 const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
   ({ gameId, isDrawer, currentDrawer, turnStarted }, ref) => {
-    const { id: currentDrawerId } = currentDrawer;
+    const currentDrawerId = currentDrawer.player_id;
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const supabase = createClient();
     const [isDrawing, setIsDrawing] = useState(false);
@@ -68,6 +68,46 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       []
     );
 
+    // Utility: Normalize and denormalize points
+    const normalizePoint = (
+      point: { x: number; y: number },
+      canvas: HTMLCanvasElement
+    ) => ({
+      x: point.x / canvas.width,
+      y: point.y / canvas.height,
+    });
+
+    const denormalizePoint = (
+      point: { x: number; y: number },
+      canvas: HTMLCanvasElement
+    ) => ({
+      x: point.x * canvas.width,
+      y: point.y * canvas.height,
+    });
+
+    const drawLine = (
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      color: string,
+      width: number
+    ) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    };
+
     const redrawStrokes = useCallback((allStrokes: Stroke[]) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -87,22 +127,6 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         }
       }
     }, []);
-
-    // Utility: Normalize and denormalize points
-    const normalizePoint = (
-      point: { x: number; y: number },
-      canvas: HTMLCanvasElement
-    ) => ({
-      x: point.x / canvas.width,
-      y: point.y / canvas.height,
-    });
-    const denormalizePoint = (
-      point: { x: number; y: number },
-      canvas: HTMLCanvasElement
-    ) => ({
-      x: point.x * canvas.width,
-      y: point.y * canvas.height,
-    });
 
     // --- Update startDrawing to use normalized points ---
     const startDrawing = (
@@ -163,7 +187,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
             color: tool === "brush" ? color : "#ffffff",
             lineWidth: tool === "brush" ? lineWidth : eraserWidth,
           },
-        }
+        },
       });
       prevPointRef.current = normCurrent;
     };
@@ -183,35 +207,12 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
             payload: {
               type: "strokes",
               data: newStrokes,
-            }
+            },
           });
           return newStrokes;
         });
       }
       setCurrentStroke(null);
-    };
-
-    const drawLine = (
-      x1: number,
-      y1: number,
-      x2: number,
-      y2: number,
-      color: string,
-      width: number
-    ) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.lineCap = "round";
-      ctx.stroke();
     };
 
     const clearCanvas = useCallback(() => {
@@ -234,7 +235,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
           payload: {
             type: "clear",
-          }
+          },
         });
         supabase.channel(`drawing:${gameId}`).send({
           type: "broadcast",
@@ -243,7 +244,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           payload: {
             type: "strokes",
             data: [],
-          }
+          },
         });
       }
     }, [canvasRef, isDrawer, supabase, gameId]);
@@ -266,7 +267,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           payload: {
             type: "strokes",
             data: newStrokes,
-          }
+          },
         });
         return newStrokes;
       });
@@ -361,8 +362,11 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
     // Reset history on new turn
     useEffect(() => {
-      setStrokes([]);
-      setCurrentStroke(null);
+      const resetStrokes = () => {
+        setStrokes([]);
+        setCurrentStroke(null);
+      };
+      resetStrokes();
     }, [currentDrawerId]);
 
     // Keyboard shortcuts for tool selection, clear, and undo
@@ -392,25 +396,29 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
       const drawingSubscription = supabase
         .channel(`drawing:${gameId}`)
-        .on("broadcast", {
-        event: "drawing"
-      }, (payload) => {
-          const { type, data } = payload.payload;
-          const canvas = canvasRef.current;
-          if (!canvas) return;
+        .on(
+          "broadcast",
+          {
+            event: "drawing",
+          },
+          (payload) => {
+            const { type, data } = payload.payload;
+            const canvas = canvasRef.current;
+            if (!canvas) return;
 
-          if (type === "clear") {
-            clearCanvas();
-          } else if (type === "draw") {
-            // Denormalize points for drawing
-            const p1 = denormalizePoint(data.prevPoint, canvas);
-            const p2 = denormalizePoint(data.currentPoint, canvas);
-            drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
-          } else if (type === "strokes") {
-            setStrokes(data);
-            redrawStrokes(data);
+            if (type === "clear") {
+              clearCanvas();
+            } else if (type === "draw") {
+              // Denormalize points for drawing
+              const p1 = denormalizePoint(data.prevPoint, canvas);
+              const p2 = denormalizePoint(data.currentPoint, canvas);
+              drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
+            } else if (type === "strokes") {
+              setStrokes(data);
+              redrawStrokes(data);
+            }
           }
-        })
+        )
         .subscribe();
 
       return () => {
@@ -435,13 +443,13 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           />
         )}
 
-        <div className="relative bg-white border rounded-md aspect-[4/3] overflow-hidden">
+        <div className="relative bg-white border rounded-md aspect-4/3 overflow-hidden">
           {!turnStarted && (
             <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 rounded-md pointer-events-none glass-card">
               <p className="text-white text-lg">
                 {isDrawer
                   ? "Clicca 'Inizia il tuo turno' per iniziare a disegnare"
-                  : `In attesa che ${currentDrawer.profile.name} inizi il turno...`}
+                  : `In attesa che ${currentDrawer.username} inizi il turno...`}
               </p>
             </div>
           )}

@@ -7,10 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Doc } from "@/convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
 
 type CardDisplayProps = {
-  card: Doc<"cards"> | null;
+  card: {
+    _id: Id<"cards">;
+    word: string;
+    description: string;
+    category: string;
+  } | null;
 };
 
 export default function CardDisplay({ card }: CardDisplayProps) {

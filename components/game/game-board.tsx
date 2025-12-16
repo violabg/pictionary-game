@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import { Doc, Id } from "@/convex/_generated/dataModel";
-import { useAuthenticatedUser } from "@/lib/hooks/useAuthenticatedUser";
+import { useAuthenticatedUser } from "@/hooks/useAuth";
 import { captureAndUploadDrawing } from "@/lib/utils/drawing-utils";
 import { useMutation, useQuery } from "convex/react";
 import { Crown, PlayCircle } from "lucide-react";
@@ -25,7 +25,12 @@ interface GameBoardProps {
 
 // Consolidated game state interface
 interface GameState {
-  currentCard: Doc<"cards"> | null;
+  currentCard: {
+    _id: Id<"cards">;
+    word: string;
+    description: string;
+    category: string;
+  } | null;
   isDrawer: boolean;
   turnStarted: boolean;
   turnEnded: boolean;
@@ -44,7 +49,7 @@ interface ModalState {
 
 export default function GameBoard({ gameId, code }: GameBoardProps) {
   const { profile } = useAuthenticatedUser();
-  const game = useQuery(api.queries.games.getGameById, { game_id: gameId });
+  const game = useQuery(api.queries.games.getGame, { game_id: gameId });
   const players = useQuery(api.queries.players.getGamePlayers, {
     game_id: gameId,
   });
@@ -52,10 +57,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     game_id: gameId,
   });
   const currentCard = useQuery(
-    api.queries.cards.getCard,
-    currentTurn && currentTurn.card_id
-      ? { card_id: currentTurn.card_id }
-      : "skip"
+    api.queries.cards.getCurrentCard,
+    currentTurn?.card_id ? { game_id: gameId } : "skip"
   );
 
   // Mutations
@@ -90,23 +93,15 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
 
   const [correctGuessers, setCorrectGuessers] = useState<Doc<"players">[]>([]);
 
-  // Check loading states
-  if (!game || !players || !profile) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-muted-foreground">Loading game...</div>
-      </div>
-    );
-  }
-
+  // Memoized values - must be before early return
   const currentDrawer = useMemo(
-    () => players.find((p) => p.player_id === game.current_drawer_id),
-    [players, game.current_drawer_id]
+    () => players?.find((p) => p.player_id === game?.current_drawer_id),
+    [players, game?.current_drawer_id]
   );
 
   const currentPlayer = useMemo(
-    () => players.find((p) => p.player_id === profile.user_id),
-    [players, profile.user_id]
+    () => players?.find((p) => p.player_id === profile?.user_id),
+    [players, profile?.user_id]
   );
 
   // Helper function to capture drawing for atomic turn completion
@@ -166,19 +161,16 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
 
   // Update game state when game changes
   useEffect(() => {
-    setGameState((prev) => ({
-      ...prev,
-      isDrawer: game.current_drawer_id === profile?.user_id,
-      turnStarted: currentTurn?.status === "drawing",
-      turnEnded: false,
-      currentTurnId: currentTurn?._id ?? null,
-    }));
-  }, [
-    game.current_drawer_id,
-    profile?.user_id,
-    currentTurn?.status,
-    currentTurn?._id,
-  ]);
+    if (game && profile) {
+      setGameState((prev) => ({
+        ...prev,
+        isDrawer: game.current_drawer_id === profile.user_id,
+        turnStarted: currentTurn?.status === "drawing",
+        turnEnded: false,
+        currentTurnId: currentTurn?._id ?? null,
+      }));
+    }
+  }, [game, profile, currentTurn?.status, currentTurn?._id]);
 
   // Update current card
   useEffect(() => {
@@ -236,6 +228,15 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     currentTurn,
     handleTimeUp,
   ]);
+
+  // Check loading states - after all hooks
+  if (!game || !players || !profile) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-muted-foreground">Loading game...</div>
+      </div>
+    );
+  }
 
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
