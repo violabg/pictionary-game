@@ -7,10 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Card as CardType } from "@/lib/supabase/types";
+import { Doc } from "@/convex/_generated/dataModel";
 
 type CardDisplayProps = {
-  card: CardType | null;
+  card: Doc<"cards"> | null;
 };
 
 export default function CardDisplay({ card }: CardDisplayProps) {
@@ -23,7 +23,7 @@ export default function CardDisplay({ card }: CardDisplayProps) {
       <CardContent className="py-2">
         <div className="text-center">
           <h3 className="mb-1 font-bold text-gradient text-2xl">
-            {card?.title}
+            {card?.word}
           </h3>
           <p className="text-muted-foreground text-sm">{card?.description}</p>
         </div>

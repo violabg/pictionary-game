@@ -3,9 +3,10 @@
 import { AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { PlayerAvatar } from "@/components/ui/player-avatar";
-import { TurnWithDetails } from "@/lib/supabase/types";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { useQuery } from "convex/react";
 import { format } from "date-fns";
 import { Calendar, Crown, Trophy, Users, X } from "lucide-react";
 import Image from "next/image";
@@ -37,24 +38,13 @@ const getCategoryStyle = (category: string) => {
 
 interface GameHistoryCardProps {
   game: {
-    id: string;
+    _id: Id<"games">;
     code: string;
     category: string;
-    status: string;
-    created_at: string;
-    turns_count: number;
-    user_score: number;
-    total_turns: TurnWithDetails[];
-    players?: Array<{
-      id: string;
-      score: number;
-      profile: {
-        id: string;
-        name: string | null;
-        user_name: string | null;
-        avatar_url: string | null;
-      };
-    }>;
+    status: "waiting" | "started" | "finished";
+    created_at: number;
+    round: number;
+    max_rounds: number;
   };
 }
 
@@ -69,6 +59,17 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
     "initial" | "animating" | "final"
   >("initial");
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Fetch turns and players for this game
+  const turns =
+    useQuery(api.queries.history.getGameTurnsWithDetails, {
+      game_id: game._id,
+    }) ?? [];
+
+  const players =
+    useQuery(api.queries.history.getGamePlayers, {
+      game_id: game._id,
+    }) ?? [];
 
   const openImageModal = (
     url: string,
@@ -96,80 +97,28 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
       setSelectedImage(null);
       setIsClosing(false);
       setAnimationPhase("initial");
-    }, 300); // Match the animation duration
+    }, 300);
   };
 
   const gameWinner = useMemo(() => {
-    if (!game.players || game.players.length === 0) {
-      // Fallback: find winner from turns data
-      const playerScores = new Map<
-        string,
-        {
-          score: number;
-          profile: {
-            id: string;
-            name: string | null;
-            user_name: string | null;
-            avatar_url: string | null;
-          };
-        }
-      >();
-
-      game.total_turns.forEach((turn) => {
-        // Add drawer points
-        if (!playerScores.has(turn.drawer.id)) {
-          playerScores.set(turn.drawer.id, {
-            score: 0,
-            profile: turn.drawer
-          });
-        }
-        const drawerEntry = playerScores.get(turn.drawer.id)!;
-        drawerEntry.score += turn.drawer_points_awarded || 0;
-
-        // Add winner points
-        if (turn.winner) {
-          if (!playerScores.has(turn.winner.id)) {
-            playerScores.set(turn.winner.id, {
-              score: 0,
-              profile: turn.winner
-            });
-          }
-          const winnerEntry = playerScores.get(turn.winner.id)!;
-          winnerEntry.score += turn.points_awarded || 0;
-        }
-      });
-
-      // Find highest score
-      let highestScore = 0;
-      let winner: {
-        id: string;
-        name: string | null;
-        user_name: string | null;
-        avatar_url: string | null;
-        score: number;
-      } | null = null;
-
-      for (const [, playerData] of playerScores) {
-        if (playerData.score > highestScore) {
-          highestScore = playerData.score;
-          winner = { ...playerData.profile, score: playerData.score };
-        }
-      }
-
-      return winner;
+    if (players.length === 0) {
+      return null;
     }
 
-    // Use players data if available
-    return game.players.reduce((winner, player) => {
+    // Find player with highest score
+    return players.reduce((winner, player) => {
       if (!winner || player.score > winner.score) {
         return {
-          ...player.profile,
+          username: player.username,
+          avatar_url: player.avatar_url,
           score: player.score,
         };
       }
       return winner;
-    }, null as { id: string; name: string | null; user_name: string | null; avatar_url: string | null; score: number } | null);
-  }, [game.players, game.total_turns]);
+    }, null as { username: string; avatar_url?: string; score: number } | null);
+  }, [players]);
+
+  const turnsCount = turns.length;
 
   return (
     <>
@@ -187,7 +136,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
               </div>
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
-                {game.turns_count} turni
+                {turnsCount} turni
               </div>
             </div>
           </div>
@@ -201,9 +150,23 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
             {gameWinner ? (
               <div className="text-right">
                 <div className="flex items-center gap-2 mb-1">
-                  <PlayerAvatar profile={gameWinner} className="w-6 h-6" />
+                  <div className="flex flex-shrink-0 justify-center items-center bg-slate-200 rounded-full w-6 h-6">
+                    {gameWinner.avatar_url ? (
+                      <Image
+                        src={gameWinner.avatar_url}
+                        alt={gameWinner.username}
+                        width={24}
+                        height={24}
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <span className="font-semibold text-xs">
+                        {gameWinner.username.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-muted-foreground text-xs">
-                    {gameWinner.name || gameWinner.user_name}
+                    {gameWinner.username}
                   </div>
                   <Crown className="w-4 h-4 text-yellow-500" />
                   <div className="font-bold text-primary text-xl">
@@ -225,13 +188,13 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
         </div>
       </AccordionTrigger>
       <AccordionContent className="px-6 pb-6">
-        {game.total_turns.length > 0 ? (
+        {turns.length > 0 ? (
           <div className="space-y-3">
             <h4 className="mb-4 font-semibold text-sm">Turni della partita:</h4>
             <div className="gap-3 grid overflow-y-auto">
-              {game.total_turns.map((turn, index) => (
+              {turns.map((turn, index) => (
                 <div
-                  key={turn.id}
+                  key={turn._id}
                   className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg"
                 >
                   <div className="flex-shrink-0">
@@ -243,7 +206,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm">
-                        {turn.card.title}
+                        {turn.card_word}
                       </span>
                       <Badge variant="outline" className="text-xs">
                         {turn.points_awarded} punti
@@ -252,25 +215,47 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                     <div className="text-muted-foreground text-xs">
                       <div className="flex items-center gap-1 mb-1">
                         <span>Disegnato da</span>
-                        <PlayerAvatar
-                          profile={turn.drawer}
-                          className="w-4 h-4"
-                          fallbackClassName="text-[8px]"
-                        />
+                        <div className="flex flex-shrink-0 justify-center items-center bg-slate-200 rounded-full w-4 h-4">
+                          {turn.drawer_avatar_url ? (
+                            <Image
+                              src={turn.drawer_avatar_url}
+                              alt={turn.drawer_username}
+                              width={16}
+                              height={16}
+                              className="rounded-full"
+                            />
+                          ) : (
+                            <span className="font-semibold text-[10px]">
+                              {turn.drawer_username.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
                         <span className="font-medium">
-                          {turn.drawer.name || turn.drawer.user_name}
+                          {turn.drawer_username}
                         </span>
                       </div>
-                      {turn.winner ? (
+                      {turn.winner_id ? (
                         <div className="flex items-center gap-1">
                           <span>Vinto da</span>
-                          <PlayerAvatar
-                            profile={turn.winner}
-                            className="w-4 h-4"
-                            fallbackClassName="text-[8px]"
-                          />
+                          <div className="flex flex-shrink-0 justify-center items-center bg-slate-200 rounded-full w-4 h-4">
+                            {turn.winner_avatar_url ? (
+                              <Image
+                                src={turn.winner_avatar_url}
+                                alt={turn.winner_username || "Winner"}
+                                width={16}
+                                height={16}
+                                className="rounded-full"
+                              />
+                            ) : (
+                              <span className="font-semibold text-[10px]">
+                                {turn.winner_username
+                                  ?.charAt(0)
+                                  .toUpperCase() || "?"}
+                              </span>
+                            )}
+                          </div>
                           <span className="font-medium">
-                            {turn.winner.name || turn.winner.user_name}
+                            {turn.winner_username}
                           </span>
                           <Crown className="w-4 h-4 text-yellow-500" />
                         </div>
@@ -282,25 +267,21 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                     </div>
                   </div>
 
-                  {turn.drawing_image_url && (
+                  {turn.drawing_file_id && (
                     <div className="flex-shrink-0">
                       <div
                         className="relative bg-white hover:shadow-lg border rounded-lg w-16 h-16 overflow-hidden hover:scale-110 transition-all duration-200 ease-out cursor-pointer transform"
                         onClick={(e) =>
                           openImageModal(
-                            turn.drawing_image_url!,
-                            turn.card.title,
+                            "", // Would need to get URL from storage
+                            turn.card_word,
                             e.currentTarget
                           )
                         }
                       >
-                        <Image
-                          src={turn.drawing_image_url}
-                          alt={`Disegno per "${turn.card.title}"`}
-                          fill
-                          className="object-contain"
-                          sizes="64px"
-                        />
+                        <span className="text-muted-foreground text-xs">
+                          Drawing
+                        </span>
                       </div>
                     </div>
                   )}
@@ -380,13 +361,21 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
             </CardHeader>
             {/* Image container with responsive aspect ratio */}
             <CardContent className="relative bg-gray-50 p-2 rounded-b-xl w-full min-w-[300px] max-w-[800px] aspect-[4/3] overflow-hidden">
-              <Image
-                src={selectedImage.url}
-                alt={selectedImage.title}
-                fill
-                className="rounded-lg object-contain"
-                priority
-              />
+              {selectedImage.url ? (
+                <Image
+                  src={selectedImage.url}
+                  alt={selectedImage.title}
+                  fill
+                  className="rounded-lg object-contain"
+                  priority
+                />
+              ) : (
+                <div className="flex justify-center items-center h-full">
+                  <span className="text-muted-foreground">
+                    Drawing not available
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

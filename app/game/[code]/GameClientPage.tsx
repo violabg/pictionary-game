@@ -4,19 +4,50 @@ import GameBoard from "@/components/game/game-board";
 import { GameLobby } from "@/components/game/game-lobby";
 import GameOver from "@/components/game/game-over";
 import { Button } from "@/components/ui/button";
-import { useGameState } from "@/lib/hooks/useGameState";
-import { User } from "@supabase/supabase-js";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useAuthenticatedUser } from "@/hooks/useAuth";
+import { useGamePlayers, useGameState } from "@/hooks/useConvexSubscriptions";
+import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
-export function GameClientPage({ code, user }: { code: string; user: User }) {
-  const { loadingState, game, isDrawer, handleStartGame } = useGameState({
-    code,
-    user,
-  });
+export function GameClientPage({
+  gameId,
+  code,
+}: {
+  gameId: Id<"games">;
+  code: string;
+}) {
   const router = useRouter();
+  const { profile, isLoading: authLoading } = useAuthenticatedUser();
+  const { game, isLoading: gameLoading } = useGameState(gameId);
+  const { players, isLoading: playersLoading } = useGamePlayers(gameId);
+  const [isStartingGame, setIsStartingGame] = useState(false);
 
-  if (loadingState === "initializing") {
+  const startGameMutation = useMutation(api.mutations.games.startGame);
+
+  const handleStartGame = async () => {
+    if (!game) return;
+    setIsStartingGame(true);
+    try {
+      await startGameMutation({ game_id: gameId });
+      toast.success("Partita iniziata!");
+    } catch (error) {
+      toast.error("Errore", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossibile avviare la partita",
+      });
+    } finally {
+      setIsStartingGame(false);
+    }
+  };
+
+  if (authLoading || gameLoading) {
     return (
       <main className="flex flex-1 justify-center items-center py-8 container">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -24,27 +55,43 @@ export function GameClientPage({ code, user }: { code: string; user: User }) {
     );
   }
 
+  if (!game || !profile) {
+    return (
+      <main className="flex flex-col flex-1 justify-center items-center py-8 container">
+        <h1 className="mb-4 font-bold text-2xl">Partita non trovata</h1>
+        <Button onClick={() => router.push("/gioca")} variant="outline">
+          Torna alla creazione del gioco
+        </Button>
+      </main>
+    );
+  }
+
+  const isHost = game.created_by === profile.user_id;
+  const isDrawer = game.current_drawer_id === profile.user_id;
+
   const renderGameContent = () => {
-    switch (game?.status) {
+    switch (game.status) {
       case "waiting":
         return (
           <GameLobby
+            gameId={gameId}
             game={game}
-            isDrawer={isDrawer}
+            players={players || []}
+            isHost={isHost}
             onStartGame={handleStartGame}
-            loadingState={loadingState}
+            isStartingGame={isStartingGame}
           />
         );
-      case "active":
-        return <GameBoard game={game} user={user} />;
-      case "completed":
-        return <GameOver game={game} />;
+      case "started":
+        return <GameBoard gameId={gameId} game={game} isDrawer={isDrawer} />;
+      case "finished":
+        return <GameOver gameId={gameId} game={game} />;
       default:
         return (
           <>
             <h1 className="mb-4 font-bold text-2xl">Partita non trovata</h1>
             <Button onClick={() => router.push("/gioca")} variant="outline">
-              Torna alla creazione del goco
+              Torna alla creazione del gioco
             </Button>
           </>
         );

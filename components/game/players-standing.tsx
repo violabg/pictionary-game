@@ -1,10 +1,10 @@
-import type { Player, Profile } from "@/lib/supabase/types";
+import { Doc } from "@/convex/_generated/dataModel";
 import { Award, Medal, Trophy } from "lucide-react";
 import type { ElementType } from "react";
 
 // Props for the new PlayerPodiumCard component
 type PlayerPodiumCardProps = {
-  player: Player & { profile: Profile };
+  player: Doc<"players">;
   MedalIcon: ElementType;
   gradientClass: string;
   medalSizeClass: string;
@@ -40,7 +40,7 @@ const PlayerPodiumCard = ({
       {/* Name Row */}
       <div className="flex justify-center items-start pt-1 w-full min-h-[3em] text-center">
         <p className="max-w-full font-medium break-words whitespace-pre-line hyphens-auto">
-          {player.profile.full_name}
+          {player.username}
         </p>
       </div>
     </div>
@@ -48,7 +48,7 @@ const PlayerPodiumCard = ({
 };
 
 interface PlayersStandingProps {
-  players: (Player & { profile: Profile })[];
+  players: Doc<"players">[];
 }
 
 export const PlayersStanding = ({ players }: PlayersStandingProps) => {
@@ -100,14 +100,14 @@ export const PlayersStanding = ({ players }: PlayersStandingProps) => {
         <ul className="divide-y divide-input">
           {sortedPlayers.map((player, index) => (
             <li
-              key={player.id}
+              key={player._id}
               className="flex justify-between items-center p-4"
             >
               <div className="flex items-center space-x-2">
                 <span className="font-medium text-muted-foreground">
                   #{index + 1}
                 </span>
-                <span>{player.profile.full_name}</span>
+                <span>{player.username}</span>
               </div>
               <span className="font-bold">{player.score}</span>
             </li>

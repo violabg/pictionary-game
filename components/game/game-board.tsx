@@ -1,25 +1,11 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
-import { getCard } from "@/lib/supabase/supabase-cards";
-import {
-  completeManualWinnerTurn,
-  completeTimeUpTurn,
-  startTurn,
-  submitGuessAtomic,
-  validateGuessWithAI,
-} from "@/lib/supabase/supabase-guess-and-turns";
-import {
-  AtomicTurnResult,
-  Card as CardType,
-  GameWithPlayers,
-  Guess,
-  Player,
-  PlayerWithProfile,
-} from "@/lib/supabase/types";
+import { api } from "@/convex/_generated/api";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import { useAuthenticatedUser } from "@/lib/hooks/useAuthenticatedUser";
 import { captureAndUploadDrawing } from "@/lib/utils/drawing-utils";
-import { User } from "@supabase/supabase-js";
+import { useMutation, useQuery } from "convex/react";
 import { Crown, PlayCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,18 +19,19 @@ import SelectWinnerModal from "./select-winner-modal";
 import Timer from "./timer";
 
 interface GameBoardProps {
-  game: GameWithPlayers;
-  user: User;
+  gameId: Id<"games">;
+  code: string;
 }
 
 // Consolidated game state interface
 interface GameState {
-  currentCard: CardType | null;
+  currentCard: Doc<"cards"> | null;
   isDrawer: boolean;
   turnStarted: boolean;
   turnEnded: boolean;
   timeRemaining: number;
   isStartingTurn: boolean;
+  currentTurnId: Id<"turns"> | null;
 }
 
 // Consolidated modal state interface
@@ -55,19 +42,43 @@ interface ModalState {
   isTimerPaused: boolean;
 }
 
-export default function GameBoard({ game, user }: GameBoardProps) {
-  const supabase = createClient();
+export default function GameBoard({ gameId, code }: GameBoardProps) {
+  const { profile } = useAuthenticatedUser();
+  const game = useQuery(api.queries.games.getGameById, { game_id: gameId });
+  const players = useQuery(api.queries.players.getGamePlayers, {
+    game_id: gameId,
+  });
+  const currentTurn = useQuery(api.queries.turns.getCurrentTurn, {
+    game_id: gameId,
+  });
+  const currentCard = useQuery(
+    api.queries.cards.getCard,
+    currentTurn && currentTurn.card_id
+      ? { card_id: currentTurn.card_id }
+      : "skip"
+  );
+
+  // Mutations
+  const startNewTurnMutation = useMutation(api.mutations.game.startNewTurn);
+  const submitGuessAndCompleteTurnMutation = useMutation(
+    api.mutations.game.submitGuessAndCompleteTurn
+  );
+  const completeGameTurnMutation = useMutation(
+    api.mutations.game.completeGameTurn
+  );
+
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Consolidated state
   const [gameState, setGameState] = useState<GameState>({
     currentCard: null,
-    isDrawer: game.current_drawer_id === user.id,
-    turnStarted: !!game.timer_end,
+    isDrawer: game?.current_drawer_id === profile?.user_id,
+    turnStarted: currentTurn?.status === "drawing",
     turnEnded: false,
-    timeRemaining: game.timer,
+    timeRemaining: 60, // Default, will be updated by timer
     isStartingTurn: false,
+    currentTurnId: currentTurn?._id ?? null,
   });
 
   const [modalState, setModalState] = useState<ModalState>({
@@ -77,20 +88,25 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     isTimerPaused: false,
   });
 
-  const [correctGuessers, setCorrectGuessers] = useState<Player[]>([]);
+  const [correctGuessers, setCorrectGuessers] = useState<Doc<"players">[]>([]);
 
-  const players = game.players;
+  // Check loading states
+  if (!game || !players || !profile) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-muted-foreground">Loading game...</div>
+      </div>
+    );
+  }
 
   const currentDrawer = useMemo(
-    () =>
-      players.find(
-        (p: PlayerWithProfile) => p.player_id === game.current_drawer_id
-      ),
+    () => players.find((p) => p.player_id === game.current_drawer_id),
     [players, game.current_drawer_id]
   );
+
   const currentPlayer = useMemo(
-    () => players.find((p: PlayerWithProfile) => p.player_id === user.id),
-    [players, user.id]
+    () => players.find((p) => p.player_id === profile.user_id),
+    [players, profile.user_id]
   );
 
   // Helper function to capture drawing for atomic turn completion
@@ -101,7 +117,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
       if (canvasDataUrl) {
         const uploadedUrl = await captureAndUploadDrawing(
-          game.id,
+          gameId.toString(),
           canvasDataUrl
         );
         return uploadedUrl || undefined;
@@ -110,125 +126,95 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       console.error("Error capturing drawing:", error);
     }
     return undefined;
-  }, [game.id]);
-
-  // Handle atomic turn result updates
-  const handleTurnResult = useCallback((result: AtomicTurnResult) => {
-    if (result.success) {
-      if (result.game_completed) {
-        toast.success("Game Completed!", {
-          description: "All cards have been used. Well played!"
-        });
-      }
-      // else {
-      //   toast.success("Turn completed!", {
-      //     description: "Moving to next turn...",
-      //   });
-      // }
-      // Real-time updates will handle game state changes
-    } else {
-      toast.error("Turn failed", {
-        description: "Failed to complete turn. Please try again."
-      });
-      setGameState((prev) => ({ ...prev, turnEnded: false }));
-    }
-  }, []);
+  }, [gameId]);
 
   // Handle time up scenario
   const handleTimeUp = useCallback(async () => {
-    if (!gameState.isDrawer || gameState.turnEnded) return;
+    if (!gameState.isDrawer || gameState.turnEnded || !currentTurn) return;
 
     setGameState((prev) => ({ ...prev, turnEnded: true }));
 
     try {
-      // Only capture drawing if we're the drawer, otherwise let the drawer handle it via real-time sync
-      if (gameState.isDrawer) {
-        const drawingImageUrl = await captureDrawing();
-        const result = await completeTimeUpTurn({
-          gameId: game.id,
-          timeRemaining: gameState.timeRemaining,
-          drawingImageUrl,
-        });
-        handleTurnResult(result);
-      }
+      const drawingImageUrl = gameState.isDrawer
+        ? await captureDrawing()
+        : undefined;
+
+      await completeGameTurnMutation({
+        game_id: gameId,
+        turn_id: currentTurn._id,
+        reason: "time_up",
+      });
+
+      toast.success("Tempo scaduto!", {
+        description: "Il turno è terminato.",
+      });
     } catch (error) {
       console.error("Error completing time up turn:", error);
-      toast.error("Error", {
-        description: "Failed to complete turn"
+      toast.error("Errore", {
+        description: "Impossibile completare il turno",
       });
       setGameState((prev) => ({ ...prev, turnEnded: false }));
     }
   }, [
     gameState.isDrawer,
     gameState.turnEnded,
-    gameState.timeRemaining,
-    game.id,
+    currentTurn,
+    gameId,
     captureDrawing,
-    handleTurnResult,
+    completeGameTurnMutation,
   ]);
 
   // Update game state when game changes
   useEffect(() => {
     setGameState((prev) => ({
       ...prev,
-      isDrawer: game.current_drawer_id === user.id,
-      turnStarted: !!game.timer_end,
-      turnEnded: false, // Reset on game state change
+      isDrawer: game.current_drawer_id === profile?.user_id,
+      turnStarted: currentTurn?.status === "drawing",
+      turnEnded: false,
+      currentTurnId: currentTurn?._id ?? null,
     }));
-  }, [game.current_drawer_id, user.id, game.timer_end]);
+  }, [
+    game.current_drawer_id,
+    profile?.user_id,
+    currentTurn?.status,
+    currentTurn?._id,
+  ]);
 
-  // Load card when needed
+  // Update current card
   useEffect(() => {
-    const fetchCard = async (cardId: string) => {
-      try {
-        const newCardData = await getCard(cardId);
-        setGameState((prev) => {
-          // Prevent loop if getCard returns new ref for same data
-          if (
-            JSON.stringify(prev.currentCard) === JSON.stringify(newCardData)
-          ) {
-            return prev;
-          }
-          return { ...prev, currentCard: newCardData };
-        });
-      } catch (error) {
-        console.error("Error fetching card:", error);
-        setGameState((prev) => ({ ...prev, currentCard: null }));
-      }
-    };
-
-    // Load the current card if we're the drawer
-    if (gameState.isDrawer && game.current_card_id) {
-      fetchCard(game.current_card_id);
+    if (currentCard && gameState.isDrawer) {
+      setGameState((prev) => ({ ...prev, currentCard }));
     } else {
       setGameState((prev) => ({ ...prev, currentCard: null }));
     }
-  }, [gameState.isDrawer, game.current_card_id]);
+  }, [currentCard, gameState.isDrawer]);
 
   // Timer logic effect
   useEffect(() => {
-    if (!gameState.turnStarted || !game.timer_end) return;
+    if (!gameState.turnStarted || !currentTurn) return;
 
-    const endTime = new Date(game.timer_end).getTime();
-    let timerEndedFlag = false; // Local flag to prevent multiple calls
+    const startTime = currentTurn.started_at;
+    const timeLimit = currentTurn.time_limit;
+    const endTime = startTime + timeLimit * 1000;
+    let timerEndedFlag = false;
 
     const updateTimer = () => {
       if (!modalState.isTimerPaused && !timerEndedFlag) {
-        const now = new Date().getTime();
+        const now = Date.now();
         const diff = Math.max(0, Math.floor((endTime - now) / 1000));
         setGameState((prev) => ({ ...prev, timeRemaining: diff }));
 
         if (diff <= 0) {
-          timerEndedFlag = true; // Set local flag immediately
+          timerEndedFlag = true;
 
-          // Show time up modal and correct answer
+          // Show time up modal
           setModalState((prev) => ({
             ...prev,
             showTimeUp: true,
-            correctAnswer: gameState.currentCard?.title || null,
+            correctAnswer: gameState.currentCard?.word || null,
           }));
 
-          // Handle time up if we're the drawer
+          // Handle time up
           handleTimeUp();
 
           if (timerIntervalRef.current) {
@@ -245,181 +231,69 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     };
   }, [
     gameState.turnStarted,
-    gameState.isDrawer,
-    gameState.turnEnded,
-    gameState.currentCard?.title,
+    gameState.currentCard?.word,
     modalState.isTimerPaused,
-    game.timer_end,
-    game.id,
-    game.current_card_id,
+    currentTurn,
     handleTimeUp,
   ]);
 
-  // Subscribe to guesses for UI updates only
-  useEffect(() => {
-    const guessSubscription = supabase
-      .channel(`guesses:${game.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "guesses",
-          filter: `game_id=eq.${game.id}`
-        },
-        async (payload) => {
-          const guess = payload.new as Guess;
-
-          // If this is a correct guess, add to correct guessers for UI
-          if (guess.is_correct) {
-            const guesser = players.find(
-              (p: PlayerWithProfile) => p.id === guess.player_id
-            );
-            if (
-              guesser &&
-              !correctGuessers.some((p) => p.id === guess.player_id)
-            ) {
-              setCorrectGuessers((prev) => [...prev, guesser]);
-
-              // Show toast notification for the drawer
-              if (gameState.isDrawer) {
-                toast.success("Correct Guess!", {
-                  description: `${guesser.profile.user_name} guessed correctly and earned ${gameState.timeRemaining} points!`
-                });
-              }
-            }
-          }
-          // Note: Turn completion is now handled atomically by the guesser
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(guessSubscription);
-    };
-  }, [
-    game.id,
-    supabase,
-    gameState.isDrawer,
-    gameState.timeRemaining,
-    players,
-    correctGuessers,
-  ]);
-
   const handleGuessSubmit = async (guess: string) => {
-    if (!currentPlayer || gameState.turnEnded) return;
+    if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
 
     try {
-      // Record the time when validation starts
-      const validationStartTime = Date.now();
+      const result = await submitGuessAndCompleteTurnMutation({
+        game_id: gameId,
+        turn_id: currentTurn._id,
+        guess_text: guess,
+      });
 
-      // Step 1: Validate guess with AI first
-      const validationResult = await validateGuessWithAI(
-        game.id,
-        guess,
-        game.category
-      );
-
-      if (!validationResult.isCorrect) {
-        // Show error toast for incorrect guess
+      if (!result.is_correct) {
         toast.error("Risposta errata", {
-          description: "Riprova con un'altra risposta!"
+          description: "Riprova con un'altra risposta!",
         });
         return;
       }
 
-      // Calculate time spent on validation and adjust remaining time
-      const validationEndTime = Date.now();
-      const validationLatency = Math.floor(
-        (validationEndTime - validationStartTime) / 1000
-      );
-      const adjustedTimeRemaining = Math.max(
-        0,
-        gameState.timeRemaining - validationLatency
-      );
-
-      // Step 2: If validation passed, capture drawing (if drawer) and submit
-      const drawingImageUrl = await captureDrawing();
-
-      // Step 3: Submit the correct guess atomically with adjusted time
-      const result = await submitGuessAtomic({
-        gameId: game.id,
-        guesserProfileId: currentPlayer.player_id || "",
-        guessText: guess,
-        timeRemaining: adjustedTimeRemaining,
-        drawingImageUrl: drawingImageUrl,
-      });
-
-      if (!result.success) {
-        toast.error("Error", {
-          description: "Failed to submit guess"
-        });
-        return;
-      }
-
-      // Step 4: Handle successful submission
+      // Correct guess
       setGameState((prev) => ({ ...prev, turnEnded: true }));
-
-      const drawerPoints = result.drawer_new_score
-        ? result.drawer_new_score -
-          (players.find(
-            (p: PlayerWithProfile) => p.player_id === game.current_drawer_id
-          )?.score || 0)
-        : Math.max(10, Math.floor(gameState.timeRemaining / 4));
-
       toast.success("Corretto!", {
-        description: `Hai indovinato e guadagnato ${adjustedTimeRemaining} punti! Il disegnatore ha guadagnato ${drawerPoints} punti!`
-      });
-
-      // Handle the turn result
-      handleTurnResult({
-        success: true,
-        next_drawer_id: result.next_drawer_id,
-        next_card_id: result.next_card_id,
-        guesser_new_score: result.guesser_new_score,
-        drawer_new_score: result.drawer_new_score,
-        turn_id: result.turn_id,
-        game_completed: result.game_completed,
+        description: `Hai indovinato e guadagnato punti!`,
       });
     } catch (error) {
       console.error("Error in guess submission:", error);
-      toast.error("Error", {
-        description: "Failed to process guess"
+      toast.error("Errore", {
+        description: "Impossibile inviare il tuo indovino",
       });
     }
   };
 
-  const handleSelectWinner = async (winner: PlayerWithProfile) => {
-    if (gameState.turnEnded) return;
+  const handleSelectWinner = async (winner: Doc<"players">) => {
+    if (gameState.turnEnded || !currentTurn) return;
 
     try {
-      setGameState((prev) => ({ ...prev, turnEnded: true })); // Prevent multiple selections
+      setGameState((prev) => ({ ...prev, turnEnded: true }));
 
-      // Only capture drawing if we're the drawer, otherwise let the drawer handle it via real-time sync
-      const drawingImageUrl = gameState.isDrawer
-        ? await captureDrawing()
-        : undefined;
-
-      const result = await completeManualWinnerTurn({
-        gameId: game.id,
-        winnerId: winner.player_id || "",
-        timeRemaining: gameState.timeRemaining,
-        drawingImageUrl,
+      await completeGameTurnMutation({
+        game_id: gameId,
+        turn_id: currentTurn._id,
+        reason: "manual",
       });
 
-      handleTurnResult(result);
+      toast.success("Vincitore selezionato!", {
+        description: `${winner.username} è stato selezionato come vincitore!`,
+      });
 
       setModalState((prev) => ({
         ...prev,
         showSelectWinner: false,
-        isTimerPaused: false, // Resume timer if winner is selected (timer will end anyway)
+        isTimerPaused: false,
       }));
       setCorrectGuessers([]);
     } catch (error) {
       console.error("Error selecting winner:", error);
-      setGameState((prev) => ({ ...prev, turnEnded: false })); // Reset flag on error
-      toast.error("Error", {
-        description: "Failed to select winner"
+      setGameState((prev) => ({ ...prev, turnEnded: false }));
+      toast.error("Errore", {
+        description: "Impossibile selezionare il vincitore",
       });
     }
   };
@@ -429,12 +303,12 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
     setGameState((prev) => ({ ...prev, isStartingTurn: true }));
     try {
-      await startTurn(game.id);
+      await startNewTurnMutation({ game_id: gameId });
       setGameState((prev) => ({ ...prev, turnStarted: true }));
     } catch (error) {
       console.error("Error starting turn:", error);
-      toast.error("Error", {
-        description: "Failed to start turn"
+      toast.error("Errore", {
+        description: "Impossibile avviare il turno",
       });
     } finally {
       setGameState((prev) => ({ ...prev, isStartingTurn: false }));
@@ -446,7 +320,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     setModalState((prev) => ({
       ...prev,
       showSelectWinner: true,
-      isTimerPaused: true, // Pause timer when modal opens
+      isTimerPaused: true,
     }));
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
   };
@@ -455,7 +329,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
     setModalState((prev) => ({
       ...prev,
       showSelectWinner: false,
-      isTimerPaused: false, // Resume timer if modal closed without winner
+      isTimerPaused: false,
     }));
   };
 
@@ -466,36 +340,21 @@ export default function GameBoard({ game, user }: GameBoardProps) {
           <span className="inline-block bg-primary/20 px-3 py-1 rounded-full font-medium text-primary text-sm">
             Categoria: {game.category}
           </span>
-
-          <span
-            className={`
-              inline-block ml-2 px-3 py-1 rounded-full font-medium text-sm text-black
-              ${
-                game.difficulty === "facile"
-                  ? "bg-green-200"
-                  : game.difficulty === "medio"
-                  ? "bg-yellow-200"
-                  : game.difficulty === "difficile"
-                  ? "bg-red-200"
-                  : "bg-violet-300"
-              }
-            `}
-          >
-            Difficoltà: {game.difficulty}
-          </span>
           <span className="inline-block ml-2 px-3 py-1 rounded-full font-medium text-white text-sm gradient-bg">
-            N° parole: {game.card_title_length}
+            Turno: {game.round} / {game.max_rounds}
           </span>
         </div>
         {gameState.turnStarted ? (
           <div className="flex items-center gap-4">
-            <Timer seconds={gameState.timeRemaining} totalTime={game.timer} />
+            <Timer seconds={gameState.timeRemaining} totalTime={60} />
           </div>
         ) : (
           <div className="font-medium text-muted-foreground text-lg">
             {gameState.isDrawer
               ? "È il tuo turno di disegnare"
-              : `In attesa che ${currentDrawer?.profile.name} inizi`}
+              : currentDrawer
+              ? `In attesa che ${currentDrawer.username} inizi`
+              : "In attesa..."}
           </div>
         )}
       </div>
@@ -506,7 +365,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
             {currentDrawer && (
               <DrawingCanvas
                 ref={drawingCanvasRef}
-                gameId={game.id}
+                gameId={gameId}
                 isDrawer={gameState.isDrawer}
                 currentDrawer={currentDrawer}
                 turnStarted={gameState.turnStarted}
@@ -533,7 +392,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
 
           {!gameState.isDrawer &&
             gameState.turnStarted &&
-            game.current_card_id && (
+            gameState.currentTurnId && (
               <div className="mt-4">
                 <GuessInput
                   onSubmit={handleGuessSubmit}
@@ -588,7 +447,7 @@ export default function GameBoard({ game, user }: GameBoardProps) {
       {modalState.showSelectWinner && (
         <SelectWinnerModal
           players={players.filter(
-            (p: PlayerWithProfile) => p.player_id !== game.current_drawer_id
+            (p) => p.player_id !== game.current_drawer_id
           )}
           onSelectWinner={handleSelectWinner}
           onClose={handleCloseSelectWinner}
