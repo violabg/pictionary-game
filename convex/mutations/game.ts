@@ -16,6 +16,7 @@ export const submitGuessAndCompleteTurn = mutation({
     game_id: v.id("games"),
     turn_id: v.id("turns"),
     guess_text: v.string(),
+    drawing_file_id: v.optional(v.id("_storage")),
   },
   returns: v.object({
     is_correct: v.boolean(),
@@ -95,6 +96,20 @@ export const submitGuessAndCompleteTurn = mutation({
       await ctx.db.patch(args.turn_id, {
         correct_guesses: turn.correct_guesses + 1,
       });
+
+      // Save drawing screenshot if provided
+      if (args.drawing_file_id) {
+        const existingDrawing = await ctx.db
+          .query("drawings")
+          .withIndex("by_turn_id", (q) => q.eq("turn_id", args.turn_id))
+          .first();
+
+        if (existingDrawing) {
+          await ctx.db.patch(existingDrawing._id, {
+            drawing_file_id: args.drawing_file_id,
+          });
+        }
+      }
 
       // Complete the turn
       await ctx.db.patch(args.turn_id, {
@@ -177,6 +192,7 @@ export const completeGameTurn = mutation({
     reason: v.union(v.literal("time_up"), v.literal("manual")),
     winner_id: v.optional(v.string()),
     points_awarded: v.optional(v.number()),
+    drawing_file_id: v.optional(v.id("_storage")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -224,6 +240,20 @@ export const completeGameTurn = mutation({
         // Track count of correct guesses on the turn
         await ctx.db.patch(args.turn_id, {
           correct_guesses: turn.correct_guesses + 1,
+        });
+      }
+    }
+
+    // Save drawing screenshot if provided
+    if (args.drawing_file_id) {
+      const existingDrawing = await ctx.db
+        .query("drawings")
+        .withIndex("by_turn_id", (q) => q.eq("turn_id", args.turn_id))
+        .first();
+
+      if (existingDrawing) {
+        await ctx.db.patch(existingDrawing._id, {
+          drawing_file_id: args.drawing_file_id,
         });
       }
     }

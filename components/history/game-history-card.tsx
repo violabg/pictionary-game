@@ -267,21 +267,24 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
                     </div>
                   </div>
 
-                  {turn.drawing_file_id && (
+                  {turn.drawing_url && (
                     <div className="flex-shrink-0">
                       <div
                         className="relative bg-white hover:shadow-lg border rounded-lg w-16 h-16 overflow-hidden hover:scale-110 transition-all duration-200 ease-out cursor-pointer transform"
                         onClick={(e) =>
                           openImageModal(
-                            "", // Would need to get URL from storage
+                            turn.drawing_url!,
                             turn.card_word,
                             e.currentTarget
                           )
                         }
                       >
-                        <span className="text-muted-foreground text-xs">
-                          Drawing
-                        </span>
+                        <Image
+                          src={turn.drawing_url}
+                          alt={turn.card_word}
+                          fill
+                          className="object-cover"
+                        />
                       </div>
                     </div>
                   )}

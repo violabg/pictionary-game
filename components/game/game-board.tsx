@@ -151,7 +151,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     setGameState((prev) => ({ ...prev, turnEnded: true }));
 
     try {
-      const drawingImageUrl = gameState.isDrawer
+      const drawingFileId = gameState.isDrawer
         ? await captureDrawing()
         : undefined;
 
@@ -159,6 +159,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         game_id: gameId,
         turn_id: currentTurn._id,
         reason: "time_up",
+        drawing_file_id: drawingFileId as any,
       });
 
       toast.success("Tempo scaduto!", {
@@ -263,10 +264,16 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
 
     try {
+      // Capture drawing screenshot if drawer
+      const drawingFileId = gameState.isDrawer
+        ? await captureDrawing()
+        : undefined;
+
       const result = await submitGuessAndCompleteTurnMutation({
         game_id: gameId,
         turn_id: currentTurn._id,
         guess_text: guess,
+        drawing_file_id: drawingFileId as any,
       });
 
       if (!result.is_correct) {
@@ -295,12 +302,18 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     try {
       setGameState((prev) => ({ ...prev, turnEnded: true }));
 
+      // Capture drawing screenshot if drawer
+      const drawingFileId = gameState.isDrawer
+        ? await captureDrawing()
+        : undefined;
+
       await completeGameTurnMutation({
         game_id: gameId,
         turn_id: currentTurn._id,
         reason: "manual",
         winner_id: winner.player_id,
         points_awarded: Math.max(0, Math.floor(gameState.timeRemaining)),
+        drawing_file_id: drawingFileId as any,
       });
 
       toast.success("Vincitore selezionato!", {

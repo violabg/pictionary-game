@@ -202,6 +202,7 @@ export const getGameTurnsWithDetails = query({
       drawer_points_awarded: v.number(),
       points_awarded: v.number(),
       drawing_file_id: v.optional(v.id("_storage")),
+      drawing_url: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -249,6 +250,13 @@ export const getGameTurnsWithDetails = query({
         .withIndex("by_turn_id", (q) => q.eq("turn_id", turn._id))
         .first();
 
+      // Get drawing URL from storage if drawing has file ID
+      let drawingUrl: string | undefined = undefined;
+      if (drawing?.drawing_file_id) {
+        drawingUrl =
+          (await ctx.storage.getUrl(drawing.drawing_file_id)) ?? undefined;
+      }
+
       result.push({
         _id: turn._id,
         game_id: turn.game_id,
@@ -270,6 +278,7 @@ export const getGameTurnsWithDetails = query({
         drawer_points_awarded: drawerPlayer?.score ?? 0, // This should be calculated, but we'll store in player
         points_awarded: 1, // Default points per correct guess (can be customized)
         drawing_file_id: drawing?.drawing_file_id,
+        drawing_url: drawingUrl,
       });
     }
 
