@@ -10,9 +10,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
@@ -23,6 +26,8 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"div">) {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuthActions();
+  const createOrGetOAuthProfile = useMutation(api.auth.createOrGetOAuthProfile);
+  const router = useRouter();
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -51,11 +56,28 @@ export function LoginForm({
     setIsLoading(true);
 
     try {
-      // Convex Auth handles the redirect internally
-      // GitHub doesn't need form data, just pass the provider and redirect
+      // First, perform GitHub authentication
       const formData = new FormData();
       formData.append("redirectTo", "/gioca");
       await signIn("github", formData);
+
+      // The ProfileInitializer will automatically create the profile when the user lands
+      // But we can also try to create it here for faster UX
+      try {
+        await createOrGetOAuthProfile({
+          username: undefined,
+          email: undefined,
+          avatar_url: undefined,
+        });
+      } catch (profileError) {
+        // Profile might already exist or will be created by ProfileInitializer
+        console.log(
+          "Profile creation deferred to ProfileInitializer",
+          profileError
+        );
+      }
+
+      router.push("/gioca");
     } catch (error: unknown) {
       console.log("🚀 ~ handleGitHubLogin ~ error:", error);
       toast.error("Errore", {
@@ -86,7 +108,7 @@ export function LoginForm({
             <Button
               className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
               disabled={isLoading}
-              onClick={() => void signIn("github")}
+              onClick={handleGitHubLogin}
             >
               <GithubIcon className="w-5 h-5" />
               <span className="font-medium">

@@ -3,7 +3,7 @@ import Resend from "@auth/core/providers/resend";
 import { Password } from "@convex-dev/auth/providers/Password";
 import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [GitHub, Password, Resend],
@@ -49,9 +49,48 @@ export const createProfileIfNotExists = mutation({
 });
 
 /**
+ * Create or get profile from OAuth providers (GitHub, Resend, etc.)
+ * Automatically creates a profile if it doesn't exist using OAuth user data
+ */
+export const createOrGetOAuthProfile = mutation({
+  args: {
+    username: v.optional(v.string()),
+    email: v.optional(v.string()),
+    avatar_url: v.optional(v.string()),
+  },
+  returns: v.id("profiles"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    // Check if profile already exists
+    const existingProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
+      .first();
+
+    if (existingProfile) {
+      return existingProfile._id;
+    }
+
+    // Create new profile with OAuth data
+    const profileId = await ctx.db.insert("profiles", {
+      user_id: userId,
+      username: args.username || "User",
+      email: args.email || "",
+      avatar_url: args.avatar_url,
+      total_score: 0,
+      games_played: 0,
+    });
+
+    return profileId;
+  },
+});
+
+/**
  * Get the current user's profile
  */
-export const getCurrentUserProfile = mutation({
+export const getCurrentUserProfile = query({
   args: {},
   returns: v.nullable(
     v.object({
