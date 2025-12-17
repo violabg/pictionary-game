@@ -31,7 +31,7 @@ export const generateCards = action({
     });
 
     const { object } = await generateObject({
-      model: groq("mixtral-8x7b-32768"),
+      model: groq("moonshotai/kimi-k2-instruct-0905"),
       schema,
       prompt: `Generate ${args.count} random drawing prompts for a Pictionary-like game in the "${args.category}" category. 
         Each card should have a word and a brief description. 
