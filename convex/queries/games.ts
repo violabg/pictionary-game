@@ -11,6 +11,7 @@ export const getGame = query({
   returns: v.nullable(
     v.object({
       _id: v.id("games"),
+      _creationTime: v.number(),
       code: v.string(),
       status: v.union(
         v.literal("waiting"),
@@ -43,6 +44,7 @@ export const getGameByCode = query({
   returns: v.nullable(
     v.object({
       _id: v.id("games"),
+      _creationTime: v.number(),
       code: v.string(),
       status: v.union(
         v.literal("waiting"),

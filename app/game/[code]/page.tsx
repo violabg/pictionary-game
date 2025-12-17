@@ -3,6 +3,7 @@
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
+import { use } from "react";
 import { GameClientPage } from "./GameClientPage";
 
 export default function GamePage({
@@ -10,7 +11,7 @@ export default function GamePage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const code = ((params as any).code || "") as string;
+  const { code } = use(params);
   const game = useQuery(
     api.queries.games.getGameByCode,
     code ? { code } : "skip"
