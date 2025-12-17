@@ -3,8 +3,10 @@
 import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
+import { api } from "@/convex/_generated/api";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { captureCanvasAsDataURL } from "@/lib/utils/canvas-utils";
+import { useMutation, useQuery } from "convex/react";
 import {
   forwardRef,
   useCallback,
@@ -26,6 +28,7 @@ interface DrawingCanvasProps {
   isDrawer: boolean;
   currentDrawer: Doc<"players">;
   turnStarted: boolean;
+  turnId: Id<"turns"> | null;
 }
 
 export interface DrawingCanvasRef {
@@ -33,7 +36,7 @@ export interface DrawingCanvasRef {
   getCanvas: () => HTMLCanvasElement | null;
 }
 const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
-  ({ gameId, isDrawer, currentDrawer, turnStarted }, ref) => {
+  ({ gameId, isDrawer, currentDrawer, turnStarted, turnId }, ref) => {
     const currentDrawerId = currentDrawer.player_id;
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -51,6 +54,41 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
     // Keep a ref to the latest strokes for use in resize handler
     const strokesRef = useRef(strokes);
+
+    // Convex: save strokes mutation
+    const saveStrokes = useMutation(api.mutations.drawings.saveTurnStrokes);
+    // Convex: live strokes for non-drawers
+    const remote = useQuery(
+      api.queries.drawings.getTurnStrokes,
+      !isDrawer && turnId ? { turn_id: turnId } : ("skip" as any)
+    );
+
+    // Throttled push to server while drawing
+    const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const scheduleSave = useCallback(
+      (pending: Stroke[] | null = null) => {
+        if (!isDrawer || !turnStarted || !turnId) return;
+        if (saveTimerRef.current) return; // already scheduled
+        saveTimerRef.current = setTimeout(async () => {
+          saveTimerRef.current = null;
+          const payload = pending ?? strokesRef.current;
+          try {
+            await saveStrokes({
+              turn_id: turnId,
+              strokes: payload.map((s) => ({
+                points: s.points,
+                color: s.color,
+                width: s.width,
+              })),
+            });
+          } catch (e) {
+            // Silently ignore to avoid UI jitter
+            console.error("saveTurnStrokes error", e);
+          }
+        }, 100);
+      },
+      [isDrawer, turnStarted, turnId, saveStrokes]
+    );
 
     // Expose capture function to parent component
     useImperativeHandle(
@@ -172,6 +210,17 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setCurrentStroke((stroke: Stroke | null) =>
         stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
       );
+      // Schedule a throttled save including the in-progress stroke
+      scheduleSave([
+        ...strokesRef.current,
+        {
+          points: currentStroke
+            ? [...currentStroke.points, normCurrent]
+            : [normCurrent],
+          color: tool === "brush" ? color : "#ffffff",
+          width: tool === "brush" ? lineWidth : eraserWidth,
+        },
+      ]);
       // TODO: Broadcast to other players via Convex real-time (normalized)
       // supabase.channel(`drawing:${gameId}`).send({
       //   type: "broadcast",
@@ -196,15 +245,8 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       if (currentStroke && currentStroke.points.length > 1) {
         setStrokes((prev) => {
           const newStrokes = [...prev, currentStroke];
-          // TODO: Broadcast new strokes to others via Convex real-time (normalized)
-          // supabase.channel(`drawing:${gameId}`).send({
-          //   type: "broadcast",
-          //   event: "drawing",
-          //   payload: {
-          //     type: "strokes",
-          //     data: newStrokes,
-          //   },
-          // });
+          // Persist immediately on stroke end
+          scheduleSave(newStrokes);
           return newStrokes;
         });
       }
@@ -224,19 +266,9 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setStrokes([]); // Clear local strokes state
 
       if (isDrawer) {
-        // TODO: Broadcast clear and empty strokes to other players via Convex real-time
-        // supabase.channel(`drawing:${gameId}`).send({
-        //   type: "broadcast",
-        //   event: "drawing",
-        //   payload: { type: "clear" },
-        // });
-        // supabase.channel(`drawing:${gameId}`).send({
-        //   type: "broadcast",
-        //   event: "drawing",
-        //   payload: { type: "strokes", data: [] },
-        // });
+        scheduleSave([]);
       }
-    }, [canvasRef, isDrawer]);
+    }, [canvasRef, isDrawer, scheduleSave]);
 
     // Undo logic
     const handleUndo = useCallback(() => {
@@ -248,18 +280,10 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         } else {
           redrawStrokes(newStrokes);
         }
-        // TODO: Broadcast new strokes to others via Convex real-time
-        // supabase.channel(`drawing:${gameId}`).send({
-        //   type: "broadcast",
-        //   event: "drawing",
-        //   payload: {
-        //     type: "strokes",
-        //     data: newStrokes,
-        //   },
-        // });
+        scheduleSave(newStrokes);
         return newStrokes;
       });
-    }, [redrawStrokes, clearCanvas]);
+    }, [redrawStrokes, clearCanvas, scheduleSave]);
 
     // Get mouse/touch point relative to canvas, scaled to canvas size
     const getPoint = (
@@ -378,32 +402,14 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       };
     }, [clearCanvas, handleUndo, isDrawer, turnStarted]);
 
-    // Subscribe to drawing updates
+    // Apply remote strokes to spectators
     useEffect(() => {
-      if (isDrawer) return; // Drawer doesn't need to subscribe
-
-      // TODO: Subscribe to Convex real-time drawing updates
-      // const subscription = subscribeToDrawingUpdates({
-      //   gameId,
-      //   onDraw: ({ prevPoint, currentPoint, color, lineWidth }) => {
-      //     const canvas = canvasRef.current;
-      //     if (!canvas) return;
-      //     const p1 = denormalizePoint(prevPoint, canvas);
-      //     const p2 = denormalizePoint(currentPoint, canvas);
-      //     drawLine(p1.x, p1.y, p2.x, p2.y, color, lineWidth);
-      //   },
-      //   onClear: () => clearCanvas(),
-      //   onStrokes: (data) => {
-      //     setStrokes(data);
-      //     redrawStrokes(data);
-      //   },
-      // });
-
-      return () => {
-        // TODO: Unsubscribe from Convex real-time updates
-        // subscription?.unsubscribe();
-      };
-    }, [gameId, isDrawer, clearCanvas, redrawStrokes]);
+      if (isDrawer) return;
+      if (!remote) return;
+      // Keep local redraw in sync with server without touching React state
+      strokesRef.current = remote.strokes as any;
+      redrawStrokes(remote.strokes as any);
+    }, [isDrawer, remote, redrawStrokes]);
 
     return (
       <div className="flex flex-col rounded-md overflow-hidden">

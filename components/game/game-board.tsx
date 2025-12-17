@@ -299,6 +299,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         game_id: gameId,
         turn_id: currentTurn._id,
         reason: "manual",
+        winner_id: winner.player_id,
+        points_awarded: Math.max(0, Math.floor(gameState.timeRemaining)),
       });
 
       toast.success("Vincitore selezionato!", {
@@ -391,6 +393,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
                 isDrawer={gameState.isDrawer}
                 currentDrawer={currentDrawer}
                 turnStarted={gameState.turnStarted}
+                turnId={gameState.currentTurnId}
               />
             )}
 

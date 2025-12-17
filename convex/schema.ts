@@ -88,6 +88,8 @@ export default defineSchema({
           color: v.string(),
           size: v.number(),
           timestamp: v.number(),
+          // Optional flag to indicate the start of a new stroke
+          strokeStart: v.optional(v.boolean()),
         })
       ),
       width: v.number(),

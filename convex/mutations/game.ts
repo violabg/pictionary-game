@@ -39,6 +39,15 @@ export const submitGuessAndCompleteTurn = mutation({
     const turn = await ctx.db.get(args.turn_id);
     if (!turn) throw new Error("Turn not found");
 
+    // If turn already completed, just record the guess outcome and return
+    if (turn.status !== "drawing") {
+      return {
+        is_correct: false,
+        is_fuzzy_match: false,
+        message: "Turn already completed",
+      };
+    }
+
     // Get the card
     const card = await ctx.db.get(turn.card_id);
     if (!card) throw new Error("Card not found");
@@ -61,7 +70,7 @@ export const submitGuessAndCompleteTurn = mutation({
       submitted_at: Date.now(),
     });
 
-    // If correct, update player score
+    // If correct, award points based on remaining time and complete the turn
     if (isCorrect || isFuzzyMatch) {
       const player = await ctx.db
         .query("players")
@@ -70,9 +79,14 @@ export const submitGuessAndCompleteTurn = mutation({
         )
         .first();
 
+      const now = Date.now();
+      const elapsedSec = Math.floor((now - turn.started_at) / 1000);
+      const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
+      const awarded = Math.max(0, timeLeft);
+
       if (player) {
         await ctx.db.patch(player._id, {
-          score: player.score + 10,
+          score: player.score + awarded,
           correct_guesses: player.correct_guesses + 1,
         });
       }
@@ -81,12 +95,74 @@ export const submitGuessAndCompleteTurn = mutation({
       await ctx.db.patch(args.turn_id, {
         correct_guesses: turn.correct_guesses + 1,
       });
+
+      // Complete the turn
+      await ctx.db.patch(args.turn_id, {
+        status: "completed",
+        completed_at: now,
+      });
+
+      // Rotate drawer or advance round similarly to completeGameTurn
+      const allPlayers = await ctx.db
+        .query("players")
+        .withIndex("by_game_id", (q) => q.eq("game_id", args.game_id))
+        .collect();
+
+      const playersInRound = await ctx.db
+        .query("turns")
+        .withIndex("by_game_and_round", (q) =>
+          q.eq("game_id", args.game_id).eq("round", turn.round)
+        )
+        .collect();
+
+      const game = await ctx.db.get(args.game_id);
+      if (!game) throw new Error("Game not found");
+
+      if (playersInRound.length >= allPlayers.length) {
+        const nextRound = turn.round + 1;
+        if (nextRound >= game.max_rounds) {
+          await ctx.db.patch(args.game_id, {
+            status: "finished",
+            finished_at: now,
+          });
+        } else {
+          const currentDrawerIndex = allPlayers.findIndex(
+            (p) => p.player_id === turn.drawer_id
+          );
+          const nextDrawerIndex = (currentDrawerIndex + 1) % allPlayers.length;
+          await ctx.db.patch(args.game_id, {
+            round: nextRound,
+            current_drawer_id: allPlayers[nextDrawerIndex].player_id,
+          });
+        }
+      } else {
+        const drawnSet = new Set(playersInRound.map((t) => t.drawer_id));
+        const startIdx = allPlayers.findIndex(
+          (p) => p.player_id === turn.drawer_id
+        );
+        for (let offset = 1; offset < allPlayers.length; offset++) {
+          const idx = (startIdx + offset) % allPlayers.length;
+          const candidate = allPlayers[idx];
+          if (!drawnSet.has(candidate.player_id)) {
+            await ctx.db.patch(args.game_id, {
+              current_drawer_id: candidate.player_id,
+            });
+            break;
+          }
+        }
+      }
+
+      return {
+        is_correct: true,
+        is_fuzzy_match: isFuzzyMatch,
+        message: "Correct!",
+      };
     }
 
     return {
-      is_correct: isCorrect,
+      is_correct: false,
       is_fuzzy_match: isFuzzyMatch,
-      message: isCorrect ? "Correct!" : "Not quite...",
+      message: "Not quite...",
     };
   },
 });
@@ -99,6 +175,8 @@ export const completeGameTurn = mutation({
     game_id: v.id("games"),
     turn_id: v.id("turns"),
     reason: v.union(v.literal("time_up"), v.literal("manual")),
+    winner_id: v.optional(v.string()),
+    points_awarded: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -108,11 +186,47 @@ export const completeGameTurn = mutation({
     // Verify user is host
     const game = await ctx.db.get(args.game_id);
     if (!game) throw new Error("Game not found");
-    if (game.created_by !== userId)
-      throw new Error("Only host can complete turn");
-
     const turn = await ctx.db.get(args.turn_id);
     if (!turn) throw new Error("Turn not found");
+
+    // Allow either host or current drawer to complete the turn
+    const isHost = game.created_by === userId;
+    const isDrawer = turn.drawer_id === userId;
+    if (!isHost && !isDrawer)
+      throw new Error("Only host or drawer can complete turn");
+
+    // If a manual winner is provided, award points by inserting a correct guess
+    if (args.reason === "manual" && args.winner_id) {
+      const winnerPlayer = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_player", (q) =>
+          q.eq("game_id", args.game_id).eq("player_id", args.winner_id!)
+        )
+        .first();
+      if (winnerPlayer) {
+        const awarded = Math.max(0, Math.floor(args.points_awarded ?? 10));
+        // Create a synthetic correct guess for history consistency
+        await ctx.db.insert("guesses", {
+          game_id: args.game_id,
+          turn_id: args.turn_id,
+          player_id: args.winner_id!,
+          guess_text: "[manual]",
+          is_correct: true,
+          is_fuzzy_match: false,
+          submitted_at: Date.now(),
+        });
+
+        await ctx.db.patch(winnerPlayer._id, {
+          score: winnerPlayer.score + awarded,
+          correct_guesses: winnerPlayer.correct_guesses + 1,
+        });
+
+        // Track count of correct guesses on the turn
+        await ctx.db.patch(args.turn_id, {
+          correct_guesses: turn.correct_guesses + 1,
+        });
+      }
+    }
 
     // Mark turn as completed
     await ctx.db.patch(args.turn_id, {
@@ -154,6 +268,23 @@ export const completeGameTurn = mutation({
           round: nextRound,
           current_drawer_id: allPlayers[nextDrawerIndex].player_id,
         });
+      }
+    } else {
+      // Same round: set next drawer to a player who hasn't drawn yet
+      const drawnSet = new Set(playersInRound.map((t) => t.drawer_id));
+      // Iterate from current drawer forward to find the next not drawn
+      const startIdx = allPlayers.findIndex(
+        (p) => p.player_id === turn.drawer_id
+      );
+      for (let offset = 1; offset < allPlayers.length; offset++) {
+        const idx = (startIdx + offset) % allPlayers.length;
+        const candidate = allPlayers[idx];
+        if (!drawnSet.has(candidate.player_id)) {
+          await ctx.db.patch(args.game_id, {
+            current_drawer_id: candidate.player_id,
+          });
+          break;
+        }
       }
     }
 
