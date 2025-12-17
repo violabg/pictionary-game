@@ -1,5 +1,4 @@
 "use client";
-
 import PictionAILogo from "@/assets";
 import { ModeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -16,9 +15,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { api } from "@/convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import { Loader2, LogOut, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -27,10 +25,8 @@ import { CurrentUserAvatar } from "../auth/current-user-avatar";
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const profile = useQuery(api.queries.profiles.getCurrentUserProfile);
-  const isLoading = profile === undefined;
-  const isAuthenticated = profile !== null && profile !== undefined;
   const authActions = useAuthActions();
+  const { isAuthenticated, isLoading } = useConvexAuth();
 
   const handleSignOut = async () => {
     await authActions.signOut();
