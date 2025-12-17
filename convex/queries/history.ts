@@ -31,6 +31,7 @@ export const getUserGameHistory = query({
   }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
+    console.log("🚀 ~ identity:", identity);
     if (!identity) {
       return {
         page: [],
@@ -45,13 +46,19 @@ export const getUserGameHistory = query({
       .withIndex("by_created_by_and_status", (q) =>
         q.eq("created_by", identity.subject).eq("status", "finished")
       );
+    console.log("🚀 ~ query:", query);
 
     // Add category filter if provided
     if (args.category && args.category !== "all") {
       query = query.filter((q) => q.eq(q.field("category"), args.category));
     }
 
-    return await query.order("desc").paginate(args.paginationOpts);
+    const { page, isDone, continueCursor } = await query
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    // Return only the validated fields to satisfy the returns validator
+    return { page, isDone, continueCursor };
   },
 });
 

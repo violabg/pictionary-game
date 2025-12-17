@@ -73,9 +73,8 @@
 
   ```typescript
   export const requireAuth = (ctx: QueryCtx | MutationCtx): string => {
-    const identity = ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    return identity.subject;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
   };
 
   export const isGameHost = async (

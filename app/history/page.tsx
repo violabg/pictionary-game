@@ -30,7 +30,7 @@ export default function HistoryPage() {
     paginationOpts,
     category: category && category !== "all" ? category : undefined,
   });
-
+  console.log("historyData", historyData);
   if (authLoading) {
     return (
       <main className="flex-1 py-8 container">
