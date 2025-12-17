@@ -31,7 +31,6 @@ export const getUserGameHistory = query({
   }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    console.log("🚀 ~ identity:", identity);
     if (!identity) {
       return {
         page: [],
@@ -40,24 +39,62 @@ export const getUserGameHistory = query({
       };
     }
 
-    // Query games by created_by and status
-    let query = ctx.db
-      .query("games")
-      .withIndex("by_created_by_and_status", (q) =>
-        q.eq("created_by", identity.subject).eq("status", "finished")
-      );
-    console.log("🚀 ~ query:", query);
+    // Extract the user ID (first part before pipe if present)
+    const userId = identity.subject.split("|")[0];
 
-    // Add category filter if provided
-    if (args.category && args.category !== "all") {
-      query = query.filter((q) => q.eq(q.field("category"), args.category));
+    // Get all games where user participated (via players table)
+    const memberships = await ctx.db
+      .query("players")
+      .withIndex("by_player_id", (q) => q.eq("player_id", userId))
+      .collect();
+
+    const gameIds = new Set(memberships.map((m) => m.game_id));
+
+    // Fetch finished games
+    const games: Array<{
+      _id: any;
+      code: string;
+      category: string;
+      status: "waiting" | "started" | "finished";
+      created_at: number;
+      round: number;
+      max_rounds: number;
+    }> = [];
+
+    for (const gameId of gameIds) {
+      const g = await ctx.db.get(gameId);
+      if (!g) continue;
+      if (g.status !== "finished") continue;
+      if (
+        args.category &&
+        args.category !== "all" &&
+        g.category !== args.category
+      )
+        continue;
+      games.push({
+        _id: g._id,
+        code: g.code,
+        category: g.category,
+        status: g.status,
+        created_at: g.created_at,
+        round: g.round,
+        max_rounds: g.max_rounds,
+      });
     }
 
-    const { page, isDone, continueCursor } = await query
-      .order("desc")
-      .paginate(args.paginationOpts);
+    // Sort by creation date desc
+    games.sort((a, b) => b.created_at - a.created_at);
 
-    // Return only the validated fields to satisfy the returns validator
+    // Simple cursor-based pagination using array index as cursor
+    const numItems = args.paginationOpts.numItems;
+    const start = args.paginationOpts.cursor
+      ? Number(args.paginationOpts.cursor)
+      : 0;
+    const page = games.slice(start, start + numItems);
+    const nextIndex = start + numItems;
+    const isDone = nextIndex >= games.length;
+    const continueCursor = isDone ? null : String(nextIndex);
+
     return { page, isDone, continueCursor };
   },
 });
@@ -72,16 +109,24 @@ export const getUserGameCategories = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const games = await ctx.db
-      .query("games")
-      .withIndex("by_created_by_and_status", (q) =>
-        q.eq("created_by", identity.subject).eq("status", "finished")
-      )
+    // Extract the user ID (first part before pipe if present)
+    const userId = identity.subject.split("|")[0];
+
+    // Find all games the user participated in
+    const memberships = await ctx.db
+      .query("players")
+      .withIndex("by_player_id", (q) => q.eq("player_id", userId))
       .collect();
 
-    // Get unique categories
-    const categories = [...new Set(games.map((g) => g.category))];
-    return categories.sort();
+    const categoriesSet = new Set<string>();
+    for (const m of memberships) {
+      const g = await ctx.db.get(m.game_id);
+      if (g && g.status === "finished") {
+        categoriesSet.add(g.category);
+      }
+    }
+
+    return Array.from(categoriesSet).sort();
   },
 });
 
