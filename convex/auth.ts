@@ -50,14 +50,10 @@ export const createProfileIfNotExists = mutation({
 
 /**
  * Create or get profile from OAuth providers (GitHub, Resend, etc.)
- * Automatically creates a profile if it doesn't exist using OAuth user data
+ * Automatically creates a profile using the actual authenticated user data
  */
 export const createOrGetOAuthProfile = mutation({
-  args: {
-    username: v.optional(v.string()),
-    email: v.optional(v.string()),
-    avatar_url: v.optional(v.string()),
-  },
+  args: {},
   returns: v.id("profiles"),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -73,12 +69,39 @@ export const createOrGetOAuthProfile = mutation({
       return existingProfile._id;
     }
 
-    // Create new profile with OAuth data
+    // Get the actual authenticated user data from the auth system
+    const authUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), userId))
+      .first();
+
+    if (!authUser) {
+      throw new Error("User not found in auth system");
+    }
+
+    // Extract user data from the authenticated user
+    // email is stored in the user object
+    const email = authUser.email || "";
+
+    // Generate username from email or provider data
+    let username = "User";
+    if (email) {
+      // Use email prefix as username (e.g., "john.doe@example.com" -> "john.doe")
+      username = email.split("@")[0] || "User";
+    } else if (authUser.name) {
+      // Fallback to name if available
+      username = authUser.name.replace(/\s+/g, "_").toLowerCase();
+    }
+
+    // Get avatar URL if available (some providers include this)
+    const avatar_url = authUser.image || undefined;
+
+    // Create new profile with actual user data
     const profileId = await ctx.db.insert("profiles", {
       user_id: userId,
-      username: args.username || "User",
-      email: args.email || "",
-      avatar_url: args.avatar_url,
+      username: username,
+      email: email,
+      avatar_url: avatar_url,
       total_score: 0,
       games_played: 0,
     });

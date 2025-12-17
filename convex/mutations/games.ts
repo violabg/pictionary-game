@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { api, internal } from "../_generated/api";
 import {
@@ -20,7 +21,9 @@ export const createGame = mutation({
     code: v.string(),
   }),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const userId = await getAuthUserId(ctx);
+    console.log("🚀 ~ userId:", userId);
+    if (!userId) throw new Error("Unauthorized");
 
     // Generate random 4-character code
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -30,6 +33,7 @@ export const createGame = mutation({
       .query("games")
       .withIndex("by_code", (q) => q.eq("code", code))
       .first();
+    console.log("🚀 ~ existingGame:", existingGame);
 
     if (existingGame) {
       throw new Error("Code collision, please try again");

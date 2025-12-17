@@ -21,11 +21,7 @@ export function ProfileInitializer() {
     // Only try once and only if authenticated
     if (isAuthenticated && !hasTriedCreation.current) {
       hasTriedCreation.current = true;
-      createOrGetOAuthProfile({
-        username: undefined,
-        email: undefined,
-        avatar_url: undefined,
-      }).catch((error) => {
+      createOrGetOAuthProfile().catch((error) => {
         console.error("Failed to initialize profile:", error);
         // Silently fail - profile might have been created by another request
       });

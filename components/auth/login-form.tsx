@@ -64,11 +64,7 @@ export function LoginForm({
       // The ProfileInitializer will automatically create the profile when the user lands
       // But we can also try to create it here for faster UX
       try {
-        await createOrGetOAuthProfile({
-          username: undefined,
-          email: undefined,
-          avatar_url: undefined,
-        });
+        await createOrGetOAuthProfile();
       } catch (profileError) {
         // Profile might already exist or will be created by ProfileInitializer
         console.log(

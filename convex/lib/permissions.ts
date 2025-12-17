@@ -9,6 +9,7 @@ export const requireAuth = async (
   ctx: QueryCtx | MutationCtx
 ): Promise<string> => {
   const identity = await ctx.auth.getUserIdentity();
+  console.log("🚀 ~ requireAuth ~ identity:", identity);
   if (!identity) throw new Error("Unauthorized: User not authenticated");
   return identity.subject;
 };

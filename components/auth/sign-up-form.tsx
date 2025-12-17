@@ -115,11 +115,7 @@ export function SignUpForm({
       // Try to create profile for GitHub user
       // ProfileInitializer will also handle this as a fallback
       try {
-        await createOrGetOAuthProfile({
-          username: undefined,
-          email: undefined,
-          avatar_url: undefined,
-        });
+        await createOrGetOAuthProfile();
       } catch (profileError) {
         console.log(
           "Profile creation deferred to ProfileInitializer",
