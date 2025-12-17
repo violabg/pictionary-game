@@ -12,6 +12,7 @@ export const getCurrentTurn = query({
   returns: v.nullable(
     v.object({
       _id: v.id("turns"),
+      _creationTime: v.number(),
       game_id: v.id("games"),
       round: v.number(),
       drawer_id: v.string(),
@@ -126,6 +127,7 @@ export const getTurn = query({
   returns: v.nullable(
     v.object({
       _id: v.id("turns"),
+      _creationTime: v.number(),
       game_id: v.id("games"),
       round: v.number(),
       drawer_id: v.string(),

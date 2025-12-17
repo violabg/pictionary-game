@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 
@@ -9,6 +10,7 @@ export const getCurrentUserProfile = query({
   returns: v.nullable(
     v.object({
       _id: v.id("profiles"),
+      _creationTime: v.number(),
       user_id: v.string(),
       username: v.string(),
       email: v.string(),
@@ -18,12 +20,12 @@ export const getCurrentUserProfile = query({
     })
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
 
     const profile = await ctx.db
       .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", identity.subject))
+      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
       .first();
 
     return profile || null;
@@ -76,6 +78,7 @@ export const getProfileById = query({
   returns: v.nullable(
     v.object({
       _id: v.id("profiles"),
+      _creationTime: v.number(),
       user_id: v.string(),
       username: v.string(),
       email: v.string(),

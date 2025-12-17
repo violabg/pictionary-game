@@ -11,6 +11,7 @@ export const getGamePlayers = query({
   returns: v.array(
     v.object({
       _id: v.id("players"),
+      _creationTime: v.number(),
       game_id: v.id("games"),
       player_id: v.string(),
       username: v.string(),
@@ -41,6 +42,7 @@ export const getPlayer = query({
   returns: v.nullable(
     v.object({
       _id: v.id("players"),
+      _creationTime: v.number(),
       game_id: v.id("games"),
       player_id: v.string(),
       username: v.string(),

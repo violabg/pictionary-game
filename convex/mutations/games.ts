@@ -6,7 +6,7 @@ import {
   internalMutation,
   mutation,
 } from "../_generated/server";
-import { isGameHost, requireAuth } from "../lib/permissions";
+import { isGameHost } from "../lib/permissions";
 
 /**
  * Create a new game with randomly generated code
@@ -22,7 +22,6 @@ export const createGame = mutation({
   }),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    console.log("🚀 ~ userId:", userId);
     if (!userId) throw new Error("Unauthorized");
 
     // Generate random 4-character code
@@ -33,7 +32,6 @@ export const createGame = mutation({
       .query("games")
       .withIndex("by_code", (q) => q.eq("code", code))
       .first();
-    console.log("🚀 ~ existingGame:", existingGame);
 
     if (existingGame) {
       throw new Error("Code collision, please try again");
@@ -92,7 +90,8 @@ export const joinGame = mutation({
   },
   returns: v.id("games"),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
 
     // Find game by code
     const game = await ctx.db
@@ -155,7 +154,8 @@ export const startGame = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
 
     const game = await ctx.db.get(args.game_id);
     if (!game) throw new Error("Game not found");
@@ -200,7 +200,8 @@ export const leaveGame = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
 
     // Find and delete player record
     const player = await ctx.db

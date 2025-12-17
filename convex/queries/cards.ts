@@ -6,7 +6,7 @@ import { query } from "../_generated/server";
  */
 export const getCurrentCard = query({
   args: {
-    game_id: v.id("games"),
+    game_id: v.optional(v.id("games")),
   },
   returns: v.nullable(
     v.object({
@@ -17,6 +17,8 @@ export const getCurrentCard = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!args.game_id) return null;
+
     const game = await ctx.db.get(args.game_id);
     if (!game || !game.current_card_id) return null;
 

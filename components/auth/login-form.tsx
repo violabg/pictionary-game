@@ -40,7 +40,6 @@ export function LoginForm({
       formData.append("redirectTo", "/gioca");
       await signIn("resend", formData);
     } catch (error: unknown) {
-      console.log("🚀 ~ handleLogin ~ error:", error);
       toast.error("Errore", {
         description:
           error instanceof Error
@@ -75,7 +74,6 @@ export function LoginForm({
 
       router.push("/gioca");
     } catch (error: unknown) {
-      console.log("🚀 ~ handleGitHubLogin ~ error:", error);
       toast.error("Errore", {
         description:
           error instanceof Error

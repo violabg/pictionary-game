@@ -1,4 +1,5 @@
 import PictionAILogo from "@/assets";
+import { LoginButton } from "@/components/auth/login-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,9 +34,7 @@ export default async function Home() {
             <Button asChild size="lg">
               <Link href="/gioca">Inizia a giocare</Link>
             </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/auth/login">Sign In</Link>
-            </Button>
+            <LoginButton />
           </div>
         </CardContent>
       </Card>

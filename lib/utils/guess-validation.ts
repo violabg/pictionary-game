@@ -82,7 +82,6 @@ export async function validateGuess(
             - explanation: breve spiegazione della tua decisione (non mostrata al giocatore, solo per logging)`,
     schema,
   });
-  console.log("🚀 ~ result:", result);
 
   const validationResult = result.object as {
     isAcceptable: boolean;

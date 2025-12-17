@@ -2,19 +2,6 @@ import { Id } from "../_generated/dataModel";
 import { MutationCtx, QueryCtx } from "../_generated/server";
 
 /**
- * Requires authentication and returns the authenticated user ID.
- * Throws if user is not authenticated.
- */
-export const requireAuth = async (
-  ctx: QueryCtx | MutationCtx
-): Promise<string> => {
-  const identity = await ctx.auth.getUserIdentity();
-  console.log("🚀 ~ requireAuth ~ identity:", identity);
-  if (!identity) throw new Error("Unauthorized: User not authenticated");
-  return identity.subject;
-};
-
-/**
  * Checks if the given user is the host of the game.
  */
 export const isGameHost = async (

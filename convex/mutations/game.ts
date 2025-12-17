@@ -1,6 +1,7 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { canGuess, requireAuth } from "../lib/permissions";
+import { canGuess } from "../lib/permissions";
 
 /**
  * Submit a guess and complete the turn
@@ -22,7 +23,8 @@ export const submitGuessAndCompleteTurn = mutation({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
 
     // Verify user can guess
     const canGuessResult = await canGuess(ctx, args.game_id, userId);
@@ -100,7 +102,8 @@ export const completeGameTurn = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
 
     // Verify user is host
     const game = await ctx.db.get(args.game_id);
@@ -167,8 +170,8 @@ export const startNewTurn = mutation({
   },
   returns: v.id("turns"),
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
-
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
     const game = await ctx.db.get(args.game_id);
     if (!game) throw new Error("Game not found");
 

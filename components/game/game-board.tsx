@@ -58,7 +58,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   });
   const currentCard = useQuery(
     api.queries.cards.getCurrentCard,
-    currentTurn?.card_id ? { game_id: gameId } : { game_id: null as any }
+    currentTurn?.card_id ? { game_id: gameId } : "skip"
   );
 
   // Mutations and Actions
