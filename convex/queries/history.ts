@@ -131,6 +131,48 @@ export const getUserGameCategories = query({
 });
 
 /**
+ * Get total count of finished games for current user (for pagination)
+ */
+export const getUserGameCount = query({
+  args: {
+    category: v.optional(v.string()),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return 0;
+
+    // Extract the user ID (first part before pipe if present)
+    const userId = identity.subject.split("|")[0];
+
+    // Get all games where user participated (via players table)
+    const memberships = await ctx.db
+      .query("players")
+      .withIndex("by_player_id", (q) => q.eq("player_id", userId))
+      .collect();
+
+    const gameIds = new Set(memberships.map((m) => m.game_id));
+
+    // Count finished games
+    let count = 0;
+    for (const gameId of gameIds) {
+      const g = await ctx.db.get(gameId);
+      if (!g) continue;
+      if (g.status !== "finished") continue;
+      if (
+        args.category &&
+        args.category !== "all" &&
+        g.category !== args.category
+      )
+        continue;
+      count++;
+    }
+
+    return count;
+  },
+});
+
+/**
  * Get detailed game history for a specific game (for viewing results)
  */
 export const getGameHistoryDetails = query({

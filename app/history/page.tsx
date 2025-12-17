@@ -2,12 +2,13 @@
 
 import GameHistoryCard from "@/components/history/game-history-card";
 import HistoryFilters from "@/components/history/history-filters";
+import HistoryPagination from "@/components/history/history-pagination";
 import { Accordion, AccordionItem } from "@/components/ui/accordion";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import { useAuthenticatedUser } from "@/hooks/useAuth";
 import { useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -17,17 +18,25 @@ export default function HistoryPage() {
   const page = Number(searchParams.get("page")) || 1;
 
   const { profile, isLoading: authLoading } = useAuthenticatedUser();
-  const [paginationOpts, setPaginationOpts] = useState({
-    numItems: ITEMS_PER_PAGE,
-    cursor: null,
-  });
 
   // Get categories
   const categories = useQuery(api.queries.history.getUserGameCategories) ?? [];
 
+  // Get total count for pagination
+  const totalCount = useQuery(
+    api.queries.history.getUserGameCount,
+    category && category !== "all" ? { category } : {}
+  );
+
+  // Calculate cursor based on page number
+  const cursor = page > 1 ? ((page - 1) * ITEMS_PER_PAGE).toString() : null;
+
   // Get games for current page
   const historyData = useQuery(api.queries.history.getUserGameHistory, {
-    paginationOpts,
+    paginationOpts: {
+      numItems: ITEMS_PER_PAGE,
+      cursor,
+    },
     category: category && category !== "all" ? category : undefined,
   });
   console.log("historyData", historyData);
@@ -54,7 +63,7 @@ export default function HistoryPage() {
   }
 
   const games = historyData?.page ?? [];
-  const hasMore = !(historyData?.isDone ?? true);
+  const isLoadingGames = historyData === undefined;
 
   return (
     <main className="flex-1 py-8 container">
@@ -73,7 +82,46 @@ export default function HistoryPage() {
         />
 
         <div className="space-y-4">
-          {games.length === 0 ? (
+          {isLoadingGames ? (
+            <div className="space-y-4">
+              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-card shadow-sm border rounded-lg h-[94px] overflow-hidden"
+                >
+                  <div className="px-6 py-4">
+                    <div className="flex justify-between items-start w-full">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="w-5 h-5" />
+                          <Skeleton className="w-32 h-6" />
+                        </div>
+                        <div className="flex items-center gap-4 mt-3">
+                          <div className="flex items-center gap-1">
+                            <Skeleton className="w-4 h-4" />
+                            <Skeleton className="w-32 h-4" />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Skeleton className="w-4 h-4" />
+                            <Skeleton className="w-16 h-4" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Skeleton className="rounded-full w-20 h-6" />
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="rounded-full w-6 h-6" />
+                          <Skeleton className="w-16 h-4" />
+                          <Skeleton className="w-4 h-4" />
+                          <Skeleton className="w-8 h-6" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : games.length === 0 ? (
             <div className="py-12 text-center">
               <h2 className="mb-2 font-semibold text-xl">No games found</h2>
               <p className="text-muted-foreground">
@@ -96,12 +144,15 @@ export default function HistoryPage() {
                 ))}
               </Accordion>
 
-              {/* Pagination info */}
-              {hasMore && (
-                <div className="mt-8 text-center">
-                  <p className="text-muted-foreground">
-                    Showing {games.length} games
-                  </p>
+              {/* Pagination */}
+              {totalCount !== undefined && totalCount > ITEMS_PER_PAGE && (
+                <div className="mt-8">
+                  <HistoryPagination
+                    currentPage={page}
+                    totalItems={totalCount}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    category={category ?? undefined}
+                  />
                 </div>
               )}
             </>
