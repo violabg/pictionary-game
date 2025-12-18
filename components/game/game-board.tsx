@@ -386,6 +386,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
             username: winner.username,
             points: currentTurn.points_awarded || 0,
           },
+          correctAnswer: currentCard?.word || null,
         }));
       }
     }
@@ -398,7 +399,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         winnerBannerData: null,
       }));
     }
-  }, [currentTurn, players]);
+  }, [currentTurn, players, currentCard]);
 
   // Check loading states - after all hooks
   if (!game || !players || !profile) {
