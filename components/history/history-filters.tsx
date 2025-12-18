@@ -7,8 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Filter } from "lucide-react";
+import { Filter, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 
 interface HistoryFiltersProps {
   categories: string[];
@@ -21,16 +22,19 @@ export default function HistoryFilters({
   currentCategory = "all",
 }: HistoryFiltersProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const handleCategoryChange = (value: string) => {
-    const params = new URLSearchParams();
-    if (value && value !== "all") {
-      params.set("category", value);
-    }
-    params.set("page", "1"); // Reset to first page when changing filters
+    startTransition(() => {
+      const params = new URLSearchParams();
+      if (value && value !== "all") {
+        params.set("category", value);
+      }
+      params.set("page", "1"); // Reset to first page when changing filters
 
-    const query = params.toString();
-    router.push(`/history${query ? `?${query}` : ""}` as any);
+      const query = params.toString();
+      router.push(`/history${query ? `?${query}` : ""}` as any);
+    });
   };
 
   return (
@@ -42,6 +46,7 @@ export default function HistoryFilters({
             <Select
               value={currentCategory || "all"}
               onValueChange={handleCategoryChange}
+              disabled={isPending}
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filtra per categoria" />
@@ -55,6 +60,9 @@ export default function HistoryFilters({
                 ))}
               </SelectContent>
             </Select>
+            {isPending && (
+              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+            )}
           </div>
         </div>
       </div>
