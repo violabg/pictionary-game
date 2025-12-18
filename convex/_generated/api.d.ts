@@ -10,6 +10,7 @@
 
 import type * as actions_generateCards from "../actions/generateCards.js";
 import type * as actions_uploadDrawing from "../actions/uploadDrawing.js";
+import type * as actions_validateGuess from "../actions/validateGuess.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as lib_permissions from "../lib/permissions.js";
@@ -34,6 +35,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "actions/generateCards": typeof actions_generateCards;
   "actions/uploadDrawing": typeof actions_uploadDrawing;
+  "actions/validateGuess": typeof actions_validateGuess;
   auth: typeof auth;
   http: typeof http;
   "lib/permissions": typeof lib_permissions;

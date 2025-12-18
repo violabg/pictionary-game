@@ -90,6 +90,9 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   const uploadDrawingAction = useAction(
     api.actions.uploadDrawing.uploadDrawingScreenshot
   );
+  const validateGuessAction = useAction(
+    api.actions.validateGuess.validateGuess
+  );
 
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -410,6 +413,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   }
 
   const handleGuessSubmit = async (guess: string) => {
+    console.log("🚀 ~ handleGuessSubmit ~ guess:", guess);
     if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
 
     // If this is the drawer guessing (shouldn't happen but safety check)
@@ -421,25 +425,48 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     }
 
     try {
+      // Use currentCard from query (available to all players), not gameState.currentCard (drawer-only)
+      const correctAnswer = currentCard?.word;
+      console.log("🚀 ~ handleGuessSubmit ~ correctAnswer:", correctAnswer);
+      let isValidGuess = false;
+
+      // Check for exact match (case-insensitive)
+      const isExactMatch =
+        guess.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
+      console.log("🚀 ~ handleGuessSubmit ~ isExactMatch:", isExactMatch);
+
+      if (isExactMatch) {
+        isValidGuess = true;
+      } else if (correctAnswer && game?.category) {
+        // Use AI validation action for non-exact matches
+        const validationResult = await validateGuessAction({
+          guess,
+          correctAnswer,
+          category: game.category,
+        });
+        isValidGuess = validationResult.isCorrect;
+      }
+      console.log("🚀 ~ handleGuessSubmit ~ isValidGuess:", isValidGuess);
+
+      // Submit the guess to the backend (regardless of client validation)
+      // Backend will save it and determine if it's correct
       // Note: Drawing capture and upload happens client-side via real-time subscription
       // when a correct guess is detected, the drawer's client will be notified
       // via turn status changing to "completing" (handled in useEffect above)
-
       const result = await submitGuessAndCompleteTurnMutation({
         game_id: gameId,
         turn_id: currentTurn._id,
         guess_text: guess,
-        // Drawing upload handled separately by drawer's client
+        isValidated: isValidGuess, // Pass client-side validation result
       });
 
-      if (!result.is_correct) {
+      if (!result.is_correct && !result.is_fuzzy_match) {
         toast.error("Risposta errata", {
           description: "Riprova con un'altra risposta!",
         });
         return;
       }
 
-      // Correct guess - turn will be completed by drawer's client
       toast.success("Corretto!", {
         description: `Hai indovinato e guadagnato punti!`,
       });

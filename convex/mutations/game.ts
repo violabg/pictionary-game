@@ -16,6 +16,7 @@ export const submitGuessAndCompleteTurn = mutation({
     game_id: v.id("games"),
     turn_id: v.id("turns"),
     guess_text: v.string(),
+    isValidated: v.optional(v.boolean()), // Client-side validation result (for fuzzy matches)
   },
   returns: v.object({
     is_correct: v.boolean(),
@@ -74,8 +75,8 @@ export const submitGuessAndCompleteTurn = mutation({
     const isCorrect =
       args.guess_text.toLowerCase().trim() === card.word.toLowerCase().trim();
 
-    // TODO: Add fuzzy matching with Groq AI
-    const isFuzzyMatch = false;
+    // Accept client-side validation result for fuzzy matches
+    const isFuzzyMatch = (args.isValidated ?? false) && !isCorrect;
 
     // Record the guess
     await ctx.db.insert("guesses", {
@@ -279,11 +280,13 @@ export const completeGameTurn = mutation({
       throw new Error("Turn already completed or completing");
     }
 
-    // Server-side timer validation: prevent premature completion (unless manual)
+    // Server-side timer validation: allow small tolerance for network latency
     const nowTime = Date.now();
     if (turn.started_at && args.reason === "time_up") {
       const elapsedSec = Math.floor((nowTime - turn.started_at) / 1000);
-      if (elapsedSec < turn.time_limit) {
+      // Allow 2 second tolerance for network/client-server time skew
+      const toleranceSec = 2;
+      if (elapsedSec < turn.time_limit - toleranceSec) {
         throw new Error(
           `Cannot complete turn: ${
             turn.time_limit - elapsedSec
