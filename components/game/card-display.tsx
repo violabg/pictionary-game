@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Id } from "@/convex/_generated/dataModel";
+import { memo } from "react";
 
 type CardDisplayProps = {
   card: {
@@ -18,7 +19,8 @@ type CardDisplayProps = {
   } | null;
 };
 
-export default function CardDisplay({ card }: CardDisplayProps) {
+// Phase 3: Optimized with React.memo to prevent unnecessary re-renders
+function CardDisplay({ card }: CardDisplayProps) {
   return (
     <Card className="gradient-border glass-card">
       <CardHeader className="pb-2">
@@ -36,3 +38,6 @@ export default function CardDisplay({ card }: CardDisplayProps) {
     </Card>
   );
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default memo(CardDisplay);

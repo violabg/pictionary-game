@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Doc } from "@/convex/_generated/dataModel";
 import { Pencil } from "lucide-react";
+import { memo } from "react";
 import { PlayerAvatar } from "../ui/player-avatar";
 
 interface PlayerListProps {
@@ -10,12 +11,9 @@ interface PlayerListProps {
   currentDrawerId: string;
 }
 
-export default function PlayerList({
-  players,
-  currentDrawerId,
-}: PlayerListProps) {
-  // Sort players by score (descending)
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+// Phase 3: Optimized with React.memo to prevent unnecessary re-renders
+function PlayerList({ players, currentDrawerId }: PlayerListProps) {
+  // Players are already sorted by parent component for performance
 
   return (
     <Card className="gradient-border glass-card">
@@ -23,7 +21,7 @@ export default function PlayerList({
         <CardTitle className="text-gradient text-lg">Players</CardTitle>
       </CardHeader>
       <CardContent>
-        {sortedPlayers.map((player) => (
+        {players.map((player) => (
           <div
             key={player._id}
             className="flex justify-between items-center p-2 border rounded-lg"
@@ -51,3 +49,6 @@ export default function PlayerList({
     </Card>
   );
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default memo(PlayerList);

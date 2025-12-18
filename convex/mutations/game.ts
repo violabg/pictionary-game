@@ -48,6 +48,19 @@ export const submitGuessAndCompleteTurn = mutation({
       };
     }
 
+    // Server-side timer validation: reject if time limit exceeded
+    const now = Date.now();
+    if (turn.started_at) {
+      const elapsedSec = Math.floor((now - turn.started_at) / 1000);
+      if (elapsedSec >= turn.time_limit) {
+        return {
+          is_correct: false,
+          is_fuzzy_match: false,
+          message: "Time is up! No more guesses accepted.",
+        };
+      }
+    }
+
     // Mark turn as completing to prevent concurrent completions
     await ctx.db.patch(args.turn_id, {
       status: "completing",
@@ -266,6 +279,19 @@ export const completeGameTurn = mutation({
       throw new Error("Turn already completed or completing");
     }
 
+    // Server-side timer validation: prevent premature completion (unless manual)
+    const nowTime = Date.now();
+    if (turn.started_at && args.reason === "time_up") {
+      const elapsedSec = Math.floor((nowTime - turn.started_at) / 1000);
+      if (elapsedSec < turn.time_limit) {
+        throw new Error(
+          `Cannot complete turn: ${
+            turn.time_limit - elapsedSec
+          } seconds remaining`
+        );
+      }
+    }
+
     // Allow either host or current drawer to complete the turn
     const isHost = game.created_by === userId;
     const isDrawer = turn.drawer_id === userId;
@@ -278,9 +304,9 @@ export const completeGameTurn = mutation({
     });
 
     // Calculate time remaining for scoring
-    const now = Date.now();
+    const nowTimestamp = Date.now();
     const elapsedSec = turn.started_at
-      ? Math.floor((now - turn.started_at) / 1000)
+      ? Math.floor((nowTimestamp - turn.started_at) / 1000)
       : 0;
     const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
 
@@ -441,6 +467,22 @@ export const startNewTurn = mutation({
       time_limit: 60, // 60 seconds
       // started_at is NOT set here - will be set when first stroke is drawn
       correct_guesses: 0,
+    });
+
+    // Phase 3: Create drawing record with empty canvas data
+    // drawing_file_id will be set later when drawing is uploaded
+    await ctx.db.insert("drawings", {
+      game_id: args.game_id,
+      card_id: nextCard._id,
+      drawer_id: userId,
+      turn_id: turnId,
+      canvas_data: {
+        strokes: [],
+        width: 800,
+        height: 600,
+      },
+      // drawing_file_id is optional, will be set after upload
+      created_at: Date.now(),
     });
 
     // Mark card as used

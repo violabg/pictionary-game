@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Id } from "@/convex/_generated/dataModel";
 import { CheckCircle, XCircle } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 interface GuessFeedProps {
   guesses: Array<{
@@ -25,7 +25,8 @@ interface GuessFeedProps {
   showAllGuesses?: boolean; // If false, hide correct answers until turn ends
 }
 
-export default function GuessFeed({
+// Phase 3: Optimized with React.memo to prevent unnecessary re-renders
+function GuessFeed({
   guesses,
   players,
   showAllGuesses = true,
@@ -59,7 +60,7 @@ export default function GuessFeed({
 
       <div
         ref={scrollRef}
-        className="flex-1 space-y-2 p-3 max-h-[300px] overflow-y-auto"
+        className="flex-1 space-y-2 p-3 max-h-75 overflow-y-auto"
       >
         {guesses.map((guess) => {
           const player = players.find((p) => p.player_id === guess.player_id);
@@ -75,7 +76,7 @@ export default function GuessFeed({
               key={guess._id}
               className="slide-in-from-bottom-1 flex items-start gap-2 text-sm animate-in duration-300 fade-in"
             >
-              <Avatar className="flex-shrink-0 mt-0.5 w-7 h-7">
+              <Avatar className="mt-0.5 w-7 h-7 shrink-0">
                 {player?.avatar_url && (
                   <AvatarImage src={player.avatar_url} alt={player.username} />
                 )}
@@ -115,7 +116,7 @@ export default function GuessFeed({
                 </div>
               </div>
 
-              <span className="flex-shrink-0 text-muted-foreground text-xs">
+              <span className="text-muted-foreground text-xs shrink-0">
                 {formatTime(guess.submitted_at)}
               </span>
             </div>
@@ -142,3 +143,6 @@ function formatTime(timestamp: number): string {
     minute: "2-digit",
   });
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default memo(GuessFeed);

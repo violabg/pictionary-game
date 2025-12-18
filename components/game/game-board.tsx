@@ -115,7 +115,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     winnerBannerData: null,
   });
 
-  // Memoized values - must be before early return
+  // Phase 3: Performance optimizations with useMemo for expensive computations
   const currentDrawer = useMemo(
     () => players?.find((p) => p.player_id === game?.current_drawer_id),
     [players, game?.current_drawer_id]
@@ -125,6 +125,12 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     () => players?.find((p) => p.player_id === profile?.user_id),
     [players, profile?.user_id]
   );
+
+  // Memoize sorted players for performance
+  const sortedPlayers = useMemo(() => {
+    if (!players) return [];
+    return [...players].sort((a, b) => b.score - a.score);
+  }, [players]);
 
   // Helper function to capture and upload drawing with retry logic
   // ONLY called by the drawer
@@ -208,8 +214,13 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       });
     } catch (error) {
       console.error("Error completing time up turn:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Impossibile completare il turno";
       toast.error("Errore", {
-        description: "Impossibile completare il turno",
+        description: errorMessage,
+        duration: 5000,
       });
       setGameState((prev) => ({ ...prev, turnEnded: false }));
     }
@@ -332,8 +343,13 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
           toast.success("Turno completato!");
         } catch (error) {
           console.error("Error in drawer capture for correct guess:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Impossibile completare il turno";
           toast.error("Errore", {
-            description: "Impossibile completare il turno",
+            description: errorMessage,
+            duration: 5000,
           });
         }
       };
@@ -429,8 +445,13 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       });
     } catch (error) {
       console.error("Error in guess submission:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Impossibile inviare il tuo indovino";
       toast.error("Errore", {
-        description: "Impossibile inviare il tuo indovino",
+        description: errorMessage,
+        duration: 5000,
       });
     }
   };
@@ -470,8 +491,13 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     } catch (error) {
       console.error("Error selecting winner:", error);
       setGameState((prev) => ({ ...prev, turnEnded: false }));
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Impossibile selezionare il vincitore";
       toast.error("Errore", {
-        description: "Impossibile selezionare il vincitore",
+        description: errorMessage,
+        duration: 5000,
       });
     }
   };
@@ -485,8 +511,11 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       setGameState((prev) => ({ ...prev, turnStarted: true }));
     } catch (error) {
       console.error("Error starting turn:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Impossibile avviare il turno";
       toast.error("Errore", {
-        description: "Impossibile avviare il turno",
+        description: errorMessage,
+        duration: 5000,
       });
     } finally {
       setGameState((prev) => ({ ...prev, isStartingTurn: false }));
@@ -618,7 +647,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         <div className="flex flex-col space-y-4">
           {game.current_drawer_id && (
             <PlayerList
-              players={players}
+              players={sortedPlayers}
               currentDrawerId={game.current_drawer_id}
             />
           )}
