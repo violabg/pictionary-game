@@ -95,3 +95,30 @@ export const getGameCards = query({
     }));
   },
 });
+
+/**
+ * Get recent cards by category (for avoiding repetition in generation)
+ */
+export const getRecentCardsByCategory = query({
+  args: {
+    category: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      word: v.string(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+    const cards = await ctx.db
+      .query("cards")
+      .filter((q) => q.eq(q.field("category"), args.category))
+      .order("desc")
+      .take(limit);
+
+    return cards.map((c) => ({
+      word: c.word,
+    }));
+  },
+});

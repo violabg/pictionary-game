@@ -4,6 +4,7 @@ import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { v } from "convex/values";
 import { z } from "zod";
+import { api } from "../_generated/api";
 import { action } from "../_generated/server";
 
 const cardSchema = z.object({
@@ -110,6 +111,16 @@ export const generateCards = action({
     const count = Math.max(1, Math.min(20, Math.floor(args.count)));
     const category = args.category.trim();
 
+    // Query the last 50 cards for this category to avoid repetition
+    const recentCards = await ctx.runQuery(
+      api.queries.cards.getRecentCardsByCategory,
+      {
+        category,
+        limit: 50,
+      }
+    );
+    const recentWords = recentCards.map((card) => card.word);
+
     // Try structured generation with Groq models; allow env override
     const candidateModels = (process.env.GROQ_MODELS || "")
       .split(",")
@@ -131,12 +142,23 @@ export const generateCards = action({
       `No prose, no code fences, no markdown, no comments.`,
     ].join(" ");
 
+    const categoryInstructions =
+      category.toLowerCase() === "film"
+        ? "Generate movie titles as the words."
+        : "Most words should be in Italian, except for technical terms or proper names.";
+
     const prompt = [
       systemHint,
       `Task: Generate ${count} varied, family-friendly drawing prompts in the "${category}" category.`,
+      categoryInstructions,
+      `Do NOT repeat any of these recently used words: ${recentWords.join(
+        ", "
+      )}.`,
       `Each card must contain:`,
       `- word: short, drawable concept (no proper names unless iconic)`,
       `- description: 6-12 words describing the concept to help the drawer`,
+      `Required JSON structure example:`,
+      `[{"word": "Gatto", "description": "Piccolo animale domestico con baffi che fa le fusa"}]`,
     ].join("\n");
 
     const tryGenerate = async () => {

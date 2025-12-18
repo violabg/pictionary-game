@@ -100,7 +100,7 @@ export const submitGuessAndCompleteTurn = mutation({
 
       const now = Date.now();
       const elapsedSec = turn.started_at
-        ? Math.floor((now - turn.started_at) / 1000)
+        ? Math.floor((now - turn.started_at!) / 1000)
         : 0;
       const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
       const guesserPoints = Math.max(0, timeLeft);
@@ -306,7 +306,7 @@ export const completeGameTurn = mutation({
     // Calculate time remaining for scoring
     const nowTimestamp = Date.now();
     const elapsedSec = turn.started_at
-      ? Math.floor((nowTimestamp - turn.started_at) / 1000)
+      ? Math.floor((nowTimestamp - turn.started_at!) / 1000)
       : 0;
     const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
 
