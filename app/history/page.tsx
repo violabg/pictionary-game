@@ -1,5 +1,5 @@
 import CategoriesFilter from "@/components/history/categories-loader";
-import HistoryContent from "@/components/history/history-content-loader";
+import HistoryContent from "@/components/history/history-content";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from "react";
 
