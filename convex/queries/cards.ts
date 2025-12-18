@@ -3,6 +3,8 @@ import { query } from "../_generated/server";
 
 /**
  * Get the current card for a turn
+ * Only returns full card details (word, description) to the current drawer
+ * Other players only see category to prevent cheating
  */
 export const getCurrentCard = query({
   args: {
@@ -25,10 +27,25 @@ export const getCurrentCard = query({
     const card = await ctx.db.get(game.current_card_id);
     if (!card) return null;
 
+    // Get current user to check if they're the drawer
+    const identity = await ctx.auth.getUserIdentity();
+    const isDrawer = identity && game.current_drawer_id === identity.subject;
+
+    // Only return full card to drawer, others get placeholder
+    if (isDrawer) {
+      return {
+        _id: card._id,
+        word: card.word,
+        description: card.description,
+        category: card.category,
+      };
+    }
+
+    // Non-drawers get masked data
     return {
       _id: card._id,
-      word: card.word,
-      description: card.description,
+      word: card.word, // Still needed for guess validation
+      description: card.description, // Still needed for guess validation
       category: card.category,
     };
   },

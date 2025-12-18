@@ -177,6 +177,18 @@ export const startGame = mutation({
       throw new Error("Need at least 2 players to start");
     }
 
+    // Check if cards are ready
+    const cards = await ctx.db
+      .query("cards")
+      .withIndex("by_game_id", (q) => q.eq("game_id", args.game_id))
+      .collect();
+
+    if (cards.length === 0) {
+      throw new Error(
+        "Le carte stanno ancora caricando. Attendi qualche secondo e riprova."
+      );
+    }
+
     // Start game and set first drawer
     const firstDrawerIndex = Math.floor(Math.random() * players.length);
     const firstDrawer = players[firstDrawerIndex];

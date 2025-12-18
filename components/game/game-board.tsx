@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { useAuthenticatedUser } from "@/hooks/useAuth";
+import { useTurnTimer } from "@/hooks/useTurnTimer";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Crown, PlayCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -104,7 +105,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     isDrawer: game?.current_drawer_id === profile?.user_id,
     turnStarted: currentTurn?.status === "drawing",
     turnEnded: false,
-    timeRemaining: 60, // Default, will be updated by timer
+    timeRemaining: 60, // Placeholder, actual value from useTurnTimer
     isStartingTurn: false,
     currentTurnId: currentTurn?._id ?? null,
   });
@@ -236,6 +237,18 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     completeGameTurnMutation,
   ]);
 
+  // Use timer hook for countdown
+  const timeRemaining = useTurnTimer({
+    currentTurn,
+    isPaused: modalState.isTimerPaused,
+    onTimeUp: handleTimeUp,
+  });
+
+  // Sync timeRemaining to gameState for UI consistency
+  useEffect(() => {
+    setGameState((prev) => ({ ...prev, timeRemaining }));
+  }, [timeRemaining]);
+
   // Update game state when game changes
   useEffect(() => {
     if (game && profile) {
@@ -265,59 +278,16 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     }
   }, [currentCard, gameState.isDrawer]);
 
-  // Timer logic effect - handles draw-to-start timer
+  // Show time up modal when timer reaches 0
   useEffect(() => {
-    if (!gameState.turnStarted || !currentTurn) return;
-
-    // If turn hasn't started yet (no first stroke drawn), show waiting message
-    if (!currentTurn.started_at) {
-      setGameState((prev) => ({ ...prev, timeRemaining: 60 }));
-      return;
+    if (timeRemaining === 0 && gameState.turnStarted) {
+      setModalState((prev) => ({
+        ...prev,
+        showTimeUp: true,
+        correctAnswer: gameState.currentCard?.word || null,
+      }));
     }
-
-    const startTime = currentTurn.started_at;
-    const timeLimit = currentTurn.time_limit;
-    const endTime = startTime + timeLimit * 1000;
-    let timerEndedFlag = false;
-
-    const updateTimer = () => {
-      if (!modalState.isTimerPaused && !timerEndedFlag) {
-        const now = Date.now();
-        const diff = Math.max(0, Math.floor((endTime - now) / 1000));
-        setGameState((prev) => ({ ...prev, timeRemaining: diff }));
-
-        if (diff <= 0) {
-          timerEndedFlag = true;
-
-          // Show time up modal
-          setModalState((prev) => ({
-            ...prev,
-            showTimeUp: true,
-            correctAnswer: gameState.currentCard?.word || null,
-          }));
-
-          // Handle time up
-          handleTimeUp();
-
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-          }
-        }
-      }
-    };
-
-    updateTimer();
-    timerIntervalRef.current = setInterval(updateTimer, 1000);
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    };
-  }, [
-    gameState.turnStarted,
-    gameState.currentCard?.word,
-    modalState.isTimerPaused,
-    currentTurn,
-    handleTimeUp,
-  ]);
+  }, [timeRemaining, gameState.turnStarted, gameState.currentCard?.word]);
 
   // Watch for turn status changing to "completing" - drawer captures drawing after correct guess
   useEffect(() => {
@@ -403,133 +373,145 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     }
   }, [currentTurn, players, currentCard]);
 
-  // Check loading states - after all hooks
-  if (!game || !players || !profile) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-muted-foreground">Loading game...</div>
-      </div>
-    );
-  }
+  // Handler callbacks - must be defined before early return
+  const handleGuessSubmit = useCallback(
+    async (guess: string) => {
+      if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
 
-  const handleGuessSubmit = async (guess: string) => {
-    console.log("🚀 ~ handleGuessSubmit ~ guess:", guess);
-    if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
-
-    // If this is the drawer guessing (shouldn't happen but safety check)
-    if (gameState.isDrawer) {
-      toast.error("Non puoi indovinare", {
-        description: "Sei il disegnatore!",
-      });
-      return;
-    }
-
-    try {
-      // Use currentCard from query (available to all players), not gameState.currentCard (drawer-only)
-      const correctAnswer = currentCard?.word;
-      console.log("🚀 ~ handleGuessSubmit ~ correctAnswer:", correctAnswer);
-      let isValidGuess = false;
-
-      // Check for exact match (case-insensitive)
-      const isExactMatch =
-        guess.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
-      console.log("🚀 ~ handleGuessSubmit ~ isExactMatch:", isExactMatch);
-
-      if (isExactMatch) {
-        isValidGuess = true;
-      } else if (correctAnswer && game?.category) {
-        // Use AI validation action for non-exact matches
-        const validationResult = await validateGuessAction({
-          guess,
-          correctAnswer,
-          category: game.category,
-        });
-        isValidGuess = validationResult.isCorrect;
-      }
-      console.log("🚀 ~ handleGuessSubmit ~ isValidGuess:", isValidGuess);
-
-      // Submit the guess to the backend (regardless of client validation)
-      // Backend will save it and determine if it's correct
-      // Note: Drawing capture and upload happens client-side via real-time subscription
-      // when a correct guess is detected, the drawer's client will be notified
-      // via turn status changing to "completing" (handled in useEffect above)
-      const result = await submitGuessAndCompleteTurnMutation({
-        game_id: gameId,
-        turn_id: currentTurn._id,
-        guess_text: guess,
-        isValidated: isValidGuess, // Pass client-side validation result
-      });
-
-      if (!result.is_correct && !result.is_fuzzy_match) {
-        toast.error("Risposta errata", {
-          description: "Riprova con un'altra risposta!",
+      // If this is the drawer guessing (shouldn't happen but safety check)
+      if (gameState.isDrawer) {
+        toast.error("Non puoi indovinare", {
+          description: "Sei il disegnatore!",
         });
         return;
       }
 
-      toast.success("Corretto!", {
-        description: `Hai indovinato e guadagnato punti!`,
-      });
-    } catch (error) {
-      console.error("Error in guess submission:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Impossibile inviare il tuo indovino";
-      toast.error("Errore", {
-        description: errorMessage,
-        duration: 5000,
-      });
-    }
-  };
+      try {
+        // Use currentCard from query (available to all players), not gameState.currentCard (drawer-only)
+        const correctAnswer = currentCard?.word;
+        let isValidGuess = false;
 
-  const handleSelectWinner = async (winner: Doc<"players">) => {
-    if (gameState.turnEnded || !currentTurn || !gameState.isDrawer) return;
+        // Check for exact match (case-insensitive)
+        const isExactMatch =
+          guess.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
 
-    try {
-      setGameState((prev) => ({ ...prev, turnEnded: true }));
+        if (isExactMatch) {
+          isValidGuess = true;
+        } else if (correctAnswer && game?.category) {
+          // Use AI validation action for non-exact matches
+          const validationResult = await validateGuessAction({
+            guess,
+            correctAnswer,
+            category: game.category,
+          });
+          isValidGuess = validationResult.isCorrect;
+        }
 
-      // CRITICAL: Drawer must capture and upload drawing BEFORE completing turn
-      toast.info("Salvando il disegno...");
-      const drawingStorageId = await captureAndUploadDrawingWithRetry();
+        // Submit the guess to the backend (regardless of client validation)
+        // Backend will save it and determine if it's correct
+        // Note: Drawing capture and upload happens client-side via real-time subscription
+        // when a correct guess is detected, the drawer's client will be notified
+        // via turn status changing to "completing" (handled in useEffect above)
+        const result = await submitGuessAndCompleteTurnMutation({
+          game_id: gameId,
+          turn_id: currentTurn._id,
+          guess_text: guess,
+          isValidated: isValidGuess, // Pass client-side validation result
+        });
 
-      if (!drawingStorageId) {
-        console.warn("Failed to upload drawing, completing turn anyway");
+        if (!result.is_correct && !result.is_fuzzy_match) {
+          toast.error("Risposta errata", {
+            description: "Riprova con un'altra risposta!",
+          });
+          return;
+        }
+
+        toast.success("Corretto!", {
+          description: `Hai indovinato e guadagnato punti!`,
+        });
+      } catch (error) {
+        console.error("Error in guess submission:", error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Impossibile inviare il tuo indovino";
+        toast.error("Errore", {
+          description: errorMessage,
+          duration: 5000,
+        });
       }
+    },
+    [
+      currentPlayer,
+      gameState.turnEnded,
+      gameState.isDrawer,
+      currentTurn,
+      currentCard?.word,
+      game?.category,
+      gameId,
+      validateGuessAction,
+      submitGuessAndCompleteTurnMutation,
+    ]
+  );
 
-      // Drawing is already saved via uploadDrawing action
-      await completeGameTurnMutation({
-        game_id: gameId,
-        turn_id: currentTurn._id,
-        reason: "manual",
-        winner_id: winner.player_id,
-        points_awarded: Math.max(0, Math.floor(gameState.timeRemaining)),
-      });
+  const handleSelectWinner = useCallback(
+    async (winner: Doc<"players">) => {
+      if (gameState.turnEnded || !currentTurn || !gameState.isDrawer) return;
 
-      toast.success("Vincitore selezionato!", {
-        description: `${winner.username} è stato selezionato come vincitore!`,
-      });
+      try {
+        setGameState((prev) => ({ ...prev, turnEnded: true }));
 
-      setModalState((prev) => ({
-        ...prev,
-        showSelectWinner: false,
-        isTimerPaused: false,
-      }));
-    } catch (error) {
-      console.error("Error selecting winner:", error);
-      setGameState((prev) => ({ ...prev, turnEnded: false }));
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Impossibile selezionare il vincitore";
-      toast.error("Errore", {
-        description: errorMessage,
-        duration: 5000,
-      });
-    }
-  };
+        // CRITICAL: Drawer must capture and upload drawing BEFORE completing turn
+        toast.info("Salvando il disegno...");
+        const drawingStorageId = await captureAndUploadDrawingWithRetry();
 
-  const handleStartTurn = async () => {
+        if (!drawingStorageId) {
+          console.warn("Failed to upload drawing, completing turn anyway");
+        }
+
+        // Drawing is already saved via uploadDrawing action
+        await completeGameTurnMutation({
+          game_id: gameId,
+          turn_id: currentTurn._id,
+          reason: "manual",
+          winner_id: winner.player_id,
+          points_awarded: Math.max(0, Math.floor(gameState.timeRemaining)),
+        });
+
+        toast.success("Vincitore selezionato!", {
+          description: `${winner.username} è stato selezionato come vincitore!`,
+        });
+
+        setModalState((prev) => ({
+          ...prev,
+          showSelectWinner: false,
+          isTimerPaused: false,
+        }));
+      } catch (error) {
+        console.error("Error selecting winner:", error);
+        setGameState((prev) => ({ ...prev, turnEnded: false }));
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Impossibile selezionare il vincitore";
+        toast.error("Errore", {
+          description: errorMessage,
+          duration: 5000,
+        });
+      }
+    },
+    [
+      gameState.turnEnded,
+      gameState.isDrawer,
+      gameState.timeRemaining,
+      currentTurn,
+      gameId,
+      captureAndUploadDrawingWithRetry,
+      completeGameTurnMutation,
+    ]
+  );
+
+  const handleStartTurn = useCallback(async () => {
     if (!gameState.isDrawer) return;
 
     setGameState((prev) => ({ ...prev, isStartingTurn: true }));
@@ -547,9 +529,9 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     } finally {
       setGameState((prev) => ({ ...prev, isStartingTurn: false }));
     }
-  };
+  }, [gameState.isDrawer, gameId, startNewTurnMutation]);
 
-  const handleOpenSelectWinner = () => {
+  const handleOpenSelectWinner = useCallback(() => {
     if (!gameState.isDrawer || !gameState.turnStarted) return;
     setModalState((prev) => ({
       ...prev,
@@ -557,15 +539,24 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       isTimerPaused: true,
     }));
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-  };
+  }, [gameState.isDrawer, gameState.turnStarted]);
 
-  const handleCloseSelectWinner = () => {
+  const handleCloseSelectWinner = useCallback(() => {
     setModalState((prev) => ({
       ...prev,
       showSelectWinner: false,
       isTimerPaused: false,
     }));
-  };
+  }, []);
+
+  // Check loading states - after all hooks
+  if (!game || !players || !profile) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-muted-foreground">Loading game...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col py-0 min-h-screen container">

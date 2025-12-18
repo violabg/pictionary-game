@@ -458,7 +458,23 @@ export const startNewTurn = mutation({
       )
       .first();
 
-    if (!nextCard) throw new Error("No cards available");
+    if (!nextCard) {
+      // Check if any cards exist at all for this game
+      const totalCards = await ctx.db
+        .query("cards")
+        .withIndex("by_game_id", (q) => q.eq("game_id", args.game_id))
+        .collect();
+
+      if (totalCards.length === 0) {
+        throw new Error(
+          "Le carte stanno ancora caricando. Attendi qualche secondo e riprova."
+        );
+      } else {
+        throw new Error(
+          "Tutte le carte sono state utilizzate. Il gioco è terminato."
+        );
+      }
+    }
 
     // Create turn (without started_at - will be set on first stroke)
     const turnId = await ctx.db.insert("turns", {
