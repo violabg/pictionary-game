@@ -111,8 +111,6 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     isTimerPaused: false,
   });
 
-  const [correctGuessers, setCorrectGuessers] = useState<Doc<"players">[]>([]);
-
   // Memoized values - must be before early return
   const currentDrawer = useMemo(
     () => players?.find((p) => p.player_id === game?.current_drawer_id),
@@ -325,7 +323,6 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         showSelectWinner: false,
         isTimerPaused: false,
       }));
-      setCorrectGuessers([]);
     } catch (error) {
       console.error("Error selecting winner:", error);
       setGameState((prev) => ({ ...prev, turnEnded: false }));
