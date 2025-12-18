@@ -19,7 +19,6 @@ interface HistoryFiltersProps {
 export default function HistoryFilters({
   categories,
   currentCategory = "all",
-  currentPage = 1,
 }: HistoryFiltersProps) {
   const router = useRouter();
 
