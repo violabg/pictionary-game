@@ -237,8 +237,8 @@ export default function GameHistoryCard({
                         {turn.points_awarded} punti
                       </Badge>
                     </div>
-                    <div className="text-muted-foreground text-xs">
-                      <div className="flex items-center gap-1 mb-1">
+                    <div className="space-y-1 text-muted-foreground text-xs">
+                      <div className="flex items-center gap-1">
                         <span>Disegnato da</span>
                         <div className="flex flex-shrink-0 justify-center items-center bg-slate-200 rounded-full w-4 h-4">
                           {turn.drawer_avatar_url ? (
@@ -258,6 +258,14 @@ export default function GameHistoryCard({
                         <span className="font-medium">
                           {turn.drawer_username}
                         </span>
+                        {turn.drawer_points_awarded ? (
+                          <Badge
+                            variant="secondary"
+                            className="ml-auto h-5 text-[10px]"
+                          >
+                            +{turn.drawer_points_awarded} punti
+                          </Badge>
+                        ) : null}
                       </div>
                       {turn.winner_id ? (
                         <div className="flex items-center gap-1">
@@ -283,6 +291,14 @@ export default function GameHistoryCard({
                             {turn.winner_username}
                           </span>
                           <Crown className="w-4 h-4 text-yellow-500" />
+                          {turn.points_awarded ? (
+                            <Badge
+                              variant="secondary"
+                              className="ml-auto h-5 text-[10px]"
+                            >
+                              +{turn.points_awarded} punti
+                            </Badge>
+                          ) : null}
                         </div>
                       ) : (
                         <span className="font-medium text-muted-foreground">
