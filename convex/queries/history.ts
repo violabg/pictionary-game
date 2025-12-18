@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 
 /**
- * Get game history for current user (finished games only)
+ * Get game history for current user (finished games only) with all related data
  */
 export const getUserGameHistory = query({
   args: {
@@ -24,6 +24,49 @@ export const getUserGameHistory = query({
         created_at: v.number(),
         round: v.number(),
         max_rounds: v.number(),
+        turns: v.array(
+          v.object({
+            _id: v.id("turns"),
+            game_id: v.id("games"),
+            round: v.number(),
+            drawer_id: v.string(),
+            drawer_username: v.string(),
+            drawer_avatar_url: v.optional(v.string()),
+            card_id: v.id("cards"),
+            card_word: v.string(),
+            card_description: v.string(),
+            status: v.union(
+              v.literal("drawing"),
+              v.literal("completing"),
+              v.literal("completed"),
+              v.literal("time_up")
+            ),
+            started_at: v.optional(v.number()),
+            completed_at: v.optional(v.number()),
+            correct_guesses: v.number(),
+            guesses_count: v.number(),
+            winner_id: v.optional(v.string()),
+            winner_username: v.optional(v.string()),
+            winner_avatar_url: v.optional(v.string()),
+            drawer_points_awarded: v.optional(v.number()),
+            points_awarded: v.optional(v.number()),
+            drawing_file_id: v.optional(v.id("_storage")),
+            drawing_url: v.optional(v.string()),
+          })
+        ),
+        players: v.array(
+          v.object({
+            _id: v.id("players"),
+            game_id: v.id("games"),
+            player_id: v.string(),
+            username: v.string(),
+            avatar_url: v.optional(v.string()),
+            score: v.number(),
+            correct_guesses: v.number(),
+            is_host: v.boolean(),
+            joined_at: v.number(),
+          })
+        ),
       })
     ),
     isDone: v.boolean(),
@@ -50,7 +93,7 @@ export const getUserGameHistory = query({
 
     const gameIds = new Set(memberships.map((m) => m.game_id));
 
-    // Fetch finished games
+    // Fetch finished games with all related data
     const games: Array<{
       _id: any;
       code: string;
@@ -59,6 +102,8 @@ export const getUserGameHistory = query({
       created_at: number;
       round: number;
       max_rounds: number;
+      turns: any[];
+      players: any[];
     }> = [];
 
     for (const gameId of gameIds) {
@@ -71,6 +116,93 @@ export const getUserGameHistory = query({
         g.category !== args.category
       )
         continue;
+
+      // Fetch turns for this game
+      const turns = await ctx.db
+        .query("turns")
+        .withIndex("by_game_id", (q) => q.eq("game_id", gameId))
+        .collect();
+
+      const turnsWithDetails = [];
+      for (const turn of turns) {
+        const drawerPlayer = await ctx.db
+          .query("players")
+          .withIndex("by_game_and_player", (q) =>
+            q.eq("game_id", gameId).eq("player_id", turn.drawer_id)
+          )
+          .first();
+
+        const card = await ctx.db.get(turn.card_id);
+
+        const guesses = await ctx.db
+          .query("guesses")
+          .withIndex("by_turn_id", (q) => q.eq("turn_id", turn._id))
+          .collect();
+
+        let winnerPlayer = null;
+        if (turn.winner_id) {
+          winnerPlayer = await ctx.db
+            .query("players")
+            .withIndex("by_game_and_player", (q) =>
+              q.eq("game_id", gameId).eq("player_id", turn.winner_id!)
+            )
+            .first();
+        }
+
+        const drawing = await ctx.db
+          .query("drawings")
+          .withIndex("by_turn_id", (q) => q.eq("turn_id", turn._id))
+          .first();
+
+        let drawingUrl: string | undefined = undefined;
+        if (drawing?.drawing_file_id) {
+          drawingUrl =
+            (await ctx.storage.getUrl(drawing.drawing_file_id)) ?? undefined;
+        }
+
+        turnsWithDetails.push({
+          _id: turn._id,
+          game_id: turn.game_id,
+          round: turn.round,
+          drawer_id: turn.drawer_id,
+          drawer_username: drawerPlayer?.username ?? "Unknown",
+          drawer_avatar_url: drawerPlayer?.avatar_url,
+          card_id: turn.card_id,
+          card_word: card?.word ?? "Unknown",
+          card_description: card?.description ?? "",
+          status: turn.status,
+          started_at: turn.started_at,
+          completed_at: turn.completed_at,
+          correct_guesses: turn.correct_guesses,
+          guesses_count: guesses.length,
+          winner_id: turn.winner_id,
+          winner_username: winnerPlayer?.username,
+          winner_avatar_url: winnerPlayer?.avatar_url,
+          drawer_points_awarded: turn.drawer_points_awarded,
+          points_awarded: turn.points_awarded,
+          drawing_file_id: drawing?.drawing_file_id,
+          drawing_url: drawingUrl,
+        });
+      }
+
+      // Fetch players for this game
+      const players = await ctx.db
+        .query("players")
+        .withIndex("by_game_id", (q) => q.eq("game_id", gameId))
+        .collect();
+
+      const playersData = players.map((p) => ({
+        _id: p._id,
+        game_id: p.game_id,
+        player_id: p.player_id,
+        username: p.username,
+        avatar_url: p.avatar_url,
+        score: p.score,
+        correct_guesses: p.correct_guesses,
+        is_host: p.is_host,
+        joined_at: p.joined_at,
+      }));
+
       games.push({
         _id: g._id,
         code: g.code,
@@ -79,6 +211,8 @@ export const getUserGameHistory = query({
         created_at: g.created_at,
         round: g.round,
         max_rounds: g.max_rounds,
+        turns: turnsWithDetails,
+        players: playersData,
       });
     }
 
@@ -273,16 +407,13 @@ export const getGameTurnsWithDetails = query({
         .withIndex("by_turn_id", (q) => q.eq("turn_id", turn._id))
         .collect();
 
-      // Find winner (first correct guess)
-      const correctGuess = guesses.find((g) => g.is_correct);
+      // Get winner player if turn has a winner
       let winnerPlayer = null;
-      if (correctGuess) {
+      if (turn.winner_id) {
         winnerPlayer = await ctx.db
           .query("players")
           .withIndex("by_game_and_player", (q) =>
-            q
-              .eq("game_id", args.game_id)
-              .eq("player_id", correctGuess.player_id)
+            q.eq("game_id", args.game_id).eq("player_id", turn.winner_id!)
           )
           .first();
       }
@@ -315,11 +446,11 @@ export const getGameTurnsWithDetails = query({
         completed_at: turn.completed_at,
         correct_guesses: turn.correct_guesses,
         guesses_count: guesses.length,
-        winner_id: correctGuess ? correctGuess.player_id : undefined,
+        winner_id: turn.winner_id,
         winner_username: winnerPlayer?.username,
         winner_avatar_url: winnerPlayer?.avatar_url,
-        drawer_points_awarded: drawerPlayer?.score ?? 0, // This should be calculated, but we'll store in player
-        points_awarded: 1, // Default points per correct guess (can be customized)
+        drawer_points_awarded: turn.drawer_points_awarded,
+        points_awarded: turn.points_awarded,
         drawing_file_id: drawing?.drawing_file_id,
         drawing_url: drawingUrl,
       });

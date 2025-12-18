@@ -3,10 +3,8 @@
 import { AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { useQuery } from "convex/react";
 import { format } from "date-fns";
 import { Calendar, Crown, Trophy, Users, X } from "lucide-react";
 import Image from "next/image";
@@ -46,9 +44,47 @@ interface GameHistoryCardProps {
     round: number;
     max_rounds: number;
   };
+  turns: Array<{
+    _id: Id<"turns">;
+    game_id: Id<"games">;
+    round: number;
+    drawer_id: string;
+    drawer_username: string;
+    drawer_avatar_url?: string;
+    card_id: Id<"cards">;
+    card_word: string;
+    card_description: string;
+    status: "drawing" | "completing" | "completed" | "time_up";
+    started_at?: number;
+    completed_at?: number;
+    correct_guesses: number;
+    guesses_count: number;
+    winner_id?: string;
+    winner_username?: string;
+    winner_avatar_url?: string;
+    drawer_points_awarded?: number;
+    points_awarded?: number;
+    drawing_file_id?: Id<"_storage">;
+    drawing_url?: string;
+  }>;
+  players: Array<{
+    _id: Id<"players">;
+    game_id: Id<"games">;
+    player_id: string;
+    username: string;
+    avatar_url?: string;
+    score: number;
+    correct_guesses: number;
+    is_host: boolean;
+    joined_at: number;
+  }>;
 }
 
-export default function GameHistoryCard({ game }: GameHistoryCardProps) {
+export default function GameHistoryCard({
+  game,
+  turns,
+  players,
+}: GameHistoryCardProps) {
   const [selectedImage, setSelectedImage] = useState<{
     url: string;
     title: string;
@@ -59,16 +95,6 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
     "initial" | "animating" | "final"
   >("initial");
   const modalRef = useRef<HTMLDivElement>(null);
-
-  // Fetch turns and players for this game
-  const turns =
-    useQuery(api.queries.history.getGameTurnsWithDetails, {
-      game_id: game._id,
-    }) ?? [];
-
-  const playersData = useQuery(api.queries.history.getGamePlayers, {
-    game_id: game._id,
-  });
 
   const openImageModal = (
     url: string,
@@ -100,7 +126,6 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
   };
 
   const gameWinner = useMemo(() => {
-    const players = playersData ?? [];
     if (players.length === 0) {
       return null;
     }
@@ -116,7 +141,7 @@ export default function GameHistoryCard({ game }: GameHistoryCardProps) {
       }
       return winner;
     }, null as { username: string; avatar_url?: string; score: number } | null);
-  }, [playersData]);
+  }, [players]);
 
   const turnsCount = turns.length;
 

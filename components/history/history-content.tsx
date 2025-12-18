@@ -65,7 +65,19 @@ export default async function HistoryContent({
             value={game._id}
             className="bg-card shadow-sm border rounded-lg overflow-hidden text-card-foreground"
           >
-            <GameHistoryCard game={game} />
+            <GameHistoryCard
+              game={{
+                _id: game._id,
+                code: game.code,
+                category: game.category,
+                status: game.status,
+                created_at: game.created_at,
+                round: game.round,
+                max_rounds: game.max_rounds,
+              }}
+              turns={game.turns}
+              players={game.players}
+            />
           </AccordionItem>
         ))}
       </Accordion>
