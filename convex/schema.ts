@@ -108,6 +108,7 @@ export default defineSchema({
     card_id: v.id("cards"),
     status: v.union(
       v.literal("drawing"),
+      v.literal("completing"),
       v.literal("completed"),
       v.literal("time_up")
     ),
@@ -115,6 +116,10 @@ export default defineSchema({
     started_at: v.number(),
     completed_at: v.optional(v.number()),
     correct_guesses: v.number(),
+    // Scoring fields
+    winner_id: v.optional(v.string()),
+    points_awarded: v.optional(v.number()),
+    drawer_points_awarded: v.optional(v.number()),
   })
     .index("by_game_id", ["game_id"])
     .index("by_game_and_round", ["game_id", "round"])

@@ -231,6 +231,7 @@ export const getGameTurnsWithDetails = query({
       card_description: v.string(),
       status: v.union(
         v.literal("drawing"),
+        v.literal("completing"),
         v.literal("completed"),
         v.literal("time_up")
       ),
@@ -241,8 +242,8 @@ export const getGameTurnsWithDetails = query({
       winner_id: v.optional(v.string()),
       winner_username: v.optional(v.string()),
       winner_avatar_url: v.optional(v.string()),
-      drawer_points_awarded: v.number(),
-      points_awarded: v.number(),
+      drawer_points_awarded: v.optional(v.number()),
+      points_awarded: v.optional(v.number()),
       drawing_file_id: v.optional(v.id("_storage")),
       drawing_url: v.optional(v.string()),
     })

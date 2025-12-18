@@ -16,7 +16,6 @@ export const submitGuessAndCompleteTurn = mutation({
     game_id: v.id("games"),
     turn_id: v.id("turns"),
     guess_text: v.string(),
-    drawing_file_id: v.optional(v.id("_storage")),
   },
   returns: v.object({
     is_correct: v.boolean(),
@@ -40,7 +39,7 @@ export const submitGuessAndCompleteTurn = mutation({
     const turn = await ctx.db.get(args.turn_id);
     if (!turn) throw new Error("Turn not found");
 
-    // If turn already completed, just record the guess outcome and return
+    // Validate turn status - prevent race conditions
     if (turn.status !== "drawing") {
       return {
         is_correct: false,
@@ -48,6 +47,11 @@ export const submitGuessAndCompleteTurn = mutation({
         message: "Turn already completed",
       };
     }
+
+    // Mark turn as completing to prevent concurrent completions
+    await ctx.db.patch(args.turn_id, {
+      status: "completing",
+    });
 
     // Get the card
     const card = await ctx.db.get(turn.card_id);
@@ -71,7 +75,8 @@ export const submitGuessAndCompleteTurn = mutation({
       submitted_at: Date.now(),
     });
 
-    // If correct, award points based on remaining time and complete the turn
+    // If correct, mark turn as completing and award points
+    // Drawer will upload drawing and finalize turn completion
     if (isCorrect || isFuzzyMatch) {
       const player = await ctx.db
         .query("players")
@@ -83,89 +88,41 @@ export const submitGuessAndCompleteTurn = mutation({
       const now = Date.now();
       const elapsedSec = Math.floor((now - turn.started_at) / 1000);
       const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
-      const awarded = Math.max(0, timeLeft);
+      const guesserPoints = Math.max(0, timeLeft);
 
+      // Award points to guesser
       if (player) {
         await ctx.db.patch(player._id, {
-          score: player.score + awarded,
+          score: player.score + guesserPoints,
           correct_guesses: player.correct_guesses + 1,
         });
       }
 
-      // Update turn with correct guess count
-      await ctx.db.patch(args.turn_id, {
-        correct_guesses: turn.correct_guesses + 1,
-      });
+      // Award points to drawer (25% of time remaining + minimum 10 points)
+      const drawerPoints = Math.max(10, Math.floor(timeLeft / 4));
+      const drawerPlayer = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_player", (q) =>
+          q.eq("game_id", args.game_id).eq("player_id", turn.drawer_id)
+        )
+        .first();
 
-      // Save drawing screenshot if provided
-      if (args.drawing_file_id) {
-        const existingDrawing = await ctx.db
-          .query("drawings")
-          .withIndex("by_turn_id", (q) => q.eq("turn_id", args.turn_id))
-          .first();
-
-        if (existingDrawing) {
-          await ctx.db.patch(existingDrawing._id, {
-            drawing_file_id: args.drawing_file_id,
-          });
-        }
+      if (drawerPlayer) {
+        await ctx.db.patch(drawerPlayer._id, {
+          score: drawerPlayer.score + drawerPoints,
+        });
       }
 
-      // Complete the turn
+      // Mark turn as completing - drawer will finalize after uploading drawing
+      // This prevents other guesses from triggering turn completion
       await ctx.db.patch(args.turn_id, {
-        status: "completed",
+        status: "completing",
+        correct_guesses: turn.correct_guesses + 1,
+        winner_id: userId,
+        points_awarded: guesserPoints,
+        drawer_points_awarded: drawerPoints,
         completed_at: now,
       });
-
-      // Rotate drawer or advance round similarly to completeGameTurn
-      const allPlayers = await ctx.db
-        .query("players")
-        .withIndex("by_game_id", (q) => q.eq("game_id", args.game_id))
-        .collect();
-
-      const playersInRound = await ctx.db
-        .query("turns")
-        .withIndex("by_game_and_round", (q) =>
-          q.eq("game_id", args.game_id).eq("round", turn.round)
-        )
-        .collect();
-
-      const game = await ctx.db.get(args.game_id);
-      if (!game) throw new Error("Game not found");
-
-      if (playersInRound.length >= allPlayers.length) {
-        const nextRound = turn.round + 1;
-        if (nextRound >= game.max_rounds) {
-          await ctx.db.patch(args.game_id, {
-            status: "finished",
-            finished_at: now,
-          });
-        } else {
-          const currentDrawerIndex = allPlayers.findIndex(
-            (p) => p.player_id === turn.drawer_id
-          );
-          const nextDrawerIndex = (currentDrawerIndex + 1) % allPlayers.length;
-          await ctx.db.patch(args.game_id, {
-            round: nextRound,
-            current_drawer_id: allPlayers[nextDrawerIndex].player_id,
-          });
-        }
-      } else {
-        const drawnSet = new Set(playersInRound.map((t) => t.drawer_id));
-        const startIdx = allPlayers.findIndex(
-          (p) => p.player_id === turn.drawer_id
-        );
-        for (let offset = 1; offset < allPlayers.length; offset++) {
-          const idx = (startIdx + offset) % allPlayers.length;
-          const candidate = allPlayers[idx];
-          if (!drawnSet.has(candidate.player_id)) {
-            await ctx.db.patch(args.game_id, {
-              current_drawer_id: candidate.player_id,
-            });
-            break;
-          }
-        }
-      }
 
       return {
         is_correct: true,
@@ -174,11 +131,109 @@ export const submitGuessAndCompleteTurn = mutation({
       };
     }
 
+    // If guess was not correct, revert turn status back to drawing
+    await ctx.db.patch(args.turn_id, {
+      status: "drawing",
+    });
+
     return {
       is_correct: false,
       is_fuzzy_match: isFuzzyMatch,
       message: "Not quite...",
     };
+  },
+});
+
+/**
+ * Finalize turn completion after drawing upload
+ * Called by drawer after capturing and uploading drawing
+ * This advances to next turn/round
+ */
+export const finalizeTurnCompletion = mutation({
+  args: {
+    game_id: v.id("games"),
+    turn_id: v.id("turns"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const turn = await ctx.db.get(args.turn_id);
+    if (!turn) throw new Error("Turn not found");
+
+    const game = await ctx.db.get(args.game_id);
+    if (!game) throw new Error("Game not found");
+
+    // Only drawer can finalize (they uploaded the drawing)
+    if (turn.drawer_id !== userId) {
+      throw new Error("Only drawer can finalize turn");
+    }
+
+    // Validate turn is in completing state
+    if (turn.status !== "completing") {
+      throw new Error("Turn is not in completing state");
+    }
+
+    // Mark turn as completed
+    await ctx.db.patch(args.turn_id, {
+      status: "completed",
+    });
+
+    // Advance to next drawer/round
+    const allPlayers = await ctx.db
+      .query("players")
+      .withIndex("by_game_id", (q) => q.eq("game_id", args.game_id))
+      .collect();
+
+    const playersInRound = await ctx.db
+      .query("turns")
+      .withIndex("by_game_and_round", (q) =>
+        q.eq("game_id", args.game_id).eq("round", turn.round)
+      )
+      .collect();
+
+    if (playersInRound.length >= allPlayers.length) {
+      // Round complete, advance to next round or finish game
+      const nextRound = turn.round + 1;
+
+      if (nextRound >= game.max_rounds) {
+        // Game finished
+        await ctx.db.patch(args.game_id, {
+          status: "finished",
+          finished_at: Date.now(),
+        });
+      } else {
+        // Advance round - set new drawer (rotate)
+        const currentDrawerIndex = allPlayers.findIndex(
+          (p) => p.player_id === turn.drawer_id
+        );
+        const nextDrawerIndex = (currentDrawerIndex + 1) % allPlayers.length;
+
+        await ctx.db.patch(args.game_id, {
+          round: nextRound,
+          current_drawer_id: allPlayers[nextDrawerIndex].player_id,
+        });
+      }
+    } else {
+      // Same round: set next drawer to a player who hasn't drawn yet
+      const drawnSet = new Set(playersInRound.map((t) => t.drawer_id));
+      const startIdx = allPlayers.findIndex(
+        (p) => p.player_id === turn.drawer_id
+      );
+      for (let offset = 1; offset < allPlayers.length; offset++) {
+        const idx = (startIdx + offset) % allPlayers.length;
+        const candidate = allPlayers[idx];
+        if (!drawnSet.has(candidate.player_id)) {
+          await ctx.db.patch(args.game_id, {
+            current_drawer_id: candidate.player_id,
+          });
+          break;
+        }
+      }
+    }
+
+    return null;
   },
 });
 
@@ -192,7 +247,6 @@ export const completeGameTurn = mutation({
     reason: v.union(v.literal("time_up"), v.literal("manual")),
     winner_id: v.optional(v.string()),
     points_awarded: v.optional(v.number()),
-    drawing_file_id: v.optional(v.id("_storage")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -205,11 +259,26 @@ export const completeGameTurn = mutation({
     const turn = await ctx.db.get(args.turn_id);
     if (!turn) throw new Error("Turn not found");
 
+    // Validate turn status - prevent race conditions
+    if (turn.status !== "drawing") {
+      throw new Error("Turn already completed or completing");
+    }
+
     // Allow either host or current drawer to complete the turn
     const isHost = game.created_by === userId;
     const isDrawer = turn.drawer_id === userId;
     if (!isHost && !isDrawer)
       throw new Error("Only host or drawer can complete turn");
+
+    // Mark turn as completing to prevent concurrent completions
+    await ctx.db.patch(args.turn_id, {
+      status: "completing",
+    });
+
+    // Calculate time remaining for scoring
+    const now = Date.now();
+    const elapsedSec = Math.floor((now - turn.started_at) / 1000);
+    const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
 
     // If a manual winner is provided, award points by inserting a correct guess
     if (args.reason === "manual" && args.winner_id) {
@@ -220,7 +289,9 @@ export const completeGameTurn = mutation({
         )
         .first();
       if (winnerPlayer) {
-        const awarded = Math.max(0, Math.floor(args.points_awarded ?? 10));
+        const guesserPoints = args.points_awarded ?? Math.max(0, timeLeft);
+        const drawerPoints = Math.max(10, Math.floor(timeLeft / 4));
+
         // Create a synthetic correct guess for history consistency
         await ctx.db.insert("guesses", {
           game_id: args.game_id,
@@ -232,31 +303,38 @@ export const completeGameTurn = mutation({
           submitted_at: Date.now(),
         });
 
+        // Award points to winner
         await ctx.db.patch(winnerPlayer._id, {
-          score: winnerPlayer.score + awarded,
+          score: winnerPlayer.score + guesserPoints,
           correct_guesses: winnerPlayer.correct_guesses + 1,
         });
 
-        // Track count of correct guesses on the turn
+        // Award points to drawer
+        const drawerPlayer = await ctx.db
+          .query("players")
+          .withIndex("by_game_and_player", (q) =>
+            q.eq("game_id", args.game_id).eq("player_id", turn.drawer_id)
+          )
+          .first();
+
+        if (drawerPlayer) {
+          await ctx.db.patch(drawerPlayer._id, {
+            score: drawerPlayer.score + drawerPoints,
+          });
+        }
+
+        // Track count of correct guesses on the turn and scoring info
         await ctx.db.patch(args.turn_id, {
           correct_guesses: turn.correct_guesses + 1,
+          winner_id: args.winner_id,
+          points_awarded: guesserPoints,
+          drawer_points_awarded: drawerPoints,
         });
       }
     }
 
-    // Save drawing screenshot if provided
-    if (args.drawing_file_id) {
-      const existingDrawing = await ctx.db
-        .query("drawings")
-        .withIndex("by_turn_id", (q) => q.eq("turn_id", args.turn_id))
-        .first();
-
-      if (existingDrawing) {
-        await ctx.db.patch(existingDrawing._id, {
-          drawing_file_id: args.drawing_file_id,
-        });
-      }
-    }
+    // Note: Drawing storage is now handled by uploadDrawing action
+    // which atomically saves the storage ID via internal mutation
 
     // Mark turn as completed
     await ctx.db.patch(args.turn_id, {

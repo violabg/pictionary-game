@@ -19,6 +19,7 @@ export const getCurrentTurn = query({
       card_id: v.id("cards"),
       status: v.union(
         v.literal("drawing"),
+        v.literal("completing"),
         v.literal("completed"),
         v.literal("time_up")
       ),
@@ -26,6 +27,9 @@ export const getCurrentTurn = query({
       started_at: v.number(),
       completed_at: v.optional(v.number()),
       correct_guesses: v.number(),
+      winner_id: v.optional(v.string()),
+      points_awarded: v.optional(v.number()),
+      drawer_points_awarded: v.optional(v.number()),
     })
   ),
   handler: async (ctx, args) => {
@@ -56,6 +60,7 @@ export const getGameTurns = query({
         card_id: v.id("cards"),
         status: v.union(
           v.literal("drawing"),
+          v.literal("completing"),
           v.literal("completed"),
           v.literal("time_up")
         ),
@@ -91,6 +96,7 @@ export const getRoundTurns = query({
       card_id: v.id("cards"),
       status: v.union(
         v.literal("drawing"),
+        v.literal("completing"),
         v.literal("completed"),
         v.literal("time_up")
       ),
@@ -134,6 +140,7 @@ export const getTurn = query({
       card_id: v.id("cards"),
       status: v.union(
         v.literal("drawing"),
+        v.literal("completing"),
         v.literal("completed"),
         v.literal("time_up")
       ),
@@ -141,6 +148,9 @@ export const getTurn = query({
       started_at: v.number(),
       completed_at: v.optional(v.number()),
       correct_guesses: v.number(),
+      winner_id: v.optional(v.string()),
+      points_awarded: v.optional(v.number()),
+      drawer_points_awarded: v.optional(v.number()),
     })
   ),
   handler: async (ctx, args) => {

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { useAuthenticatedUser } from "@/hooks/useAuth";
-import { captureAndUploadDrawing } from "@/lib/utils/drawing-utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Crown, PlayCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -61,6 +60,12 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     currentTurn?.card_id ? { game_id: gameId } : "skip"
   );
 
+  // Watch for guesses on current turn (for drawer to detect correct guesses)
+  const turnGuesses = useQuery(
+    api.queries.guesses.getTurnGuesses,
+    currentTurn?._id ? { turn_id: currentTurn._id } : "skip"
+  );
+
   // Mutations and Actions
   const startNewTurnMutation = useMutation(api.mutations.game.startNewTurn);
   const submitGuessAndCompleteTurnMutation = useMutation(
@@ -69,26 +74,12 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   const completeGameTurnMutation = useMutation(
     api.mutations.game.completeGameTurn
   );
+  const finalizeTurnCompletionMutation = useMutation(
+    api.mutations.game.finalizeTurnCompletion
+  );
   const uploadDrawingAction = useAction(
     api.actions.uploadDrawing.uploadDrawingScreenshot
   );
-
-  // Create upload function for drawing utils
-  const createUploadFn = useCallback(() => {
-    return async (blob: Blob): Promise<string | null> => {
-      try {
-        const buffer = await blob.arrayBuffer();
-        return await uploadDrawingAction({
-          gameId,
-          turnId: currentTurn?._id || ("" as any),
-          pngBlob: buffer,
-        });
-      } catch (error) {
-        console.error("Error uploading drawing:", error);
-        return null;
-      }
-    };
-  }, [uploadDrawingAction, gameId, currentTurn?._id]);
 
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -122,42 +113,81 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     [players, profile?.user_id]
   );
 
-  // Helper function to capture drawing for atomic turn completion
-  const captureDrawing = useCallback(async (): Promise<string | undefined> => {
-    if (!drawingCanvasRef.current) return undefined;
-
-    try {
-      const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
-      if (canvasDataUrl) {
-        const uploadedUrl = await captureAndUploadDrawing(
-          gameId.toString(),
-          canvasDataUrl,
-          createUploadFn()
-        );
-        return uploadedUrl || undefined;
+  // Helper function to capture and upload drawing with retry logic
+  // ONLY called by the drawer
+  const captureAndUploadDrawingWithRetry = useCallback(
+    async (maxRetries = 3): Promise<Id<"_storage"> | null> => {
+      if (!gameState.isDrawer || !drawingCanvasRef.current || !currentTurn) {
+        return null;
       }
-    } catch (error) {
-      console.error("Error capturing drawing:", error);
-    }
-    return undefined;
-  }, [gameId, createUploadFn]);
 
-  // Handle time up scenario
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const canvasDataUrl = drawingCanvasRef.current.captureDrawing();
+          if (!canvasDataUrl) {
+            console.warn("No canvas data to capture");
+            return null;
+          }
+
+          // Convert data URL to blob
+          const response = await fetch(canvasDataUrl);
+          const blob = await response.blob();
+          const buffer = await blob.arrayBuffer();
+
+          // Upload to storage and save to database atomically
+          const storageId = await uploadDrawingAction({
+            gameId,
+            turnId: currentTurn._id,
+            pngBlob: buffer,
+          });
+
+          toast.success("Disegno salvato!");
+          return storageId;
+        } catch (error) {
+          console.error(
+            `Drawing upload attempt ${attempt}/${maxRetries} failed:`,
+            error
+          );
+
+          if (attempt === maxRetries) {
+            toast.error("Errore salvataggio disegno", {
+              description: "Non è stato possibile salvare il disegno. Riprova.",
+            });
+            return null;
+          }
+
+          // Exponential backoff
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, attempt) * 500)
+          );
+        }
+      }
+
+      return null;
+    },
+    [gameState.isDrawer, currentTurn, gameId, uploadDrawingAction]
+  );
+
+  // Handle time up scenario - ONLY for drawer
   const handleTimeUp = useCallback(async () => {
     if (!gameState.isDrawer || gameState.turnEnded || !currentTurn) return;
 
     setGameState((prev) => ({ ...prev, turnEnded: true }));
 
     try {
-      const drawingFileId = gameState.isDrawer
-        ? await captureDrawing()
-        : undefined;
+      // CRITICAL: Drawer must capture and upload drawing BEFORE completing turn
+      toast.info("Salvando il disegno...");
+      const drawingStorageId = await captureAndUploadDrawingWithRetry();
 
+      if (!drawingStorageId) {
+        console.warn("Failed to upload drawing, completing turn anyway");
+      }
+
+      // Drawing is already saved via uploadDrawing action
       await completeGameTurnMutation({
         game_id: gameId,
         turn_id: currentTurn._id,
         reason: "time_up",
-        drawing_file_id: drawingFileId as any,
       });
 
       toast.success("Tempo scaduto!", {
@@ -175,7 +205,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     gameState.turnEnded,
     currentTurn,
     gameId,
-    captureDrawing,
+    captureAndUploadDrawingWithRetry,
     completeGameTurnMutation,
   ]);
 
@@ -249,6 +279,50 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     handleTimeUp,
   ]);
 
+  // Watch for turn status changing to "completing" - drawer captures drawing after correct guess
+  useEffect(() => {
+    if (!gameState.isDrawer || gameState.turnEnded || !currentTurn) return;
+
+    // Check if turn status changed to "completing" (correct guess submitted)
+    if (currentTurn.status === "completing") {
+      // Drawer needs to capture and upload the drawing before finalizing
+      const drawerCapture = async () => {
+        try {
+          toast.info("Disegno indovinato! Salvataggio...");
+          const drawingStorageId = await captureAndUploadDrawingWithRetry();
+
+          if (!drawingStorageId) {
+            console.warn(
+              "Failed to upload drawing for correct guess, finalizing anyway"
+            );
+          }
+
+          // Now finalize the turn completion
+          await finalizeTurnCompletionMutation({
+            game_id: gameId,
+            turn_id: currentTurn._id,
+          });
+
+          toast.success("Turno completato!");
+        } catch (error) {
+          console.error("Error in drawer capture for correct guess:", error);
+          toast.error("Errore", {
+            description: "Impossibile completare il turno",
+          });
+        }
+      };
+
+      drawerCapture();
+    }
+  }, [
+    gameState.isDrawer,
+    gameState.turnEnded,
+    currentTurn,
+    gameId,
+    captureAndUploadDrawingWithRetry,
+    finalizeTurnCompletionMutation,
+  ]);
+
   // Check loading states - after all hooks
   if (!game || !players || !profile) {
     return (
@@ -261,17 +335,24 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   const handleGuessSubmit = async (guess: string) => {
     if (!currentPlayer || gameState.turnEnded || !currentTurn) return;
 
+    // If this is the drawer guessing (shouldn't happen but safety check)
+    if (gameState.isDrawer) {
+      toast.error("Non puoi indovinare", {
+        description: "Sei il disegnatore!",
+      });
+      return;
+    }
+
     try {
-      // Capture drawing screenshot if drawer
-      const drawingFileId = gameState.isDrawer
-        ? await captureDrawing()
-        : undefined;
+      // Note: Drawing capture and upload happens client-side via real-time subscription
+      // when a correct guess is detected, the drawer's client will be notified
+      // via turn status changing to "completing" (handled in useEffect above)
 
       const result = await submitGuessAndCompleteTurnMutation({
         game_id: gameId,
         turn_id: currentTurn._id,
         guess_text: guess,
-        drawing_file_id: drawingFileId as any,
+        // Drawing upload handled separately by drawer's client
       });
 
       if (!result.is_correct) {
@@ -281,8 +362,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         return;
       }
 
-      // Correct guess
-      setGameState((prev) => ({ ...prev, turnEnded: true }));
+      // Correct guess - turn will be completed by drawer's client
       toast.success("Corretto!", {
         description: `Hai indovinato e guadagnato punti!`,
       });
@@ -295,23 +375,26 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   };
 
   const handleSelectWinner = async (winner: Doc<"players">) => {
-    if (gameState.turnEnded || !currentTurn) return;
+    if (gameState.turnEnded || !currentTurn || !gameState.isDrawer) return;
 
     try {
       setGameState((prev) => ({ ...prev, turnEnded: true }));
 
-      // Capture drawing screenshot if drawer
-      const drawingFileId = gameState.isDrawer
-        ? await captureDrawing()
-        : undefined;
+      // CRITICAL: Drawer must capture and upload drawing BEFORE completing turn
+      toast.info("Salvando il disegno...");
+      const drawingStorageId = await captureAndUploadDrawingWithRetry();
 
+      if (!drawingStorageId) {
+        console.warn("Failed to upload drawing, completing turn anyway");
+      }
+
+      // Drawing is already saved via uploadDrawing action
       await completeGameTurnMutation({
         game_id: gameId,
         turn_id: currentTurn._id,
         reason: "manual",
         winner_id: winner.player_id,
         points_awarded: Math.max(0, Math.floor(gameState.timeRemaining)),
-        drawing_file_id: drawingFileId as any,
       });
 
       toast.success("Vincitore selezionato!", {

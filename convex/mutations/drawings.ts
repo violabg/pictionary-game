@@ -1,6 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { internalMutation, mutation } from "../_generated/server";
 
 // Types that mirror client-side structure (normalized points)
 const point = v.object({ x: v.number(), y: v.number() });
@@ -75,6 +75,52 @@ export const saveTurnStrokes = mutation({
           height: existing.canvas_data.height ?? 1,
         },
       } as any);
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Internal mutation to save drawing storage ID
+ * Called by uploadDrawing action after successful upload
+ */
+export const saveDrawingStorageId = internalMutation({
+  args: {
+    turn_id: v.id("turns"),
+    storage_id: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const turn = await ctx.db.get(args.turn_id);
+    if (!turn) throw new Error("Turn not found");
+
+    // Find or create drawing record
+    const existing = await ctx.db
+      .query("drawings")
+      .withIndex("by_turn_id", (q) => q.eq("turn_id", args.turn_id))
+      .first();
+
+    if (existing) {
+      // Update existing record
+      await ctx.db.patch(existing._id, {
+        drawing_file_id: args.storage_id,
+      });
+    } else {
+      // Create new record with minimal data
+      await ctx.db.insert("drawings", {
+        game_id: turn.game_id,
+        card_id: turn.card_id,
+        drawer_id: turn.drawer_id,
+        turn_id: turn._id,
+        canvas_data: {
+          strokes: [],
+          width: 800,
+          height: 600,
+        },
+        drawing_file_id: args.storage_id,
+        created_at: Date.now(),
+      });
     }
 
     return null;
