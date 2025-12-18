@@ -53,10 +53,7 @@ export function SignUpForm({
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { signIn } = useAuthActions();
-  const createProfileIfNotExists = useMutation(
-    api.auth.createProfileIfNotExists
-  );
-  const createOrGetOAuthProfile = useMutation(api.auth.createOrGetOAuthProfile);
+  const initializeUserProfile = useMutation(api.auth.initializeUserProfile);
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -80,11 +77,9 @@ export function SignUpForm({
 
       await signIn("password", formData);
 
-      // Create profile after successful signup
-      await createProfileIfNotExists({
+      // Initialize user profile fields after successful signup
+      await initializeUserProfile({
         username: values.username,
-        email: values.email,
-        avatar_url: undefined,
       });
 
       toast.success("Registrazione completata!");
@@ -107,21 +102,10 @@ export function SignUpForm({
     setIsLoading(true);
 
     try {
-      // Sign up with GitHub
+      // Sign up with GitHub - user initialization is automatic via Convex Auth
       const formData = new FormData();
       formData.append("redirectTo", "/gioca");
       await signIn("github", formData);
-
-      // Try to create profile for GitHub user
-      // ProfileInitializer will also handle this as a fallback
-      try {
-        await createOrGetOAuthProfile();
-      } catch (profileError) {
-        console.log(
-          "Profile creation deferred to ProfileInitializer",
-          profileError
-        );
-      }
 
       toast.success("Registrazione completata!");
       router.push("/gioca");

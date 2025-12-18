@@ -38,11 +38,12 @@ export const myQuery = query({
 
 ### Database Schema (`convex/schema.ts`)
 
-Key tables: `profiles`, `games`, `players`, `cards`, `turns`, `guesses`, `drawings`
+Key tables: `users`, `games`, `players`, `cards`, `turns`, `guesses`, `drawings`
 
 - Use `Id<"tableName">` for type-safe IDs
 - Always define indexes with descriptive names (e.g., `by_game_and_player`)
 - System fields: `_id`, `_creationTime` auto-generated
+- `users` table extends Convex Auth's `authTables` with `username`, `total_score`, `games_played`
 
 ### Turn-Based Game Flow
 
@@ -135,12 +136,13 @@ const form = useForm<z.infer<typeof formSchema>>({
 
 - **@convex-dev/auth**: Built-in Convex authentication
 - **Auth Provider**: Wrap app in `ConvexAuthNextjsProvider` (see `app/layout.tsx`)
-- **Profile Initialization**: `ProfileInitializer` component auto-creates profiles
+- **User Initialization**: User profile fields (`username`, `total_score`, `games_played`) initialized during signup via `initializeUserProfile` mutation
 - **Current User**: Use `useAuthenticatedUser()` hook from `hooks/useAuth.ts`
 
 ```typescript
 const { profile } = useAuthenticatedUser();
 // profile contains: user_id, username, email, avatar_url, total_score, games_played
+// Note: profile data now comes from users table, not separate profiles table
 ```
 
 ## AI Integration
@@ -182,6 +184,8 @@ const { profile } = useAuthenticatedUser();
 - `convex/mutations/game.ts` - Core game logic (submit guess, complete turn, start turn)
 - `components/game/game-board.tsx` - Main game UI, orchestrates drawing/guessing
 - `convex/schema.ts` - Database schema with all table definitions
+- `convex/queries/profiles.ts` - User profile queries (uses users table)
+- `convex/auth.ts` - Authentication and user initialization
 - `.github/instructions/convex.instructions.md` - Comprehensive Convex guidelines
 
 ## Common Pitfalls
@@ -192,6 +196,7 @@ const { profile } = useAuthenticatedUser();
 4. **Don't skip validators** - Always define `args` and `returns` in Convex functions
 5. **Don't use relative paths for IDs** - Use `Id<"tableName">` type from generated types
 6. **Follow file-based routing** - Convex functions organized by file path (e.g., `api.queries.games.getGame` → `convex/queries/games.ts`)
+7. **Use users table for profiles** - The separate profiles table has been removed; all user data is in the extended users table
 
 ## Additional Resources
 

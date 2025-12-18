@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface ProfileData {
-  id: Id<"profiles">;
+  id: Id<"users">;
   username: string;
   email: string;
   avatar_url?: string;

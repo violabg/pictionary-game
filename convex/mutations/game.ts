@@ -1,7 +1,33 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
+import { MutationCtx, mutation } from "../_generated/server";
 import { canGuess } from "../lib/permissions";
+
+/**
+ * Helper function to update user stats when a game finishes
+ */
+async function updatePlayerStats(
+  ctx: MutationCtx,
+  gameId: Id<"games">
+): Promise<void> {
+  const players = await ctx.db
+    .query("players")
+    .withIndex("by_game_id", (q) => q.eq("game_id", gameId))
+    .collect();
+
+  for (const player of players) {
+    // player.player_id is a string that represents a user ID
+    const userId = player.player_id as Id<"users">;
+    const user = await ctx.db.get(userId);
+    if (user) {
+      await ctx.db.patch(userId, {
+        total_score: (user.total_score ?? 0) + player.score,
+        games_played: (user.games_played ?? 0) + 1,
+      });
+    }
+  }
+}
 
 /**
  * Submit a guess and complete the turn
@@ -214,11 +240,14 @@ export const finalizeTurnCompletion = mutation({
       const nextRound = turn.round + 1;
 
       if (nextRound >= game.max_rounds) {
-        // Game finished
+        // Game finished - update all player stats
         await ctx.db.patch(args.game_id, {
           status: "finished",
           finished_at: Date.now(),
         });
+
+        // Update each player's total_score and games_played
+        await updatePlayerStats(ctx, args.game_id);
       } else {
         // Advance round - set new drawer (rotate)
         const currentDrawerIndex = allPlayers.findIndex(
@@ -393,11 +422,14 @@ export const completeGameTurn = mutation({
       const nextRound = turn.round + 1;
 
       if (nextRound >= game.max_rounds) {
-        // Game finished
+        // Game finished - update all player stats
         await ctx.db.patch(args.game_id, {
           status: "finished",
           finished_at: Date.now(),
         });
+
+        // Update each player's total_score and games_played
+        await updatePlayerStats(ctx, args.game_id);
       } else {
         // Advance round - set new drawer (rotate)
         const currentDrawerIndex = allPlayers.findIndex(

@@ -37,14 +37,10 @@ export const createGame = mutation({
       throw new Error("Code collision, please try again");
     }
 
-    // Get user profile for username
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
-      .first();
-
-    if (!profile) {
-      throw new Error("User profile not found");
+    // Get user from users table
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
     }
 
     // Create game
@@ -62,8 +58,9 @@ export const createGame = mutation({
     await ctx.db.insert("players", {
       game_id: gameId,
       player_id: userId,
-      username: profile.username,
-      avatar_url: profile.avatar_url,
+      username:
+        user.username ?? user.name ?? user.email?.split("@")[0] ?? "User",
+      avatar_url: user.image,
       score: 0,
       correct_guesses: 0,
       is_host: true,
@@ -119,22 +116,19 @@ export const joinGame = mutation({
       return game._id;
     }
 
-    // Get user profile
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
-      .first();
-
-    if (!profile) {
-      throw new Error("User profile not found");
+    // Get user from users table
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
     }
 
     // Add player to game
     await ctx.db.insert("players", {
       game_id: game._id,
       player_id: userId,
-      username: profile.username,
-      avatar_url: profile.avatar_url,
+      username:
+        user.username ?? user.name ?? user.email?.split("@")[0] ?? "User",
+      avatar_url: user.image,
       score: 0,
       correct_guesses: 0,
       is_host: false,

@@ -3,18 +3,18 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 
 /**
- * Get current user's profile
+ * Get current user's profile (now from users table)
  */
 export const getCurrentUserProfile = query({
   args: {},
   returns: v.nullable(
     v.object({
-      _id: v.id("profiles"),
+      _id: v.id("users"),
       _creationTime: v.number(),
-      user_id: v.string(),
+      user_id: v.string(), // Same as _id for compatibility
       username: v.string(),
       email: v.string(),
-      avatar_url: v.optional(v.string()),
+      avatar_url: v.optional(v.string()), // Maps to image field
       total_score: v.number(),
       games_played: v.number(),
     })
@@ -23,12 +23,20 @@ export const getCurrentUserProfile = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
 
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", userId))
-      .first();
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
 
-    return profile || null;
+    return {
+      _id: user._id,
+      _creationTime: user._creationTime,
+      user_id: user._id, // For compatibility with existing code
+      username:
+        user.username ?? user.name ?? user.email?.split("@")[0] ?? "User",
+      email: user.email ?? "",
+      avatar_url: user.image,
+      total_score: user.total_score ?? 0,
+      games_played: user.games_played ?? 0,
+    };
   },
 });
 
@@ -37,11 +45,11 @@ export const getCurrentUserProfile = query({
  */
 export const getProfile = query({
   args: {
-    user_id: v.string(),
+    user_id: v.id("users"),
   },
   returns: v.nullable(
     v.object({
-      _id: v.id("profiles"),
+      _id: v.id("users"),
       username: v.string(),
       email: v.string(),
       avatar_url: v.optional(v.string()),
@@ -50,34 +58,31 @@ export const getProfile = query({
     })
   ),
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user_id", (q) => q.eq("user_id", args.user_id))
-      .first();
-
-    if (!profile) return null;
+    const user = await ctx.db.get(args.user_id);
+    if (!user) return null;
 
     return {
-      _id: profile._id,
-      username: profile.username,
-      email: profile.email,
-      avatar_url: profile.avatar_url,
-      total_score: profile.total_score,
-      games_played: profile.games_played,
+      _id: user._id,
+      username:
+        user.username ?? user.name ?? user.email?.split("@")[0] ?? "User",
+      email: user.email ?? "",
+      avatar_url: user.image,
+      total_score: user.total_score ?? 0,
+      games_played: user.games_played ?? 0,
     };
   },
 });
 
 /**
- * Get profile by profile ID
+ * Get profile by user ID (renamed from getProfileById for clarity)
  */
 export const getProfileById = query({
   args: {
-    profile_id: v.id("profiles"),
+    profile_id: v.id("users"),
   },
   returns: v.nullable(
     v.object({
-      _id: v.id("profiles"),
+      _id: v.id("users"),
       _creationTime: v.number(),
       user_id: v.string(),
       username: v.string(),
@@ -88,12 +93,26 @@ export const getProfileById = query({
     })
   ),
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.profile_id);
+    const user = await ctx.db.get(args.profile_id);
+    if (!user) return null;
+
+    return {
+      _id: user._id,
+      _creationTime: user._creationTime,
+      user_id: user._id,
+      username:
+        user.username ?? user.name ?? user.email?.split("@")[0] ?? "User",
+      email: user.email ?? "",
+      avatar_url: user.image,
+      total_score: user.total_score ?? 0,
+      games_played: user.games_played ?? 0,
+    };
   },
 });
 
 /**
  * Get leaderboard (top users by score)
+ * Now uses index for efficient sorting
  */
 export const getLeaderboard = query({
   args: {
@@ -109,15 +128,23 @@ export const getLeaderboard = query({
   ),
   handler: async (ctx, args) => {
     const limit = args.limit || 10;
-    const profiles = await ctx.db.query("profiles").order("desc").take(limit);
 
-    return profiles
-      .sort((a, b) => b.total_score - a.total_score)
-      .map((p) => ({
-        username: p.username,
-        total_score: p.total_score,
-        games_played: p.games_played,
-        avatar_url: p.avatar_url,
+    // Use index for efficient sorting by total_score
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_total_score")
+      .order("desc")
+      .take(limit * 2); // Take more to filter out users without scores
+
+    return users
+      .filter((u) => (u.total_score ?? 0) > 0) // Only include users with scores
+      .sort((a, b) => (b.total_score ?? 0) - (a.total_score ?? 0))
+      .slice(0, limit)
+      .map((u) => ({
+        username: u.username ?? u.name ?? u.email?.split("@")[0] ?? "User",
+        total_score: u.total_score ?? 0,
+        games_played: u.games_played ?? 0,
+        avatar_url: u.image,
       }));
   },
 });

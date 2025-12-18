@@ -10,10 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useMutation } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,7 +24,6 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"div">) {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuthActions();
-  const createOrGetOAuthProfile = useMutation(api.auth.createOrGetOAuthProfile);
   const router = useRouter();
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -55,23 +52,10 @@ export function LoginForm({
     setIsLoading(true);
 
     try {
-      // First, perform GitHub authentication
+      // GitHub authentication - user initialization is automatic via Convex Auth
       const formData = new FormData();
       formData.append("redirectTo", "/gioca");
       await signIn("github", formData);
-
-      // The ProfileInitializer will automatically create the profile when the user lands
-      // But we can also try to create it here for faster UX
-      try {
-        await createOrGetOAuthProfile();
-      } catch (profileError) {
-        // Profile might already exist or will be created by ProfileInitializer
-        console.log(
-          "Profile creation deferred to ProfileInitializer",
-          profileError
-        );
-      }
-
       router.push("/gioca");
     } catch (error: unknown) {
       toast.error("Errore", {
