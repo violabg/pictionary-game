@@ -54,70 +54,71 @@ export default function TurnWinnerBanner({
   }
 
   return (
-    <div className="top-20 left-1/2 z-50 fixed opacity-100 scale-100 transition-all -translate-x-1/2 duration-500">
-      <Card className="relative bg-linear-to-r from-yellow-400 via-amber-300 to-orange-400 shadow-2xl border-2 border-yellow-500 overflow-hidden">
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+    <Card className="relative bg-linear-to-r from-yellow-400 via-amber-300 to-orange-400 shadow-2xl border-2 border-yellow-500 overflow-hidden text-black">
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .spin-continuous {
+          animation: spin 2s linear infinite;
+        }
+        @keyframes confetti-fall {
+          to {
+            opacity: 0;
+            transform: translateY(100px);
           }
-          .spin-continuous {
-            animation: spin 2s linear infinite;
-          }
-          @keyframes confetti-fall {
-            to {
-              opacity: 0;
-              transform: translateY(100px);
-            }
-          }
-          .confetti-piece {
-            animation: confetti-fall 2s ease-out forwards;
-          }
-        `}</style>
+        }
+        .confetti-piece {
+          animation: confetti-fall 2s ease-out forwards;
+        }
+      `}</style>
 
-        <div className="relative px-8 py-6 text-center">
-          {/* Decorative confetti elements */}
-          {confetti.map((piece) => (
-            <div
-              key={`confetti-${piece.id}`}
-              className="absolute bg-yellow-500 rounded-full w-2 h-2 confetti-piece"
-              style={{
-                left: "50%",
-                top: "50%",
-                marginLeft: "-4px",
-                marginTop: "-4px",
-                transform: `translate(${piece.x}px, ${piece.y}px) rotate(${piece.rotation}deg)`,
-                animationDelay: `${piece.id * 50}ms`,
-              }}
-            />
-          ))}
+      <div className="relative p-4 text-center">
+        {/* Decorative confetti elements */}
+        {confetti.map((piece) => (
+          <div
+            key={`confetti-${piece.id}`}
+            className="absolute bg-yellow-500 rounded-full w-2 h-2 confetti-piece"
+            style={{
+              left: "50%",
+              top: "50%",
+              marginLeft: "-4px",
+              marginTop: "-4px",
+              transform: `translate(${piece.x}px, ${piece.y}px) rotate(${piece.rotation}deg)`,
+              animationDelay: `${piece.id * 50}ms`,
+            }}
+          />
+        ))}
 
-          {/* Content */}
-          <div className="z-10 relative">
-            <div className="flex justify-center mb-2">
-              <Crown className="drop-shadow-lg w-8 h-8 text-white spin-continuous" />
+        {/* Content */}
+        <div className="relative">
+          <div className="flex justify-center mb-2">
+            <Crown className="drop-shadow-lg w-8 h-8 text-white spin-continuous" />
+          </div>
+
+          <div className="drop-shadow-lg font-bold text-2xl">
+            {winner.username}
+          </div>
+          <div className="drop-shadow-lg mb-1 font-normal text-xl">
+            ha vinto!
+          </div>
+
+          {correctAnswer && (
+            <div className="drop-shadow-md mb-2 text-sm">
+              La risposta giusta:{" "}
+              <span className="font-bold">&quot;{correctAnswer}&quot;</span>
             </div>
+          )}
 
-            <div className="drop-shadow-lg mb-1 font-bold text-white text-2xl">
-              {winner.username} ha vinto!
-            </div>
-
-            {correctAnswer && (
-              <div className="drop-shadow-md mb-2 text-white text-sm">
-                La risposta giusta:{" "}
-                <span className="font-bold">&quot;{correctAnswer}&quot;</span>
-              </div>
-            )}
-
-            <div className="flex justify-center items-center gap-2">
-              <Award className="drop-shadow-md w-5 h-5 text-white" />
-              <div className="drop-shadow-lg font-bold text-white text-lg">
-                +{winner.points} punti
-              </div>
+          <div className="flex justify-center items-center gap-2">
+            <Award className="drop-shadow-md w-5 h-5" />
+            <div className="drop-shadow-lg font-bold text-lg">
+              +{winner.points} punti
             </div>
           </div>
         </div>
-      </Card>
-    </div>
+      </div>
+    </Card>
   );
 }

@@ -381,7 +381,6 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       if (winner && currentTurn.points_awarded !== undefined) {
         setModalState((prev) => ({
           ...prev,
-          showWinnerBanner: true,
           winnerBannerData: {
             username: winner.username,
             points: currentTurn.points_awarded || 0,
@@ -395,8 +394,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     if (currentTurn.status === "drawing") {
       setModalState((prev) => ({
         ...prev,
-        showWinnerBanner: false,
         winnerBannerData: null,
+        correctAnswer: null,
       }));
     }
   }, [currentTurn, players, currentCard]);
@@ -624,7 +623,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
 
           {!gameState.isDrawer &&
             gameState.turnStarted &&
-            gameState.currentTurnId && (
+            gameState.currentTurnId &&
+            currentTurn?.started_at && (
               <div className="mt-4">
                 <GuessInput
                   onSubmit={handleGuessSubmit}
@@ -652,6 +652,14 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
               currentDrawerId={game.current_drawer_id}
             />
           )}
+          {/* Winner Banner */}
+          {modalState.winnerBannerData && (
+            <TurnWinnerBanner
+              show={true}
+              winner={modalState.winnerBannerData}
+              correctAnswer={modalState.correctAnswer}
+            />
+          )}
           {/* Show time's up card above the player list */}
           {modalState.showTimeUp && gameState.timeRemaining === 0 && (
             <Card className="gradient-border glass-card">
@@ -668,7 +676,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
               </CardContent>
             </Card>
           )}
-          {gameState.isDrawer && (
+          {gameState.isDrawer && currentTurn?.started_at && (
             <Button
               variant="gradient"
               size="sm"
@@ -697,19 +705,6 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
           timeRemaining={gameState.timeRemaining}
         />
       )}
-
-      <TurnWinnerBanner
-        show={modalState.showWinnerBanner}
-        winner={modalState.winnerBannerData}
-        correctAnswer={modalState.correctAnswer}
-        onComplete={() => {
-          setModalState((prev) => ({
-            ...prev,
-            showWinnerBanner: false,
-            winnerBannerData: null,
-          }));
-        }}
-      />
     </div>
   );
 }
