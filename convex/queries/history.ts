@@ -235,7 +235,7 @@ export const getGameTurnsWithDetails = query({
         v.literal("completed"),
         v.literal("time_up")
       ),
-      started_at: v.number(),
+      started_at: v.optional(v.number()),
       completed_at: v.optional(v.number()),
       correct_guesses: v.number(),
       guesses_count: v.number(),

@@ -113,7 +113,7 @@ export default defineSchema({
       v.literal("time_up")
     ),
     time_limit: v.number(),
-    started_at: v.number(),
+    started_at: v.optional(v.number()), // Set when first stroke is drawn (draw-to-start timer)
     completed_at: v.optional(v.number()),
     correct_guesses: v.number(),
     // Scoring fields

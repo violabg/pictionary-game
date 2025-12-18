@@ -29,6 +29,7 @@ interface DrawingCanvasProps {
   currentDrawer: Doc<"players">;
   turnStarted: boolean;
   turnId: Id<"turns"> | null;
+  onFirstStroke?: () => void; // Called when first stroke is drawn (for draw-to-start timer)
 }
 
 export interface DrawingCanvasRef {
@@ -36,7 +37,10 @@ export interface DrawingCanvasRef {
   getCanvas: () => HTMLCanvasElement | null;
 }
 const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
-  ({ gameId, isDrawer, currentDrawer, turnStarted, turnId }, ref) => {
+  (
+    { gameId, isDrawer, currentDrawer, turnStarted, turnId, onFirstStroke },
+    ref
+  ) => {
     const currentDrawerId = currentDrawer.player_id;
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -51,6 +55,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       null
     );
     const [isCanvasHovered, setIsCanvasHovered] = useState(false);
+    const firstStrokeCalledRef = useRef(false); // Track if we've called onFirstStroke
 
     // Keep a ref to the latest strokes for use in resize handler
     const strokesRef = useRef(strokes);
@@ -173,6 +178,17 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       if (!isDrawer || !turnStarted) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
+
+      // Call onFirstStroke callback if this is the first stroke (and callback not yet called)
+      if (
+        strokes.length === 0 &&
+        !firstStrokeCalledRef.current &&
+        onFirstStroke
+      ) {
+        firstStrokeCalledRef.current = true;
+        onFirstStroke();
+      }
+
       setIsDrawing(true);
       const point = getPoint(e);
       const normPoint = normalizePoint(point, canvas);
@@ -377,6 +393,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       const resetStrokes = () => {
         setStrokes([]);
         setCurrentStroke(null);
+        firstStrokeCalledRef.current = false; // Reset first stroke flag on new turn
       };
       resetStrokes();
     }, [currentDrawerId]);

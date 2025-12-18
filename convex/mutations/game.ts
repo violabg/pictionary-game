@@ -86,7 +86,9 @@ export const submitGuessAndCompleteTurn = mutation({
         .first();
 
       const now = Date.now();
-      const elapsedSec = Math.floor((now - turn.started_at) / 1000);
+      const elapsedSec = turn.started_at
+        ? Math.floor((now - turn.started_at) / 1000)
+        : 0;
       const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
       const guesserPoints = Math.max(0, timeLeft);
 
@@ -277,7 +279,9 @@ export const completeGameTurn = mutation({
 
     // Calculate time remaining for scoring
     const now = Date.now();
-    const elapsedSec = Math.floor((now - turn.started_at) / 1000);
+    const elapsedSec = turn.started_at
+      ? Math.floor((now - turn.started_at) / 1000)
+      : 0;
     const timeLeft = Math.max(0, turn.time_limit - elapsedSec);
 
     // If a manual winner is provided, award points by inserting a correct guess
@@ -427,7 +431,7 @@ export const startNewTurn = mutation({
 
     if (!nextCard) throw new Error("No cards available");
 
-    // Create turn
+    // Create turn (without started_at - will be set on first stroke)
     const turnId = await ctx.db.insert("turns", {
       game_id: args.game_id,
       round: game.round,
@@ -435,7 +439,7 @@ export const startNewTurn = mutation({
       card_id: nextCard._id,
       status: "drawing",
       time_limit: 60, // 60 seconds
-      started_at: Date.now(),
+      // started_at is NOT set here - will be set when first stroke is drawn
       correct_guesses: 0,
     });
 
@@ -450,5 +454,37 @@ export const startNewTurn = mutation({
     });
 
     return turnId;
+  },
+});
+/**
+ * Set the timer start time when the first stroke is drawn (draw-to-start timer)
+ * This ensures the timer only starts when drawing actually begins, not when turn is created
+ */
+export const setTurnStartTime = mutation({
+  args: {
+    game_id: v.id("games"),
+    turn_id: v.id("turns"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const turn = await ctx.db.get(args.turn_id);
+    if (!turn) throw new Error("Turn not found");
+
+    // Only drawer can set turn start time
+    if (turn.drawer_id !== userId) {
+      throw new Error("Only drawer can set turn start time");
+    }
+
+    // Only set if not already set (idempotent - safe to call multiple times)
+    if (!turn.started_at) {
+      await ctx.db.patch(args.turn_id, {
+        started_at: Date.now(),
+      });
+    }
+
+    return null;
   },
 });

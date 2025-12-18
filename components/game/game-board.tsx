@@ -11,11 +11,13 @@ import { toast } from "sonner";
 import { Button } from "../ui/button";
 import CardDisplay from "./card-display";
 import DrawingCanvas, { DrawingCanvasRef } from "./drawing-canvas";
+import GuessFeed from "./guess-feed";
 import GuessInput from "./guess-input";
 import PlayerList from "./player-list";
 import ScoreLegend from "./score-legend";
 import SelectWinnerModal from "./select-winner-modal";
 import Timer from "./timer";
+import TurnWinnerBanner from "./turn-winner-banner";
 
 interface GameBoardProps {
   gameId: Id<"games">;
@@ -44,6 +46,11 @@ interface ModalState {
   showTimeUp: boolean;
   correctAnswer: string | null;
   isTimerPaused: boolean;
+  showWinnerBanner: boolean;
+  winnerBannerData: {
+    username: string;
+    points: number;
+  } | null;
 }
 
 export default function GameBoard({ gameId, code }: GameBoardProps) {
@@ -77,12 +84,16 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   const finalizeTurnCompletionMutation = useMutation(
     api.mutations.game.finalizeTurnCompletion
   );
+  const setTurnStartTimeMutation = useMutation(
+    api.mutations.game.setTurnStartTime
+  );
   const uploadDrawingAction = useAction(
     api.actions.uploadDrawing.uploadDrawingScreenshot
   );
 
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const turnStartTimeSetRef = useRef<boolean>(false); // Track if we've set turn start time
 
   // Consolidated state
   const [gameState, setGameState] = useState<GameState>({
@@ -100,6 +111,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     showTimeUp: false,
     correctAnswer: null,
     isTimerPaused: false,
+    showWinnerBanner: false,
+    winnerBannerData: null,
   });
 
   // Memoized values - must be before early return
@@ -223,6 +236,13 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   }, [game, profile, currentTurn?.status, currentTurn?._id]);
 
   // Update current card
+  // Reset turn start time ref when a new turn begins (draw-to-start timer)
+  useEffect(() => {
+    if (currentTurn?._id) {
+      turnStartTimeSetRef.current = false;
+    }
+  }, [currentTurn?._id]);
+
   useEffect(() => {
     if (currentCard && gameState.isDrawer) {
       setGameState((prev) => ({ ...prev, currentCard }));
@@ -231,9 +251,15 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     }
   }, [currentCard, gameState.isDrawer]);
 
-  // Timer logic effect
+  // Timer logic effect - handles draw-to-start timer
   useEffect(() => {
     if (!gameState.turnStarted || !currentTurn) return;
+
+    // If turn hasn't started yet (no first stroke drawn), show waiting message
+    if (!currentTurn.started_at) {
+      setGameState((prev) => ({ ...prev, timeRemaining: 60 }));
+      return;
+    }
 
     const startTime = currentTurn.started_at;
     const timeLimit = currentTurn.time_limit;
@@ -322,6 +348,41 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
     captureAndUploadDrawingWithRetry,
     finalizeTurnCompletionMutation,
   ]);
+
+  // Watch for turn completion and show winner banner
+  useEffect(() => {
+    if (!currentTurn) return;
+
+    // Show winner banner when turn is completed
+    if (
+      (currentTurn.status === "completed" ||
+        currentTurn.status === "time_up") &&
+      currentTurn.winner_id
+    ) {
+      const winner = players?.find(
+        (p) => p.player_id === currentTurn.winner_id
+      );
+      if (winner && currentTurn.points_awarded !== undefined) {
+        setModalState((prev) => ({
+          ...prev,
+          showWinnerBanner: true,
+          winnerBannerData: {
+            username: winner.username,
+            points: currentTurn.points_awarded || 0,
+          },
+        }));
+      }
+    }
+
+    // Hide banner on next turn
+    if (currentTurn.status === "drawing") {
+      setModalState((prev) => ({
+        ...prev,
+        showWinnerBanner: false,
+        winnerBannerData: null,
+      }));
+    }
+  }, [currentTurn, players]);
 
   // Check loading states - after all hooks
   if (!game || !players || !profile) {
@@ -463,7 +524,11 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         </div>
         {gameState.turnStarted ? (
           <div className="flex items-center gap-4">
-            <Timer seconds={gameState.timeRemaining} totalTime={60} />
+            <Timer
+              seconds={gameState.timeRemaining}
+              totalTime={60}
+              isWaiting={currentTurn && !currentTurn.started_at}
+            />
           </div>
         ) : (
           <div className="font-medium text-muted-foreground text-lg">
@@ -487,6 +552,25 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
                 currentDrawer={currentDrawer}
                 turnStarted={gameState.turnStarted}
                 turnId={gameState.currentTurnId}
+                onFirstStroke={async () => {
+                  // Call mutation to set turn start time on first stroke
+                  if (
+                    !turnStartTimeSetRef.current &&
+                    currentTurn &&
+                    !currentTurn.started_at
+                  ) {
+                    turnStartTimeSetRef.current = true;
+                    try {
+                      await setTurnStartTimeMutation({
+                        game_id: gameId,
+                        turn_id: currentTurn._id,
+                      });
+                    } catch (error) {
+                      console.error("Failed to set turn start time:", error);
+                      turnStartTimeSetRef.current = false;
+                    }
+                  }
+                }}
               />
             )}
 
@@ -518,6 +602,17 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
                 />
               </div>
             )}
+
+          {/* Guess Feed - Show all guesses in real-time */}
+          {gameState.turnStarted && turnGuesses && turnGuesses.length > 0 && (
+            <div className="mt-4">
+              <GuessFeed
+                guesses={turnGuesses}
+                players={players}
+                showAllGuesses={true}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col space-y-4">
@@ -572,6 +667,19 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
           timeRemaining={gameState.timeRemaining}
         />
       )}
+
+      <TurnWinnerBanner
+        show={modalState.showWinnerBanner}
+        winner={modalState.winnerBannerData}
+        correctAnswer={modalState.correctAnswer}
+        onComplete={() => {
+          setModalState((prev) => ({
+            ...prev,
+            showWinnerBanner: false,
+            winnerBannerData: null,
+          }));
+        }}
+      />
     </div>
   );
 }

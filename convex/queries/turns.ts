@@ -24,7 +24,7 @@ export const getCurrentTurn = query({
         v.literal("time_up")
       ),
       time_limit: v.number(),
-      started_at: v.number(),
+      started_at: v.optional(v.number()),
       completed_at: v.optional(v.number()),
       correct_guesses: v.number(),
       winner_id: v.optional(v.string()),
@@ -64,7 +64,7 @@ export const getGameTurns = query({
           v.literal("completed"),
           v.literal("time_up")
         ),
-        started_at: v.number(),
+        started_at: v.optional(v.number()),
         completed_at: v.optional(v.number()),
         correct_guesses: v.number(),
       })
@@ -100,7 +100,7 @@ export const getRoundTurns = query({
         v.literal("completed"),
         v.literal("time_up")
       ),
-      started_at: v.number(),
+      started_at: v.optional(v.number()),
       correct_guesses: v.number(),
     })
   ),
@@ -145,7 +145,7 @@ export const getTurn = query({
         v.literal("time_up")
       ),
       time_limit: v.number(),
-      started_at: v.number(),
+      started_at: v.optional(v.number()),
       completed_at: v.optional(v.number()),
       correct_guesses: v.number(),
       winner_id: v.optional(v.string()),
