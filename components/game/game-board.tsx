@@ -527,7 +527,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
             <Timer
               seconds={gameState.timeRemaining}
               totalTime={60}
-              isWaiting={currentTurn && !currentTurn.started_at}
+              isWaiting={!!currentTurn && !currentTurn.started_at}
             />
           </div>
         ) : (
