@@ -1,5 +1,4 @@
 "use client";
-
 import { GithubIcon } from "@/components/icons/github";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,31 +25,42 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import PasswordInput from "../ui/password-input";
 
-const signUpSchema = z.object({
-  username: z
-    .string()
-    .min(3, "Username deve essere almeno 3 caratteri")
-    .max(20, "Username deve essere massimo 20 caratteri")
-    .regex(
-      /^[a-zA-Z0-9_-]+$/,
-      "Username può contenere solo lettere, numeri, underscore e trattini"
-    ),
-  email: z.string().email("Email non valida"),
-  password: z.string().min(8, "La password deve essere almeno 8 caratteri"),
-});
-
+const signUpSchema = z
+  .object({
+    username: z
+      .string()
+      .min(3, "Username deve essere almeno 3 caratteri")
+      .max(20, "Username deve essere massimo 20 caratteri")
+      .regex(
+        /^[a-zA-Z0-9_-]+$/,
+        "Username può contenere solo lettere, numeri, underscore e trattini"
+      ),
+    email: z.string().email("Email non valida"),
+    password: z.string().min(6, "Minimo 6 caratteri"),
+    repeatPassword: z.string().min(6, "Minimo 6 caratteri"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.repeatPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["repeatPassword"],
+        message: "Passwords do not match",
+      });
+    }
+  });
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export function SignUpForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { signIn } = useAuthActions();
   const initializeUserProfile = useMutation(api.auth.initializeUserProfile);
@@ -61,65 +71,62 @@ export function SignUpForm({
       username: "",
       email: "",
       password: "",
+      repeatPassword: "",
     },
     mode: "onChange",
   });
 
   const handleSignUp = async (values: SignUpFormValues) => {
-    setIsLoading(true);
+    startTransition(async () => {
+      try {
+        // Sign up with email and password
+        const formData = new FormData();
+        formData.append("email", values.email);
+        formData.append("password", values.password);
+        formData.append("flow", "signUp");
 
-    try {
-      // Sign up with email and password
-      const formData = new FormData();
-      formData.append("email", values.email);
-      formData.append("password", values.password);
-      formData.append("flow", "signUp");
+        await signIn("password", formData);
 
-      await signIn("password", formData);
+        // Initialize user profile fields after successful signup
+        await initializeUserProfile({
+          username: values.username,
+        });
 
-      // Initialize user profile fields after successful signup
-      await initializeUserProfile({
-        username: values.username,
-      });
-
-      toast.success("Registrazione completata!");
-      router.push("/gioca");
-    } catch (error: unknown) {
-      console.error("Sign up error:", error);
-      toast.error("Errore", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Impossibile completare la registrazione",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+        toast.success("Registrazione completata!");
+        router.push("/gioca");
+      } catch (error: unknown) {
+        console.error("Sign up error:", error);
+        toast.error("Errore", {
+          description:
+            error instanceof Error
+              ? error.message
+              : "Impossibile completare la registrazione",
+        });
+      }
+    });
   };
 
   const handleGitHubSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    startTransition(async () => {
+      try {
+        // Sign up with GitHub - user initialization is automatic via Convex Auth
+        const formData = new FormData();
+        formData.append("redirectTo", "/gioca");
+        await signIn("github", formData);
 
-    try {
-      // Sign up with GitHub - user initialization is automatic via Convex Auth
-      const formData = new FormData();
-      formData.append("redirectTo", "/gioca");
-      await signIn("github", formData);
-
-      toast.success("Registrazione completata!");
-      router.push("/gioca");
-    } catch (error: unknown) {
-      console.error("GitHub sign up error:", error);
-      toast.error("Errore", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Impossibile completare la registrazione con GitHub",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+        toast.success("Registrazione completata!");
+        router.push("/gioca");
+      } catch (error: unknown) {
+        console.error("GitHub sign up error:", error);
+        toast.error("Errore", {
+          description:
+            error instanceof Error
+              ? error.message
+              : "Impossibile completare la registrazione con GitHub",
+        });
+      }
+    });
   };
 
   return (
@@ -147,7 +154,7 @@ export function SignUpForm({
                         type="text"
                         placeholder="johndoe"
                         autoComplete="off"
-                        disabled={isLoading}
+                        disabled={isPending}
                         {...field}
                       />
                     </FormControl>
@@ -167,7 +174,7 @@ export function SignUpForm({
                         type="email"
                         placeholder="m@example.com"
                         autoComplete="email"
-                        disabled={isLoading}
+                        disabled={isPending}
                         {...field}
                       />
                     </FormControl>
@@ -187,7 +194,7 @@ export function SignUpForm({
                         type="password"
                         placeholder="••••••••"
                         autoComplete="new-password"
-                        disabled={isLoading}
+                        disabled={isPending}
                         {...field}
                       />
                     </FormControl>
@@ -196,12 +203,29 @@ export function SignUpForm({
                 )}
               />
 
+              <FormField
+                name="repeatPassword"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ripeti Password</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        autoComplete="new-password"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isLoading || !form.formState.isValid}
+                disabled={isPending || !form.formState.isValid}
               >
-                {isLoading ? "Registrazione in corso..." : "Registrati"}
+                {isPending ? "Registrazione in corso..." : "Registrati"}
               </Button>
             </form>
           </Form>
@@ -211,12 +235,12 @@ export function SignUpForm({
           <div className="flex flex-col gap-4">
             <Button
               className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
-              disabled={isLoading}
+              disabled={isPending}
               onClick={handleGitHubSignUp}
             >
               <GithubIcon className="w-5 h-5" />
               <span className="font-medium">
-                {isLoading
+                {isPending
                   ? "Registrazione in corso..."
                   : "Registrati con GitHub"}
               </span>
