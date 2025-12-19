@@ -11,16 +11,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
-import { getGameByCode } from "@/lib/supabase/supabase-games";
-import {
-  addPlayerToGame,
-  getPlayerInGame,
-  getPlayersForGame,
-} from "@/lib/supabase/supabase-players";
-import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
+import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User } from "@supabase/supabase-js";
+import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -31,50 +24,42 @@ import { z } from "zod";
 const joinGameSchema = z.object({
   gameCode: z
     .string()
-    .length(6, "Il codice deve essere di 6 caratteri")
-    .regex(/^[A-Z0-9]{6}$/, "Codice non valido")
+    .length(4, "Il codice deve essere di 4 caratteri")
+    .regex(/^[A-Z0-9]{4}$/, "Codice non valido"),
 });
-type JoinGameForm = z.infer<typeof joinGameSchema>;
 
-export const JoinGameForm = ({ user }: { user: User }) => {
-  const supabase = createClient();
+type JoinGameFormValues = z.infer<typeof joinGameSchema>;
+
+export const JoinGameForm = () => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const form = useForm<JoinGameForm>({
+  const joinGameMutation = useMutation(api.mutations.games.joinGame);
+
+  const form = useForm<JoinGameFormValues>({
     resolver: zodResolver(joinGameSchema),
     defaultValues: { gameCode: "" },
     mode: "onChange",
   });
   const { handleSubmit } = form;
 
-  const handleJoinGame = async (values: JoinGameForm) => {
-    if (!user || !values.gameCode) return;
+  const handleJoinGame = async (values: JoinGameFormValues) => {
     setLoading(true);
     try {
-      const profileExists = await ensureUserProfile(user);
-      if (!profileExists) return;
-      const { data: game, error: gameError } = await getGameByCode(
-        supabase,
-        values.gameCode
-      );
-      if (gameError) throw new Error("Game not found");
-      if (game.status !== "waiting") {
-        throw new Error("Game has already started");
-      }
-      const existingPlayer = await getPlayerInGame(game.id, user.id);
-      if (existingPlayer) {
-        router.push(`/game/${values.gameCode}`);
-        return;
-      }
-      const players = await getPlayersForGame(game.id);
-      if (players.length >= game.max_players) {
-        throw new Error("Game is full");
-      }
-      await addPlayerToGame(game.id, user.id, players.length + 1);
+      const gameId = await joinGameMutation({
+        code: values.gameCode,
+      });
+
+      toast.success("Unito alla partita!", {
+        description: `Codice: ${values.gameCode}`,
+      });
+
       router.push(`/game/${values.gameCode}`);
     } catch (error: unknown) {
-      toast.error("Error", {
-        description: error instanceof Error ? error.message : String(error)
+      toast.error("Errore", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossibile unirsi alla partita",
       });
     } finally {
       setLoading(false);

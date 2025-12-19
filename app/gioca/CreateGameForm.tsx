@@ -18,14 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { seedCardsForGame } from "@/lib/groq";
-import { createGame } from "@/lib/supabase/supabase-games";
-import { addPlayerToGame } from "@/lib/supabase/supabase-players";
-import { ensureUserProfile } from "@/lib/supabase/supabase-profiles";
+import { api } from "@/convex/_generated/api";
 import { categories } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { User } from "@supabase/supabase-js";
+import { useMutation } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -41,63 +37,50 @@ const difficulties = [
 ];
 
 const createGameSchema = z.object({
-  maxPlayers: z.coerce
-    .number()
-    .min(2, "Il numero massimo di giocatori è obbligatorio"),
-
   category: z.string().min(1, "La categoria è obbligatoria"),
-  difficulty: z.string().min(1, "La difficoltà è obbligatoria"),
-
-  timer: z.coerce
+  maxRounds: z.coerce
     .number()
-    .min(30, "Il timer deve essere almeno 30 secondi")
-    .max(600, "Il timer deve essere al massimo 600 secondi")
+    .int()
+    .min(1, "Il numero di round deve essere almeno 1")
+    .max(10, "Il numero di round deve essere al massimo 10"),
 });
 
-type CreateGameForm = z.infer<typeof createGameSchema>;
+type CreateGameFormValues = z.infer<typeof createGameSchema>;
 
-export const CreateGameForm = ({ user }: { user: User }) => {
+export const CreateGameForm = () => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const form = useForm<CreateGameForm>({
-    resolver: zodResolver(createGameSchema),
+  const createGameMutation = useMutation(api.mutations.games.createGame);
+
+  const form = useForm<CreateGameFormValues>({
+    resolver: zodResolver(createGameSchema) as any,
     defaultValues: {
-      maxPlayers: 2,
       category: "",
-      difficulty: "medio",
-      timer: 120,
+      maxRounds: 5,
     },
     mode: "onChange",
   });
   const { handleSubmit } = form;
 
-  const handleCreateGame = async (values: CreateGameForm) => {
-    if (!user) return;
+  const handleCreateGame = async (values: CreateGameFormValues) => {
     setLoading(true);
     try {
-      const profileExists = await ensureUserProfile(user);
-      if (!profileExists) return;
-      const { data: game, error } = await createGame(
-        user.id,
-        values.maxPlayers,
-        values.category,
-        values.difficulty,
-        values.timer
-      );
-      if (error) throw error;
+      const result = await createGameMutation({
+        category: values.category,
+        max_rounds: values.maxRounds,
+      });
 
-      // Generate cards for a game
-      await seedCardsForGame(
-        game.id,
-        values.category,
-        values.difficulty || "medium",
-        values.maxPlayers
-      );
-      await addPlayerToGame(game.id, user.id, 1);
-      router.push(`/game/${game.code}`);
+      toast.success("Partita creata!", {
+        description: `Codice: ${result.code}`,
+      });
+
+      router.push(`/game/${result.code}`);
     } catch (error: unknown) {
-      toast.error("Error", {
-        description: error instanceof Error ? error.message : String(error)
+      toast.error("Errore", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossibile creare la partita",
       });
     } finally {
       setLoading(false);
@@ -111,19 +94,6 @@ export const CreateGameForm = ({ user }: { user: User }) => {
         className="space-y-4"
         autoComplete="off"
       >
-        <FormField
-          name="maxPlayers"
-          control={form.control}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Numero massimo di giocatori</FormLabel>
-              <FormControl>
-                <Input type="number" min={2} disabled={loading} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <FormField
           name="category"
           render={({ field }) => (
@@ -155,61 +125,23 @@ export const CreateGameForm = ({ user }: { user: User }) => {
           )}
         />
         <FormField
-          name="difficulty"
+          name="maxRounds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Difficoltà</FormLabel>
-              <FormControl>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  required
-                >
-                  <SelectTrigger id="difficulty" className="glass-card">
-                    <SelectValue placeholder="Seleziona la difficoltà" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {difficulties.map((diff) => (
-                      <SelectItem key={diff.value} value={diff.value}>
-                        {diff.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <p className="text-muted-foreground text-sm">
-                {field.value === "facile"
-                  ? "Parole semplici, facili da disegnare e indovinare"
-                  : field.value === "medio"
-                  ? "Parole di difficoltà moderata per un gioco equilibrato"
-                  : field.value === "difficile"
-                  ? "Parole impegnative, più difficili da disegnare e indovinare"
-                  : "Selezione casuale da tutti i livelli di difficoltà"}
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          name="timer"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Timer (secondi)</FormLabel>
+              <FormLabel>Numero di round</FormLabel>
               <FormControl>
                 <Input
                   type="number"
-                  min={30}
-                  max={600}
-                  step={10}
+                  min={1}
+                  max={10}
+                  step={1}
                   {...field}
-                  value={field.value ?? 120}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  disabled={loading}
                   className="glass-card"
                 />
               </FormControl>
               <p className="text-muted-foreground text-sm">
-                Imposta la durata del turno in secondi (default 120, minimo 30,
-                massimo 600)
+                Ogni giocatore disegnerà una volta per round
               </p>
               <FormMessage />
             </FormItem>

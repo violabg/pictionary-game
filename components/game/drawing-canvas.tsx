@@ -3,9 +3,10 @@
 import type React from "react";
 
 import ToolBar from "@/components/game/tool-bar";
-import { createClient } from "@/lib/supabase/client";
-import { PlayerWithProfile } from "@/lib/supabase/types";
+import { api } from "@/convex/_generated/api";
+import { Doc, Id } from "@/convex/_generated/dataModel";
 import { captureCanvasAsDataURL } from "@/lib/utils/canvas-utils";
+import { useMutation, useQuery } from "convex/react";
 import {
   forwardRef,
   useCallback,
@@ -23,10 +24,12 @@ type Stroke = {
 };
 
 interface DrawingCanvasProps {
-  gameId: string;
+  gameId: Id<"games">;
   isDrawer: boolean;
-  currentDrawer: PlayerWithProfile;
+  currentDrawer: Doc<"players">;
   turnStarted: boolean;
+  turnId: Id<"turns"> | null;
+  onFirstStroke?: () => void; // Called when first stroke is drawn (for draw-to-start timer)
 }
 
 export interface DrawingCanvasRef {
@@ -34,10 +37,12 @@ export interface DrawingCanvasRef {
   getCanvas: () => HTMLCanvasElement | null;
 }
 const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
-  ({ gameId, isDrawer, currentDrawer, turnStarted }, ref) => {
-    const { id: currentDrawerId } = currentDrawer;
+  (
+    { gameId, isDrawer, currentDrawer, turnStarted, turnId, onFirstStroke },
+    ref
+  ) => {
+    const currentDrawerId = currentDrawer.player_id;
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const supabase = createClient();
     const [isDrawing, setIsDrawing] = useState(false);
     const [color, setColor] = useState("#000000");
     const [lineWidth, setLineWidth] = useState(2);
@@ -50,9 +55,45 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       null
     );
     const [isCanvasHovered, setIsCanvasHovered] = useState(false);
+    const firstStrokeCalledRef = useRef(false); // Track if we've called onFirstStroke
 
     // Keep a ref to the latest strokes for use in resize handler
     const strokesRef = useRef(strokes);
+
+    // Convex: save strokes mutation
+    const saveStrokes = useMutation(api.mutations.drawings.saveTurnStrokes);
+    // Convex: live strokes for non-drawers
+    const remote = useQuery(
+      api.queries.drawings.getTurnStrokes,
+      !isDrawer && turnId ? { turn_id: turnId } : ("skip" as any)
+    );
+
+    // Throttled push to server while drawing
+    const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const scheduleSave = useCallback(
+      (pending: Stroke[] | null = null) => {
+        if (!isDrawer || !turnStarted || !turnId) return;
+        if (saveTimerRef.current) return; // already scheduled
+        saveTimerRef.current = setTimeout(async () => {
+          saveTimerRef.current = null;
+          const payload = pending ?? strokesRef.current;
+          try {
+            await saveStrokes({
+              turn_id: turnId,
+              strokes: payload.map((s) => ({
+                points: s.points,
+                color: s.color,
+                width: s.width,
+              })),
+            });
+          } catch (e) {
+            // Silently ignore to avoid UI jitter
+            console.error("saveTurnStrokes error", e);
+          }
+        }, 100);
+      },
+      [isDrawer, turnStarted, turnId, saveStrokes]
+    );
 
     // Expose capture function to parent component
     useImperativeHandle(
@@ -67,6 +108,46 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       }),
       []
     );
+
+    // Utility: Normalize and denormalize points
+    const normalizePoint = (
+      point: { x: number; y: number },
+      canvas: HTMLCanvasElement
+    ) => ({
+      x: point.x / canvas.width,
+      y: point.y / canvas.height,
+    });
+
+    const denormalizePoint = (
+      point: { x: number; y: number },
+      canvas: HTMLCanvasElement
+    ) => ({
+      x: point.x * canvas.width,
+      y: point.y * canvas.height,
+    });
+
+    const drawLine = (
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      color: string,
+      width: number
+    ) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    };
 
     const redrawStrokes = useCallback((allStrokes: Stroke[]) => {
       const canvas = canvasRef.current;
@@ -88,22 +169,6 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       }
     }, []);
 
-    // Utility: Normalize and denormalize points
-    const normalizePoint = (
-      point: { x: number; y: number },
-      canvas: HTMLCanvasElement
-    ) => ({
-      x: point.x / canvas.width,
-      y: point.y / canvas.height,
-    });
-    const denormalizePoint = (
-      point: { x: number; y: number },
-      canvas: HTMLCanvasElement
-    ) => ({
-      x: point.x * canvas.width,
-      y: point.y * canvas.height,
-    });
-
     // --- Update startDrawing to use normalized points ---
     const startDrawing = (
       e:
@@ -113,6 +178,17 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       if (!isDrawer || !turnStarted) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
+
+      // Call onFirstStroke callback if this is the first stroke (and callback not yet called)
+      if (
+        strokes.length === 0 &&
+        !firstStrokeCalledRef.current &&
+        onFirstStroke
+      ) {
+        firstStrokeCalledRef.current = true;
+        onFirstStroke();
+      }
+
       setIsDrawing(true);
       const point = getPoint(e);
       const normPoint = normalizePoint(point, canvas);
@@ -150,21 +226,31 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setCurrentStroke((stroke: Stroke | null) =>
         stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
       );
-      // Broadcast to other players (normalized)
-      supabase.channel(`drawing:${gameId}`).send({
-        type: "broadcast",
-        event: "drawing",
-
-        payload: {
-          type: "draw",
-          data: {
-            prevPoint,
-            currentPoint: normCurrent,
-            color: tool === "brush" ? color : "#ffffff",
-            lineWidth: tool === "brush" ? lineWidth : eraserWidth,
-          },
-        }
-      });
+      // Schedule a throttled save including the in-progress stroke
+      scheduleSave([
+        ...strokesRef.current,
+        {
+          points: currentStroke
+            ? [...currentStroke.points, normCurrent]
+            : [normCurrent],
+          color: tool === "brush" ? color : "#ffffff",
+          width: tool === "brush" ? lineWidth : eraserWidth,
+        },
+      ]);
+      // TODO: Broadcast to other players via Convex real-time (normalized)
+      // supabase.channel(`drawing:${gameId}`).send({
+      //   type: "broadcast",
+      //   event: "drawing",
+      //   payload: {
+      //     type: "draw",
+      //     data: {
+      //       prevPoint,
+      //       currentPoint: normCurrent,
+      //       color: tool === "brush" ? color : "#ffffff",
+      //       lineWidth: tool === "brush" ? lineWidth : eraserWidth,
+      //     },
+      //   },
+      // });
       prevPointRef.current = normCurrent;
     };
 
@@ -175,43 +261,12 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       if (currentStroke && currentStroke.points.length > 1) {
         setStrokes((prev) => {
           const newStrokes = [...prev, currentStroke];
-          // Broadcast new strokes to others (normalized)
-          supabase.channel(`drawing:${gameId}`).send({
-            type: "broadcast",
-            event: "drawing",
-
-            payload: {
-              type: "strokes",
-              data: newStrokes,
-            }
-          });
+          // Persist immediately on stroke end
+          scheduleSave(newStrokes);
           return newStrokes;
         });
       }
       setCurrentStroke(null);
-    };
-
-    const drawLine = (
-      x1: number,
-      y1: number,
-      x2: number,
-      y2: number,
-      color: string,
-      width: number
-    ) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.lineCap = "round";
-      ctx.stroke();
     };
 
     const clearCanvas = useCallback(() => {
@@ -227,26 +282,9 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setStrokes([]); // Clear local strokes state
 
       if (isDrawer) {
-        // Broadcast clear and empty strokes to other players
-        supabase.channel(`drawing:${gameId}`).send({
-          type: "broadcast",
-          event: "drawing",
-
-          payload: {
-            type: "clear",
-          }
-        });
-        supabase.channel(`drawing:${gameId}`).send({
-          type: "broadcast",
-          event: "drawing",
-
-          payload: {
-            type: "strokes",
-            data: [],
-          }
-        });
+        scheduleSave([]);
       }
-    }, [canvasRef, isDrawer, supabase, gameId]);
+    }, [canvasRef, isDrawer, scheduleSave]);
 
     // Undo logic
     const handleUndo = useCallback(() => {
@@ -258,19 +296,10 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         } else {
           redrawStrokes(newStrokes);
         }
-        // Broadcast new strokes to others (normalized)
-        supabase.channel(`drawing:${gameId}`).send({
-          type: "broadcast",
-          event: "drawing",
-
-          payload: {
-            type: "strokes",
-            data: newStrokes,
-          }
-        });
+        scheduleSave(newStrokes);
         return newStrokes;
       });
-    }, [redrawStrokes, supabase, gameId, clearCanvas]);
+    }, [redrawStrokes, clearCanvas, scheduleSave]);
 
     // Get mouse/touch point relative to canvas, scaled to canvas size
     const getPoint = (
@@ -361,8 +390,12 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
     // Reset history on new turn
     useEffect(() => {
-      setStrokes([]);
-      setCurrentStroke(null);
+      const resetStrokes = () => {
+        setStrokes([]);
+        setCurrentStroke(null);
+        firstStrokeCalledRef.current = false; // Reset first stroke flag on new turn
+      };
+      resetStrokes();
     }, [currentDrawerId]);
 
     // Keyboard shortcuts for tool selection, clear, and undo
@@ -386,37 +419,14 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       };
     }, [clearCanvas, handleUndo, isDrawer, turnStarted]);
 
-    // Subscribe to drawing updates
+    // Apply remote strokes to spectators
     useEffect(() => {
-      if (isDrawer) return; // Drawer doesn't need to subscribe
-
-      const drawingSubscription = supabase
-        .channel(`drawing:${gameId}`)
-        .on("broadcast", {
-        event: "drawing"
-      }, (payload) => {
-          const { type, data } = payload.payload;
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-
-          if (type === "clear") {
-            clearCanvas();
-          } else if (type === "draw") {
-            // Denormalize points for drawing
-            const p1 = denormalizePoint(data.prevPoint, canvas);
-            const p2 = denormalizePoint(data.currentPoint, canvas);
-            drawLine(p1.x, p1.y, p2.x, p2.y, data.color, data.lineWidth);
-          } else if (type === "strokes") {
-            setStrokes(data);
-            redrawStrokes(data);
-          }
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(drawingSubscription);
-      };
-    }, [gameId, supabase, isDrawer, clearCanvas, redrawStrokes]);
+      if (isDrawer) return;
+      if (!remote) return;
+      // Keep local redraw in sync with server without touching React state
+      strokesRef.current = remote.strokes as any;
+      redrawStrokes(remote.strokes as any);
+    }, [isDrawer, remote, redrawStrokes]);
 
     return (
       <div className="flex flex-col rounded-md overflow-hidden">
@@ -435,13 +445,13 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           />
         )}
 
-        <div className="relative bg-white border rounded-md aspect-[4/3] overflow-hidden">
+        <div className="relative bg-white border rounded-md aspect-4/3 overflow-hidden">
           {!turnStarted && (
             <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 rounded-md pointer-events-none glass-card">
               <p className="text-white text-lg">
                 {isDrawer
                   ? "Clicca 'Inizia il tuo turno' per iniziare a disegnare"
-                  : `In attesa che ${currentDrawer.profile.name} inizi il turno...`}
+                  : `In attesa che ${currentDrawer.username} inizi il turno...`}
               </p>
             </div>
           )}

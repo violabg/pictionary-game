@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { GameWithPlayers } from "@/lib/supabase/types";
+import { Doc } from "@/convex/_generated/dataModel";
 import { Home } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -17,11 +17,11 @@ import ReactConfetti from "react-confetti";
 import { PlayersStanding } from "./players-standing";
 
 interface GameOverProps {
-  game: GameWithPlayers;
+  game: Doc<"games">;
+  players: Doc<"players">[];
 }
 
-export default function GameOver({ game }: GameOverProps) {
-  const players = game.players;
+export default function GameOver({ game, players }: GameOverProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 

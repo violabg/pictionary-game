@@ -9,13 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GameWithPlayers, PlayerWithProfile } from "@/lib/supabase/types";
+import { Doc } from "@/convex/_generated/dataModel";
+import Image from "next/image";
 import { useState } from "react";
-import { PlayerAvatar } from "../ui/player-avatar";
 
 interface SelectWinnerModalProps {
-  players: GameWithPlayers["players"];
-  onSelectWinner: (player: PlayerWithProfile) => void;
+  players: Doc<"players">[];
+  onSelectWinner: (player: Doc<"players">) => void;
   onClose: () => void;
   timeRemaining: number;
 }
@@ -28,7 +28,7 @@ export default function SelectWinnerModal({
 }: SelectWinnerModalProps) {
   const [loading, setLoading] = useState(false);
 
-  const handleSelectWinner = async (player: PlayerWithProfile) => {
+  const handleSelectWinner = async (player: Doc<"players">) => {
     setLoading(true);
     try {
       await onSelectWinner(player);
@@ -65,11 +65,22 @@ export default function SelectWinnerModal({
                 >
                   <div className="flex justify-between items-center w-full">
                     <div className="flex justify-start items-center gap-2 w-full">
-                      <PlayerAvatar
-                        profile={player.profile}
-                        className="w-8 h-8"
-                      />
-                      <span>{player.profile.name}</span>
+                      {player.avatar_url ? (
+                        <Image
+                          src={player.avatar_url}
+                          alt={player.username}
+                          width={32}
+                          height={32}
+                          className="rounded-full w-8 h-8"
+                        />
+                      ) : (
+                        <div className="flex justify-center items-center bg-slate-200 rounded-full w-8 h-8">
+                          <span className="font-semibold text-xs">
+                            {player.username.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <span>{player.username}</span>
                     </div>
                     <span className="text-muted-foreground text-sm">
                       Punteggio attuale: {player.score}

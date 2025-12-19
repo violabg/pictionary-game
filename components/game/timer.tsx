@@ -1,11 +1,29 @@
 "use client";
 
+import { memo } from "react";
+
 interface TimerProps {
   seconds: number;
   totalTime: number; // Total time for percentage calculation
+  isWaiting?: boolean; // True if waiting for first stroke (draw-to-start timer)
 }
 
-export default function Timer({ seconds, totalTime }: TimerProps) {
+// Phase 3: Optimized with React.memo to prevent unnecessary re-renders
+function Timer({ seconds, totalTime, isWaiting }: TimerProps) {
+  // If waiting for first stroke, show waiting message
+  if (isWaiting) {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="mb-1 font-mono font-bold text-gradient text-2xl">
+          ⏱️
+        </div>
+        <div className="text-muted-foreground text-sm text-center">
+          Waiting for drawer...
+        </div>
+      </div>
+    );
+  }
+
   // Format seconds as MM:SS
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -38,3 +56,6 @@ export default function Timer({ seconds, totalTime }: TimerProps) {
     </div>
   );
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default memo(Timer);

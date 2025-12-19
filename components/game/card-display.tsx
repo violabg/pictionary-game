@@ -7,13 +7,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Card as CardType } from "@/lib/supabase/types";
+import { Id } from "@/convex/_generated/dataModel";
+import { memo } from "react";
 
 type CardDisplayProps = {
-  card: CardType | null;
+  card: {
+    _id: Id<"cards">;
+    word: string;
+    description: string;
+    category: string;
+  } | null;
 };
 
-export default function CardDisplay({ card }: CardDisplayProps) {
+// Phase 3: Optimized with React.memo to prevent unnecessary re-renders
+function CardDisplay({ card }: CardDisplayProps) {
   return (
     <Card className="gradient-border glass-card">
       <CardHeader className="pb-2">
@@ -23,7 +30,7 @@ export default function CardDisplay({ card }: CardDisplayProps) {
       <CardContent className="py-2">
         <div className="text-center">
           <h3 className="mb-1 font-bold text-gradient text-2xl">
-            {card?.title}
+            {card?.word}
           </h3>
           <p className="text-muted-foreground text-sm">{card?.description}</p>
         </div>
@@ -31,3 +38,6 @@ export default function CardDisplay({ card }: CardDisplayProps) {
     </Card>
   );
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default memo(CardDisplay);

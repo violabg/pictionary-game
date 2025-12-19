@@ -12,7 +12,7 @@ import {
 import { Loader2 } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 interface HistoryPaginationProps {
   currentPage: number;
@@ -28,14 +28,12 @@ export default function HistoryPagination({
   category,
 }: HistoryPaginationProps) {
   const [, startTransition] = useTransition();
-  const [loadingPage, setLoadingPage] = useState<number | null>(null);
+  const [requestedPage, setRequestedPage] = useState<number | null>(null);
   const router = useRouter();
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  // Clear loading state when currentPage changes
-  useEffect(() => {
-    setLoadingPage(null);
-  }, [currentPage]);
+  // Derive loading state - only show loading if requested page differs from current
+  const loadingPage = requestedPage !== currentPage ? requestedPage : null;
 
   // Don't show pagination if there's only one page or less
   if (totalPages <= 1) return null;
@@ -50,7 +48,7 @@ export default function HistoryPagination({
   };
 
   const handlePageChange = (page: number) => {
-    setLoadingPage(page);
+    setRequestedPage(page);
     startTransition(() => {
       router.push(createUrl(page));
     });

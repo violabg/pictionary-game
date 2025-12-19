@@ -5,15 +5,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
 import { CreateGameForm } from "./CreateGameForm";
 import { JoinGameForm } from "./JoinGameForm";
 
-export default async function GiocaPage() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-
-  const user = data.user;
+export default function GiocaPage() {
   return (
     <main className="flex-1 py-8 container">
       <div className="gap-8 grid md:grid-cols-2">
@@ -22,7 +17,9 @@ export default async function GiocaPage() {
             <CardTitle>Crea una nuova partita</CardTitle>
             <CardDescription>Imposta una nuova sfida</CardDescription>
           </CardHeader>
-          <CardContent>{user && <CreateGameForm user={user} />}</CardContent>
+          <CardContent>
+            <CreateGameForm />
+          </CardContent>
         </Card>
         <Card className="gradient-border glass-card">
           <CardHeader>
@@ -31,7 +28,9 @@ export default async function GiocaPage() {
               Inserisci un codice partita per unirti a una partita esistente
             </CardDescription>
           </CardHeader>
-          <CardContent>{user && <JoinGameForm user={user} />}</CardContent>
+          <CardContent>
+            <JoinGameForm />
+          </CardContent>
         </Card>
       </div>
     </main>

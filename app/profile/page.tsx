@@ -1,43 +1,48 @@
-import { createClient } from "@/lib/supabase/server";
-import { getProfileWithScore } from "@/lib/supabase/supabase-profiles";
-import { redirect } from "next/navigation";
-import { Suspense } from "react";
+"use client";
+
+import { useAuthenticatedUser } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { ProfileContent } from "./ProfileContent";
 import { ProfileContentError } from "./ProfileContentError";
 import { ProfileContentFallback } from "./ProfileContentFallback";
 
-async function ProfileLoader({ userId }: { userId: string }) {
-  try {
-    const profileData = await getProfileWithScore(userId);
-    return (
-      <ProfileContent
-        profile={{
-          id: profileData.profile_id,
-          user_name: profileData.user_name,
-          full_name: profileData.full_name,
-          avatar_url: profileData.avatar_url,
-          total_score: profileData.total_score,
-        }}
-      />
-    );
-  } catch (e: any) {
-    return (
-      <ProfileContentError
-        error={e.message || "Errore nel caricamento del profilo."}
-      />
-    );
+function ProfileLoader() {
+  const { profile, isLoading } = useAuthenticatedUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !profile) {
+      router.push("/auth/login");
+    }
+  }, [isLoading, profile, router]);
+
+  if (isLoading) {
+    return <ProfileContentFallback />;
   }
+
+  if (!profile) {
+    return <ProfileContentError error="Profilo non trovato" />;
+  }
+
+  return (
+    <ProfileContent
+      profile={{
+        id: profile._id,
+        username: profile.username,
+        email: profile.email,
+        avatar_url: profile.avatar_url,
+        total_score: profile.total_score,
+        games_played: profile.games_played,
+      }}
+    />
+  );
 }
 
-export default async function ProfilePage() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    redirect("/auth/login");
-  }
+export default function ProfilePage() {
   return (
     <Suspense fallback={<ProfileContentFallback />}>
-      <ProfileLoader userId={data.user.id} />
+      <ProfileLoader />
     </Suspense>
   );
 }
