@@ -1,7 +1,6 @@
 "use node";
-
 import { groq } from "@ai-sdk/groq";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { v } from "convex/values";
 import { z } from "zod";
 import { action } from "../_generated/server";
@@ -45,8 +44,8 @@ export const validateGuess = action({
 
     const timestamp = Date.now();
 
-    const result = await generateObject({
-      model: groq("llama-3.3-70b-versatile"),
+    const result = await generateText({
+      model: groq("openai/gpt-oss-20b"),
       prompt: `Sei un giudice esperto nel gioco Pictionary, specializzato nella categoria "${category}".
             ${categoryInstructions[category] || ""}
 
@@ -74,10 +73,10 @@ export const validateGuess = action({
             Rispondi con un oggetto JSON contenente:
             - isAcceptable: booleano che indica se la risposta è accettabile (sii più selettivo)
             - explanation: breve spiegazione della tua decisione (non mostrata al giocatore, solo per logging)`,
-      schema,
+      output: Output.object({ schema }),
     });
 
-    const validationResult = result.object as {
+    const validationResult = result.output as {
       isAcceptable: boolean;
       explanation: string;
     };

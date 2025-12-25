@@ -152,7 +152,7 @@ const { profile } = useAuthenticatedUser();
 - **AI Provider**: Groq with Vercel AI SDK
 - **Fallback**: Hardcoded card library per category
 - **Models**: Tries multiple models, falls back if quota exceeded
-- **Structured Output**: Uses `generateObject` with Zod schema
+- **Structured Output**: Uses `generateText` with Zod schema
 
 ### Guess Validation (In Development)
 

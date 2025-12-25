@@ -1,7 +1,6 @@
 "use node";
-
 import { groq } from "@ai-sdk/groq";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { v } from "convex/values";
 import { z } from "zod";
 import { api } from "../_generated/api";
@@ -165,16 +164,13 @@ export const generateCards = action({
       let lastError: unknown = null;
       for (const name of modelsToTry) {
         try {
-          const { object } = await generateObject({
+          const { output } = await generateText({
             model: groq(name),
-            schema,
-            schemaName: "PictionaryCardBatch",
-            schemaDescription:
-              "A batch of Pictionary drawing cards with word and description.",
+            output: Output.object({ schema }),
             prompt,
             temperature: 0.2,
           });
-          return object;
+          return output;
         } catch (err) {
           lastError = err;
           console.warn(`[generateCards] Model failed: ${name}`, err);
