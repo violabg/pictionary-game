@@ -1,6 +1,5 @@
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -17,9 +16,7 @@ export default function GiocaPage() {
             <CardTitle>Crea una nuova partita</CardTitle>
             <CardDescription>Imposta una nuova sfida</CardDescription>
           </CardHeader>
-          <CardContent>
-            <CreateGameForm />
-          </CardContent>
+          <CreateGameForm />
         </Card>
         <Card className="gradient-border glass-card">
           <CardHeader>
@@ -28,9 +25,7 @@ export default function GiocaPage() {
               Inserisci un codice partita per unirti a una partita esistente
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <JoinGameForm />
-          </CardContent>
+          <JoinGameForm />
         </Card>
       </div>
     </main>

@@ -20,7 +20,7 @@ function PlayerList({ players, currentDrawerId }: PlayerListProps) {
       <CardHeader className="pb-2">
         <CardTitle className="text-gradient text-lg">Players</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
         {players.map((player) => (
           <div
             key={player._id}

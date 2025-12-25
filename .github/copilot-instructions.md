@@ -11,7 +11,7 @@
 - **Auth**: @convex-dev/auth 0.0.90 (built-in Convex authentication)
 - **AI**: @ai-sdk/groq with Vercel AI SDK for card generation
 - **Styling**: Tailwind CSS 4.1.18 (use OKLCH colors in CSS, Tailwind utilities in code)
-- **UI Components**: Radix UI primitives, custom components in `components/ui/`
+- **UI Components**: Base UI primitives, custom components in `components/ui/`
 - **Forms**: react-hook-form 7.68.0 + @hookform/resolvers + Zod 4.2.1
 
 ## Architecture

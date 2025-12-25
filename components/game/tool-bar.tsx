@@ -49,19 +49,21 @@ const ToolBar: React.FC<ToolBarProps> = ({
   <div className="flex justify-between items-center mb-2">
     <div className="flex items-center space-x-2">
       <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="default" size="icon" className="p-0 w-8 h-8">
-            <div
-              className="border rounded-full w-4 h-4"
-              style={{
-                backgroundColor: color,
-                borderColor: "#d1d5db",
-                borderWidth: "2px",
-                borderStyle: "solid",
-              }}
-            />
-          </Button>
-        </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <Button variant="default" size="icon" className="p-0 w-8 h-8">
+              <div
+                className="border rounded-full w-4 h-4"
+                style={{
+                  backgroundColor: color,
+                  borderColor: "#d1d5db",
+                  borderWidth: "2px",
+                  borderStyle: "solid",
+                }}
+              />
+            </Button>
+          }
+        ></PopoverTrigger>
         <PopoverContent className="p-2 w-64 glass-card">
           <div className="gap-2 grid grid-cols-4">
             {colors.map((c) => (
@@ -104,16 +106,18 @@ const ToolBar: React.FC<ToolBarProps> = ({
       </Button>
 
       <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant={tool === "eraser" ? "gradient" : "glass"}
-            size="icon"
-            className="w-8 h-8"
-            onClick={() => setTool("eraser")}
-          >
-            <Eraser className="w-4 h-4" />
-          </Button>
-        </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <Button
+              variant={tool === "eraser" ? "gradient" : "glass"}
+              size="icon"
+              className="w-8 h-8"
+              onClick={() => setTool("eraser")}
+            >
+              <Eraser className="w-4 h-4" />
+            </Button>
+          }
+        ></PopoverTrigger>
         <PopoverContent className="p-2 w-64 glass-card">
           <div className="mt-2">
             <label className="text-sm">Dimensione Gomma</label>

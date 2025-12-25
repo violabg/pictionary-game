@@ -1,6 +1,6 @@
 import PictionAILogo from "@/assets";
 import { LoginButton } from "@/components/auth/login-button";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -31,9 +31,16 @@ export default async function Home() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex sm:flex-row flex-col justify-center gap-4">
-            <Button asChild size="lg">
-              <Link href="/gioca">Inizia a giocare</Link>
-            </Button>
+            <Link
+              className={`${buttonVariants({
+                variant: "default",
+                size: "lg",
+              })}`}
+              href="/gioca"
+            >
+              Inizia a giocare
+            </Link>
+
             <LoginButton />
           </div>
         </CardContent>

@@ -1,53 +1,109 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
+import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function Avatar({
   className,
+  size = "default",
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Root>) {
+}: AvatarPrimitive.Root.Props & {
+  size?: "default" | "sm" | "lg";
+}) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
+      data-size={size}
       className={cn(
-        "relative flex size-8 shrink-0 overflow-hidden rounded-full",
+        "group/avatar after:absolute relative after:inset-0 flex after:border after:border-border rounded-full after:rounded-full size-8 data-[size=lg]:size-10 data-[size=sm]:size-6 select-none shrink-0 after:mix-blend-darken dark:after:mix-blend-lighten",
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
-function AvatarImage({
-  className,
-  ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
-      className={cn("aspect-square size-full", className)}
+      className={cn(
+        "rounded-full size-full object-cover aspect-square",
+        className
+      )}
       {...props}
     />
-  )
+  );
 }
 
 function AvatarFallback({
   className,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+}: AvatarPrimitive.Fallback.Props) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "bg-muted flex size-full items-center justify-center rounded-full",
+        "flex justify-center items-center bg-muted rounded-full size-full text-muted-foreground group-data-[size=sm]/avatar:text-xs text-sm",
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Avatar, AvatarImage, AvatarFallback }
+function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      data-slot="avatar-badge"
+      className={cn(
+        "inline-flex right-0 bottom-0 z-10 absolute justify-center items-center bg-blend-color bg-primary rounded-full ring-2 ring-background text-primary-foreground select-none",
+        "group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden",
+        "group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2",
+        "group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="avatar-group"
+      className={cn(
+        "group/avatar-group flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function AvatarGroupCount({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="avatar-group-count"
+      className={cn(
+        "relative flex justify-center items-center bg-muted rounded-full ring-2 ring-background size-8 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3 group-has-data-[size=sm]/avatar-group:size-6 text-muted-foreground text-sm shrink-0",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+};

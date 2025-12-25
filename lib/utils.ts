@@ -18,12 +18,12 @@ export const getInitials = (name?: string | null) => {
 export const LLM_MODEL = "moonshotai/kimi-k2-instruct-0905";
 
 export const categories = [
-  "Animali",
-  "Cibo",
-  "Film",
-  "Sport",
-  "Tecnologia",
-  "Geografia",
-  "Musica",
-  "Arte",
+  { label: "Animali", value: "Animali" },
+  { label: "Cibo", value: "Cibo" },
+  { label: "Film", value: "Film" },
+  { label: "Sport", value: "Sport" },
+  { label: "Tecnologia", value: "Tecnologia" },
+  { label: "Geografia", value: "Geografia" },
+  { label: "Musica", value: "Musica" },
+  { label: "Arte", value: "Arte" },
 ];

@@ -9,13 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/convex/_generated/api";
@@ -75,6 +73,11 @@ export function SignUpForm({
     },
     mode: "onChange",
   });
+  const {
+    handleSubmit,
+    register,
+    formState: { errors, isValid },
+  } = form;
 
   const handleSignUp = async (values: SignUpFormValues) => {
     startTransition(async () => {
@@ -137,98 +140,79 @@ export function SignUpForm({
           <CardDescription>Crea un nuovo account per giocare</CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleSignUp)}
-              className="space-y-4"
-              autoComplete="off"
+          <form
+            onSubmit={handleSubmit(handleSignUp)}
+            className="space-y-4"
+            autoComplete="off"
+          >
+            <FieldGroup>
+              <Field data-invalid={!!errors.username}>
+                <FieldLabel htmlFor="username">Username</FieldLabel>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="johndoe"
+                  autoComplete="off"
+                  disabled={isPending}
+                  aria-invalid={!!errors.username}
+                  {...register("username")}
+                />
+                <FieldError errors={errors.username ? [errors.username] : []} />
+              </Field>
+
+              <Field data-invalid={!!errors.email}>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  autoComplete="email"
+                  disabled={isPending}
+                  aria-invalid={!!errors.email}
+                  {...register("email")}
+                />
+                <FieldError errors={errors.email ? [errors.email] : []} />
+              </Field>
+
+              <Field data-invalid={!!errors.password}>
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  disabled={isPending}
+                  aria-invalid={!!errors.password}
+                  {...register("password")}
+                />
+                <FieldError errors={errors.password ? [errors.password] : []} />
+              </Field>
+
+              <Field data-invalid={!!errors.repeatPassword}>
+                <FieldLabel htmlFor="repeatPassword">
+                  Ripeti Password
+                </FieldLabel>
+                <PasswordInput
+                  id="repeatPassword"
+                  autoComplete="new-password"
+                  disabled={isPending}
+                  aria-invalid={!!errors.repeatPassword}
+                  {...register("repeatPassword")}
+                />
+                <FieldError
+                  errors={errors.repeatPassword ? [errors.repeatPassword] : []}
+                />
+              </Field>
+            </FieldGroup>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isPending || !isValid}
             >
-              <FormField
-                name="username"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="johndoe"
-                        autoComplete="off"
-                        disabled={isPending}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                name="email"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="m@example.com"
-                        autoComplete="email"
-                        disabled={isPending}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                name="password"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        autoComplete="new-password"
-                        disabled={isPending}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                name="repeatPassword"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ripeti Password</FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        autoComplete="new-password"
-                        disabled={isPending}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isPending || !form.formState.isValid}
-              >
-                {isPending ? "Registrazione in corso..." : "Registrati"}
-              </Button>
-            </form>
-          </Form>
+              {isPending ? "Registrazione in corso..." : "Registrati"}
+            </Button>
+          </form>
 
           <Separator className="my-4" />
 

@@ -1,15 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
+import { CardContent, CardFooter } from "@/components/ui/card";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "@/convex/_generated/api";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +38,11 @@ export const JoinGameForm = () => {
     defaultValues: { gameCode: "" },
     mode: "onChange",
   });
-  const { handleSubmit } = form;
+  const {
+    handleSubmit,
+    register,
+    formState: { errors, isValid },
+  } = form;
 
   const handleJoinGame = async (values: JoinGameFormValues) => {
     setLoading(true);
@@ -67,43 +69,39 @@ export const JoinGameForm = () => {
   };
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={handleSubmit(handleJoinGame)}
-        className="space-y-4"
-        autoComplete="off"
-      >
-        <FormField
-          name="gameCode"
-          control={form.control}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Codice partita</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Enter 6-digit code"
-                  maxLength={6}
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                  disabled={loading}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <CardFooter className="p-0 pt-4">
-          <Button
-            type="submit"
-            disabled={loading || !form.formState.isValid}
-            className="w-full"
-          >
-            {loading ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
-            Unisciti
-          </Button>
-        </CardFooter>
-      </form>
-    </Form>
+    <>
+      <CardContent className="flex-1">
+        <form
+          onSubmit={handleSubmit(handleJoinGame)}
+          className="space-y-4"
+          autoComplete="off"
+        >
+          <FieldGroup>
+            <Field data-invalid={!!errors.gameCode}>
+              <FieldLabel htmlFor="gameCode">Codice partita</FieldLabel>
+              <Input
+                id="gameCode"
+                placeholder="Enter 6-digit code"
+                maxLength={6}
+                {...register("gameCode", {
+                  onChange: (e) => {
+                    e.target.value = e.target.value.toUpperCase();
+                  },
+                })}
+                disabled={loading}
+                aria-invalid={!!errors.gameCode}
+              />
+              <FieldError errors={errors.gameCode ? [errors.gameCode] : []} />
+            </Field>
+          </FieldGroup>
+        </form>
+      </CardContent>
+      <CardFooter>
+        <Button type="submit" disabled={loading || !isValid} className="w-full">
+          {loading ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
+          Unisciti
+        </Button>
+      </CardFooter>
+    </>
   );
 };

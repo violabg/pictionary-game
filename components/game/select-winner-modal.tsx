@@ -59,7 +59,7 @@ export default function SelectWinnerModal({
                 <Button
                   key={player.player_id}
                   variant="outline"
-                  className="justify-start w-full h-auto text-left"
+                  className="justify-start py-2 w-full h-auto text-left"
                   onClick={() => handleSelectWinner(player)}
                   disabled={loading}
                 >

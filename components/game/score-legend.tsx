@@ -15,21 +15,24 @@ export default function ScoreLegend() {
   return (
     <Card className="p-0 gradient-border glass-card">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="hover:bg-accent/50 py-6 rounded-t-lg transition-colors cursor-pointer">
-            <CardTitle className="flex justify-between items-center font-semibold text-sm">
-              <div className="flex items-center gap-2">
-                <InfoIcon className="w-4 h-4" />
-                Come si guadagnano i punti
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  isOpen ? "rotate-180" : ""
-                }`}
-              />
-            </CardTitle>
-          </CardHeader>
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          nativeButton={false}
+          render={
+            <CardHeader className="hover:bg-accent/50 py-6 rounded-t-lg transition-colors cursor-pointer">
+              <CardTitle className="flex justify-between items-center font-semibold text-sm">
+                <div className="flex items-center gap-2">
+                  <InfoIcon className="w-4 h-4" />
+                  Come si guadagnano i punti
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    isOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </CardTitle>
+            </CardHeader>
+          }
+        ></CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-2 pb-6 text-sm">
             <div className="flex justify-between items-center">
