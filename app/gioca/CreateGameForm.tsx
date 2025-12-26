@@ -98,7 +98,7 @@ export const CreateGameForm = () => {
                 >
                   <SelectTrigger
                     id="category"
-                    className="[&[data-placeholder]]:text-muted-foreground glass-card"
+                    className="data-placeholder:text-muted-foreground glass-card"
                     aria-required={true}
                     aria-invalid={!!fieldState.error}
                     data-invalid={!!fieldState.error}
