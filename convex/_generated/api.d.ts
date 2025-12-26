@@ -14,6 +14,7 @@ import type * as actions_validateGuess from "../actions/validateGuess.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as lib_permissions from "../lib/permissions.js";
+import type * as mutations_auth from "../mutations/auth.js";
 import type * as mutations_drawings from "../mutations/drawings.js";
 import type * as mutations_game from "../mutations/game.js";
 import type * as mutations_games from "../mutations/games.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   "lib/permissions": typeof lib_permissions;
+  "mutations/auth": typeof mutations_auth;
   "mutations/drawings": typeof mutations_drawings;
   "mutations/game": typeof mutations_game;
   "mutations/games": typeof mutations_games;
