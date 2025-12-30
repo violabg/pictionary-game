@@ -41,7 +41,7 @@ import { ConvexAuth } from "@convex-dev/auth/server";
 import { password } from "@convex-dev/auth/providers";
 
 export const auth = new ConvexAuth({
-  providers: [password]
+  providers: [password],
 });
 ```
 
@@ -54,16 +54,16 @@ export const users = defineTable({
   // - email: string (unique)
   // - password: string (hashed)
   // - isEmailVerified: boolean
-  
+
   // Extended fields:
-  username: v.string(),           // Display name
-  avatar_url: v.optional(v.string()),  // Profile image
-  total_score: v.number(),        // Cumulative score
-  games_played: v.number(),       // Total games
-  created_at: v.number()          // Signup timestamp
+  username: v.string(), // Display name
+  avatar_url: v.optional(v.string()), // Profile image
+  total_score: v.number(), // Cumulative score
+  games_played: v.number(), // Total games
+  created_at: v.number(), // Signup timestamp
 })
-.index("by_email", ["email"])
-.index("by_username", ["username"]);
+  .index("by_email", ["email"])
+  .index("by_username", ["username"]);
 ```
 
 ## Authentication Provider Setup
@@ -80,7 +80,7 @@ export default defineAuth({
     password({
       minPasswordLength: 8,
       maxPasswordLength: 128,
-    })
+    }),
   ],
   callbacks: {
     async onSignUp(req) {
@@ -91,8 +91,8 @@ export default defineAuth({
     async onSignIn(req) {
       // Called on successful login
       return req.identity;
-    }
-  }
+    },
+  },
 });
 ```
 
@@ -105,32 +105,32 @@ export const signUpUser = mutation({
   args: {
     email: v.string(),
     password: v.string(),
-    username: v.string()
+    username: v.string(),
   },
   handler: async (ctx, args) => {
     // 1. Validate input
     if (args.username.length < 3 || args.username.length > 30) {
       throw new Error("Username must be 3-30 characters");
     }
-    
+
     // 2. Check username uniqueness
     const existing = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", args.username))
       .first();
-    
+
     if (existing) {
       throw new Error("Username already taken");
     }
-    
+
     // 3. Create auth account (handled by Convex Auth)
     // 4. Initialize user profile
     const userId = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
-    
+
     if (!userId) {
       throw new Error("Failed to create user account");
     }
-    
+
     // 5. Store profile data
     const now = Date.now();
     await ctx.db.insert("users", {
@@ -139,15 +139,15 @@ export const signUpUser = mutation({
       avatar_url: null,
       total_score: 0,
       games_played: 0,
-      created_at: now
+      created_at: now,
     });
-    
+
     return {
       success: true,
       userId,
-      username: args.username
+      username: args.username,
     };
-  }
+  },
 });
 ```
 
@@ -159,26 +159,35 @@ import { z } from "zod";
 
 export const signUpSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string()
+  password: z
+    .string()
     .min(8, "Password must be at least 8 characters")
     .max(128, "Password too long"),
-  username: z.string()
+  username: z
+    .string()
     .min(3, "Username must be at least 3 characters")
     .max(30, "Username must be at most 30 characters")
-    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscore, hyphen")
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "Username can only contain letters, numbers, underscore, hyphen"
+    ),
 });
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password required")
+  password: z.string().min(1, "Password required"),
 });
 
 export const updatePasswordSchema = z.object({
   currentPassword: z.string(),
-  newPassword: z.string()
+  newPassword: z
+    .string()
     .min(8, "Password must be at least 8 characters")
-    .refine((pwd) => /[A-Z]/.test(pwd), "Password must contain uppercase letter")
-    .refine((pwd) => /[0-9]/.test(pwd), "Password must contain number")
+    .refine(
+      (pwd) => /[A-Z]/.test(pwd),
+      "Password must contain uppercase letter"
+    )
+    .refine((pwd) => /[0-9]/.test(pwd), "Password must contain number"),
 });
 ```
 
@@ -202,23 +211,23 @@ interface AuthProfile {
 
 export function useAuthenticatedUser() {
   const profile = useQuery(api.queries.profiles.getCurrentUserProfile);
-  
+
   return {
     profile: profile as AuthProfile | null | undefined,
     isLoading: profile === undefined,
-    isAuthenticated: profile !== null && profile !== undefined
+    isAuthenticated: profile !== null && profile !== undefined,
   };
 }
 
 export function useAuthContext() {
   const profile = useAuthenticatedUser();
-  
+
   return {
     userId: profile.profile?.user_id,
     username: profile.profile?.username,
     email: profile.profile?.email,
     isAuthenticated: profile.isAuthenticated,
-    isLoading: profile.isLoading
+    isLoading: profile.isLoading,
   };
 }
 ```
@@ -230,25 +239,27 @@ export const getCurrentUserProfile = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    
+
     if (!identity) {
       return null;
     }
-    
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
-    
-    return user ? {
-      user_id: user._id,
-      username: user.username,
-      email: identity.email,
-      avatar_url: user.avatar_url,
-      total_score: user.total_score,
-      games_played: user.games_played
-    } : null;
-  }
+
+    return user
+      ? {
+          user_id: user._id,
+          username: user.username,
+          email: identity.email,
+          avatar_url: user.avatar_url,
+          total_score: user.total_score,
+          games_played: user.games_played,
+        }
+      : null;
+  },
 });
 ```
 
@@ -261,7 +272,7 @@ export const getCurrentUserProfile = query({
 import { ConvexAuthNextjsProvider } from "@convex-dev/auth/nextjs";
 
 export default function RootLayout({
-  children
+  children,
 }: {
   children: React.ReactNode;
 }) {
@@ -269,9 +280,7 @@ export default function RootLayout({
     <html>
       <body>
         <ConvexAuthNextjsProvider>
-          <ConvexProvider>
-            {children}
-          </ConvexProvider>
+          <ConvexProvider>{children}</ConvexProvider>
         </ConvexAuthNextjsProvider>
       </body>
     </html>
@@ -296,29 +305,29 @@ export function SignUpForm() {
     defaultValues: {
       email: "",
       password: "",
-      username: ""
-    }
+      username: "",
+    },
   });
-  
+
   const { signUp } = useConvexAuth();
-  
+
   async function onSubmit(values: z.infer<typeof signUpSchema>) {
     try {
       await signUp("password", {
         email: values.email,
         password: values.password,
-        username: values.username
+        username: values.username,
       });
-      
+
       // Navigate to success page
       window.location.href = "/auth/sign-up-success";
     } catch (error) {
       form.setError("email", {
-        message: error instanceof Error ? error.message : "Signup failed"
+        message: error instanceof Error ? error.message : "Signup failed",
       });
     }
   }
-  
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <FormField
@@ -348,26 +357,26 @@ export function SignUpForm() {
 // components/auth/login-form.tsx
 export function LoginForm() {
   const form = useForm({
-    resolver: zodResolver(loginSchema)
+    resolver: zodResolver(loginSchema),
   });
-  
+
   const { logIn } = useConvexAuth();
-  
+
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     try {
       await logIn("password", {
         email: values.email,
-        password: values.password
+        password: values.password,
       });
-      
+
       window.location.href = "/gioca";
     } catch (error) {
       form.setError("email", {
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
   }
-  
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
       {/* Form fields */}
@@ -384,15 +393,15 @@ export function LoginForm() {
 ```typescript
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthenticatedUser();
-  
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
-  
+
   if (!isAuthenticated) {
     return <Redirect to="/auth/login" />;
   }
-  
+
   return <>{children}</>;
 }
 ```
@@ -402,17 +411,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 ```typescript
 export function LogoutButton() {
   const { logOut } = useConvexAuth();
-  
+
   const handleLogout = async () => {
     await logOut();
     window.location.href = "/";
   };
-  
-  return (
-    <button onClick={handleLogout}>
-      Logout
-    </button>
-  );
+
+  return <button onClick={handleLogout}>Logout</button>;
 }
 ```
 
@@ -428,17 +433,17 @@ export const requestPasswordReset = mutation({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
-    
+
     if (!user) {
       // Don't reveal if user exists
       return { success: true };
     }
-    
+
     // Generate reset token (send via email)
     // Store token in database with expiry
-    
+
     return { success: true };
-  }
+  },
 });
 ```
 
@@ -448,17 +453,17 @@ export const requestPasswordReset = mutation({
 export const updatePassword = mutation({
   args: {
     currentPassword: v.string(),
-    newPassword: v.string()
+    newPassword: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
-    
+
     // Verify current password before updating
     // Update with new password hash
-    
+
     return { success: true };
-  }
+  },
 });
 ```
 
@@ -476,11 +481,13 @@ CONVEX_AUTH_CALLBACK=http://localhost:3000  # For development
 ## Common Patterns
 
 ### Get current user ID
+
 ```typescript
 const { userId } = useAuthContext();
 ```
 
 ### Redirect non-authenticated users
+
 ```typescript
 useEffect(() => {
   if (!isAuthenticated && !isLoading) {
@@ -490,12 +497,13 @@ useEffect(() => {
 ```
 
 ### Update user score after game
+
 ```typescript
 const updateScore = useMutation(api.mutations.profiles.updateUserScore);
 
 await updateScore({
   user_id: userId,
-  points: 150
+  points: 150,
 });
 ```
 

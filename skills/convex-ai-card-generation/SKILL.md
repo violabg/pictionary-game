@@ -41,6 +41,7 @@ This skill handles AI-powered card generation for PictionAI's Pictionary gamepla
 ## Key Action
 
 ### generateCards
+
 Generate one or multiple drawing cards for a specific category with AI.
 
 ```typescript
@@ -66,12 +67,12 @@ action generateCards {
 
 ```typescript
 interface Card {
-  word: string;              // Single word to draw (required)
-  description: string;       // Drawing hints/clues (1-100 chars)
+  word: string; // Single word to draw (required)
+  description: string; // Drawing hints/clues (1-100 chars)
   difficulty: "easy" | "medium" | "hard";
-  category: string;          // Category name
-  created_at?: number;       // Timestamp
-  ai_generated?: boolean;    // True if from Groq
+  category: string; // Category name
+  created_at?: number; // Timestamp
+  ai_generated?: boolean; // True if from Groq
 }
 ```
 
@@ -91,8 +92,8 @@ interface Card {
 
 ```typescript
 const groq = new Groq({
-  apiKey: env.GROQ_API_KEY,  // Environment variable
-  baseURL: "https://api.groq.com/openai/v1"
+  apiKey: env.GROQ_API_KEY, // Environment variable
+  baseURL: "https://api.groq.com/openai/v1",
 });
 ```
 
@@ -103,11 +104,11 @@ const cardSchema = z.object({
   word: z.string().min(1).max(30),
   description: z.string().min(10).max(100),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  category: z.string()
+  category: z.string(),
 });
 
 const cardsResponseSchema = z.object({
-  cards: z.array(cardSchema)
+  cards: z.array(cardSchema),
 });
 ```
 
@@ -131,12 +132,27 @@ When all AI models fail, the system falls back to hardcoded libraries:
 ```typescript
 const cardLibraries = {
   animals: [
-    { word: "elephant", description: "Large animal with long trunk", difficulty: "easy", category: "animals" },
-    { word: "giraffe", description: "Tall with spotted pattern", difficulty: "easy", category: "animals" },
+    {
+      word: "elephant",
+      description: "Large animal with long trunk",
+      difficulty: "easy",
+      category: "animals",
+    },
+    {
+      word: "giraffe",
+      description: "Tall with spotted pattern",
+      difficulty: "easy",
+      category: "animals",
+    },
     // ... more animals
   ],
   objects: [
-    { word: "bicycle", description: "Two-wheeled vehicle", difficulty: "easy", category: "objects" },
+    {
+      word: "bicycle",
+      description: "Two-wheeled vehicle",
+      difficulty: "easy",
+      category: "objects",
+    },
     // ... more objects
   ],
   // ... other categories
@@ -150,11 +166,11 @@ const cardLibraries = {
 const generateCardsAction = useAction(api.actions.generateCards);
 
 async function setupGameCards(category: string) {
-  const result = await generateCardsAction({ 
+  const result = await generateCardsAction({
     category,
-    count: 5  // Generate 5 cards per round
+    count: 5, // Generate 5 cards per round
   });
-  
+
   console.log(`Cards generated from ${result.source}`);
   return result.cards;
 }
@@ -186,6 +202,7 @@ console.log(`Generated cards from ${source} for category: ${category}`);
 ## Best Practices
 
 ### Do's
+
 ✅ Generate multiple cards at game start (not per turn)
 ✅ Cache cards for session duration
 ✅ Log both AI and fallback usage for monitoring
@@ -193,6 +210,7 @@ console.log(`Generated cards from ${source} for category: ${category}`);
 ✅ Handle quota errors gracefully
 
 ### Don'ts
+
 ❌ Don't wait for card generation on each turn
 ❌ Don't expose Groq API key in frontend
 ❌ Don't retry forever on network errors
@@ -205,22 +223,22 @@ console.log(`Generated cards from ${source} for category: ${category}`);
 export const initializeGameCards = action({
   args: { game_id: v.id("games"), category: v.string() },
   handler: async (ctx, args) => {
-    const generateCards = await ctx.runAction(
-      api.actions.generateCards, 
-      { category: args.category, count: 10 }
-    );
-    
+    const generateCards = await ctx.runAction(api.actions.generateCards, {
+      category: args.category,
+      count: 10,
+    });
+
     // Store cards in game doc
     await ctx.runMutation(api.mutations.games.storeGameCards, {
       game_id: args.game_id,
-      cards: generateCards.cards
+      cards: generateCards.cards,
     });
-    
+
     return {
       count: generateCards.cards.length,
-      source: generateCards.source
+      source: generateCards.source,
     };
-  }
+  },
 });
 ```
 
