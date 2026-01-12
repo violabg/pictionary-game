@@ -173,12 +173,14 @@ See [TURN_MANAGEMENT_ANALYSIS.md](TURN_MANAGEMENT_ANALYSIS.md) for detailed turn
 ### Adding a New Feature
 
 1. **Backend**:
+
    - Add table to `convex/schema.ts` if needed
    - Create queries in `convex/queries/`
    - Create mutations in `convex/mutations/`
    - Always include `args` and `returns` validators
 
 2. **Frontend**:
+
    - Create component in `components/` directory
    - Use `useQuery` for real-time subscriptions
    - Use `useMutation` for writes
@@ -191,18 +193,21 @@ See [TURN_MANAGEMENT_ANALYSIS.md](TURN_MANAGEMENT_ANALYSIS.md) for detailed turn
 ### Common Tasks
 
 **Get current user:**
+
 ```typescript
 import { useAuthenticatedUser } from "@/hooks/useAuth";
 const { profile } = useAuthenticatedUser();
 ```
 
 **Query real-time data:**
+
 ```typescript
 import { useQuery } from "convex/react";
 const game = useQuery(api.queries.games.getGame, { game_id });
 ```
 
 **Update database:**
+
 ```typescript
 import { useMutation } from "convex/react";
 const submitGuess = useMutation(api.mutations.game.submitGuess);
