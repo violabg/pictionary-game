@@ -23,12 +23,15 @@ export function GameHeader({
 }: GameHeaderProps) {
   return (
     <div className="flex justify-between items-center mb-4">
-      <div className="flex justify-between items-center gap-2">
-        <Badge variant="outline" className="px-3 py-1 text-sm">
-          Categoria: {game.category}
+      <div className="flex flex-wrap justify-between items-center gap-2">
+        <Badge
+          variant="outline"
+          className="px-3 py-1 border-2 font-bold text-sm"
+        >
+          {game.category}
         </Badge>
-        <Badge className="px-3 py-1 text-white text-sm gradient-bg">
-          Turno: {game.round} / {game.max_rounds}
+        <Badge className="px-3 py-1 font-bold text-sm gradient-bg">
+          Turno {game.round} / {game.max_rounds}
         </Badge>
       </div>
       {turnStarted ? (
@@ -40,12 +43,12 @@ export function GameHeader({
           />
         </div>
       ) : (
-        <div className="font-medium text-muted-foreground text-lg">
+        <div className="font-bold text-muted-foreground text-base">
           {isDrawer
-            ? "È il tuo turno di disegnare"
+            ? "✏️ È il tuo turno di disegnare"
             : currentDrawer
-            ? `In attesa che ${currentDrawer.username} inizi`
-            : "In attesa..."}
+              ? `⏳ In attesa che ${currentDrawer.username} inizi`
+              : "In attesa..."}
         </div>
       )}
     </div>

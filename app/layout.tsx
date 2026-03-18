@@ -4,11 +4,21 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Nunito, Paytone_One } from "next/font/google";
 import type React from "react";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const paytoneOne = Paytone_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
+});
+
+const nunito = Nunito({
+  subsets: ["latin"],
+  variable: "--font-nunito",
+  weight: ["400", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "PictionAi Game",
@@ -42,11 +52,11 @@ export default function RootLayout({
           href="/favicon/apple-touch-icon.png"
         />
         <link rel="manifest" href="/favicon/site.webmanifest" />
-        <body className={inter.className}>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <body className={`${paytoneOne.variable} ${nunito.variable}`}>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             <ConvexClientProvider>
               <Navbar />
-              <div className="bg-linear-to-br from-background dark:from-background to-background/80 dark:to-background/50 min-h-screen">
+              <div className="dot-grid min-h-screen">
                 {children}
                 <Toaster richColors />
               </div>

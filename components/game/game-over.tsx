@@ -47,26 +47,31 @@ export default function GameOver({ game, players }: GameOverProps) {
   return (
     <div className="flex justify-center items-center py-12 min-h-screen container">
       <Card
-        className="gradient-border w-full max-w-2xl glass-card"
+        className="bg-card border-3 border-foreground w-full max-w-2xl"
         ref={containerRef}
+        style={{ boxShadow: "8px 8px 0 0 var(--color-yellow)" }}
       >
         <ReactConfetti
           width={dimensions.width}
           height={dimensions.height}
           numberOfPieces={500}
           colors={[
-            "oklch(58.92% 0.25 296.91)", // Purple
-            "oklch(65% 0.2 220)", // Blue
-            "oklch(95% 0.13 90)", // Gold
-            "oklch(60.2% 0.18 22.5)", // Red
-            "oklch(98% 0.005 210)", // White
+            "oklch(86% 0.19 92)" /* Electric yellow */,
+            "oklch(63% 0.22 22)" /* Hot coral */,
+            "oklch(72% 0.15 168)" /* Mint */,
+            "oklch(60% 0.21 22)" /* Red */,
+            "oklch(94% 0.015 85)" /* Cream */,
           ]}
           recycle={false}
           gravity={0.25}
         />
         <CardHeader className="text-center">
-          <CardTitle className="text-gradient text-3xl">Game Over!</CardTitle>
-          <CardDescription>Categoria: {game.category}</CardDescription>
+          <CardTitle className="font-display text-gradient text-5xl tracking-wide">
+            Game Over!
+          </CardTitle>
+          <CardDescription className="font-medium text-base">
+            Categoria: {game.category}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
           <PlayersStanding players={players} />
@@ -75,7 +80,7 @@ export default function GameOver({ game, players }: GameOverProps) {
           <Link href="/" className="w-full max-w-xs">
             <Button
               variant="gradient"
-              className="flex items-center gap-2 w-full"
+              className="flex items-center gap-2 w-full font-bold"
             >
               <Home className="w-4 h-4" />
               Torna alla Home

@@ -41,14 +41,19 @@ export function GameLobby({
     <div className="space-y-8">
       <div className="flex md:flex-row flex-col justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="font-bold text-3xl">
+          <h1 className="font-display text-4xl tracking-wide">
             <span className="text-gradient">{"Sala d'attesa"}</span>
           </h1>
-          <p className="text-muted-foreground">{lobbyMessage}</p>
+          <p className="mt-1 font-medium text-muted-foreground">
+            {lobbyMessage}
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="px-3 py-1 font-mono text-lg">
+            <Badge
+              variant="outline"
+              className="px-3 py-1 border-2 border-primary font-mono font-bold text-primary text-lg"
+            >
               {game.code}
             </Badge>
             <Button variant="ghost" size="icon" onClick={copyGameCode}>
@@ -58,16 +63,16 @@ export function GameLobby({
         </div>
       </div>
 
-      <Card className="gradient-border glass-card">
+      <Card
+        className="bg-card border-2 border-foreground/20"
+        style={{ boxShadow: "4px 4px 0 0 var(--color-yellow)" }}
+      >
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 font-display text-xl tracking-wide">
             <Users className="w-5 h-5" />
             <span>Giocatori ({players.length})</span>
             {players.length >= 2 && (
-              <Badge
-                variant="default"
-                className="bg-gradient-to-r from-[oklch(85%_0.2_160)] to-[oklch(85%_0.3_120)] ml-2 text-[oklch(25%_0.05_240)]"
-              >
+              <Badge variant="default" className="ml-2">
                 Pronti
               </Badge>
             )}
@@ -77,22 +82,24 @@ export function GameLobby({
           {players.map((player) => (
             <div
               key={player._id}
-              className="flex items-center gap-3 p-3 border rounded-lg"
+              className="flex items-center gap-3 bg-background/50 p-3 border-2 border-foreground/15 rounded-lg"
             >
               {player.avatar_url && (
                 <img
                   src={player.avatar_url}
                   alt={player.username}
-                  className="rounded-full w-10 h-10"
+                  className="border-2 border-foreground/20 rounded-full w-10 h-10"
                 />
               )}
               <div className="flex-1">
-                <p className="font-medium">{player.username}</p>
+                <p className="font-bold">{player.username}</p>
                 <p className="text-muted-foreground text-sm">
                   Punti: {player.score}
                 </p>
               </div>
-              {player.is_host && <Badge>Host</Badge>}
+              {player.is_host && (
+                <Badge className="font-display tracking-wide">Host</Badge>
+              )}
             </div>
           ))}
         </CardContent>
@@ -104,7 +111,7 @@ export function GameLobby({
             size="lg"
             onClick={onStartGame}
             disabled={players.length < 2 || isStartingGame}
-            className="px-8"
+            className="px-8 h-12 font-bold text-base"
           >
             {isStartingGame ? (
               <span className="flex items-center gap-2">
@@ -114,14 +121,16 @@ export function GameLobby({
             ) : players.length < 2 ? (
               "Servono almeno 2 giocatori per iniziare"
             ) : (
-              "Inizia la partita"
+              "🚀 Inizia la partita"
             )}
           </Button>
           {players.length < 2 && (
-            <p className="text-muted-foreground text-sm">
-              Condividi il codice partita{" "}
-              <span className="font-mono font-bold">{game.code}</span> con gli
-              amici per unirsi
+            <p className="font-medium text-muted-foreground text-sm">
+              Condividi il codice{" "}
+              <span className="font-mono font-bold text-primary">
+                {game.code}
+              </span>{" "}
+              con gli amici
             </p>
           )}
         </div>
