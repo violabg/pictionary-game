@@ -93,7 +93,7 @@ export const PlayersStanding = ({ players }: PlayersStandingProps) => {
           />
         )}
       </div>
-      <div className="border-input rounded-md glass-card">
+      <div className="shadow-[4px_4px_0_0_var(--color-primary)] border-4 border-foreground rounded-xl">
         <div className="p-4 border-input border-b">
           <h3 className="font-medium">Punteggi finali</h3>
         </div>

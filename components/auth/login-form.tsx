@@ -91,9 +91,9 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="gradient-border glass-card">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Accedi</CardTitle>
+          <CardTitle>Accedi</CardTitle>
           <CardDescription>Accedi con il tuo account GitHub</CardDescription>
         </CardHeader>
         <CardContent>
@@ -150,12 +150,13 @@ export function LoginForm({
 
           <div className="flex flex-col gap-6">
             <Button
-              className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
+              variant="outline"
+              className="gap-2 w-full"
               disabled={isPending}
               onClick={handleGitHubLogin}
             >
-              <GithubIcon className="w-5 h-5" />
-              <span className="font-medium">
+              <GithubIcon className="flex-shrink-0 w-5 h-5" />
+              <span>
                 {isPending ? "Accesso in corso..." : "Accedi con GitHub"}
               </span>
             </Button>

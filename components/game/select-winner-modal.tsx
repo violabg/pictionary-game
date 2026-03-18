@@ -39,7 +39,7 @@ export default function SelectWinnerModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="gradient-border sm:max-w-md glass-card">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-gradient">
             Seleziona Vincitore
@@ -59,31 +59,31 @@ export default function SelectWinnerModal({
                 <Button
                   key={player.player_id}
                   variant="outline"
-                  className="justify-start py-2 w-full h-auto text-left"
+                  className="justify-start px-3 py-3 w-full h-auto overflow-hidden text-left whitespace-normal sm:whitespace-nowrap"
                   onClick={() => handleSelectWinner(player)}
                   disabled={loading}
                 >
-                  <div className="flex justify-between items-center w-full">
-                    <div className="flex justify-start items-center gap-2 w-full">
+                  <div className="flex sm:flex-row flex-col justify-between items-start sm:items-center gap-2 w-full overflow-hidden">
+                    <div className="flex justify-start items-center gap-2 max-w-full overflow-hidden">
                       {player.avatar_url ? (
                         <Image
                           src={player.avatar_url}
                           alt={player.username}
                           width={32}
                           height={32}
-                          className="rounded-full w-8 h-8"
+                          className="flex-shrink-0 rounded-full w-8 h-8"
                         />
                       ) : (
-                        <div className="flex justify-center items-center bg-slate-200 rounded-full w-8 h-8">
-                          <span className="font-semibold text-xs">
+                        <div className="flex flex-shrink-0 justify-center items-center bg-slate-200 rounded-full w-8 h-8">
+                          <span className="font-bold text-black text-xs">
                             {player.username.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
-                      <span>{player.username}</span>
+                      <span className="truncate">{player.username}</span>
                     </div>
-                    <span className="text-muted-foreground text-sm">
-                      Punteggio attuale: {player.score}
+                    <span className="font-sans text-muted-foreground text-xs sm:text-sm normal-case tracking-normal shrink-0">
+                      Punti: {player.score}
                     </span>
                   </div>
                 </Button>

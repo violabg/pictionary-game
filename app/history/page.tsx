@@ -15,10 +15,12 @@ export default async function HistoryPage(props: {
   return (
     <main className="flex-1 py-8 container">
       <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="font-bold text-3xl">Game History</h1>
-          <p className="mt-2 text-muted-foreground">
-            View your past Pictionary games and performance
+        <div className="mb-12 text-center">
+          <h1 className="drop-shadow-[4px_4px_0_var(--color-primary)] dark:drop-shadow-[4px_4px_0_var(--color-primary)] font-display font-black text-foreground text-5xl md:text-7xl uppercase tracking-tight">
+            Storico Partite
+          </h1>
+          <p className="inline-block bg-white dark:bg-black shadow-[4px_4px_0px_0px_var(--color-foreground)] dark:shadow-[4px_4px_0px_0px_var(--color-foreground)] mx-auto mt-4 p-4 border-4 border-foreground rounded-xl max-w-2xl font-bold text-xl">
+            Rivivi le tue sfide e le tue performance
           </p>
         </div>
 
@@ -59,7 +61,7 @@ function HistoryContentFallback() {
       {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
         <div
           key={i}
-          className="bg-card shadow-sm border rounded-lg h-23.5 overflow-hidden"
+          className="bg-card shadow-[8px_8px_0_0_var(--color-primary)] border-4 border-foreground rounded-2xl h-23.5 overflow-hidden"
         >
           <div className="px-6 py-4">
             <div className="flex justify-between items-start w-full">

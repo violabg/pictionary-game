@@ -11,7 +11,7 @@ export default function Page() {
     <div className="flex justify-center items-center p-6 md:p-10 w-full min-h-svh">
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
-          <Card className="gradient-border glass-card">
+          <Card className="w-full max-w-md" variant="primary">
             <CardHeader>
               <CardTitle className="text-2xl">
                 Thank you for signing up!

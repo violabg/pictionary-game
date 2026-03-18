@@ -87,7 +87,7 @@ export const CreateGameForm = () => {
       autoComplete="off"
       onSubmit={handleSubmit(handleCreateGame)}
     >
-      <CardContent className="flex-1 space-y-4">
+      <CardContent className="flex-1 space-y-4 pt-6">
         <FieldGroup>
           <Controller
             name="category"
@@ -102,7 +102,7 @@ export const CreateGameForm = () => {
                 >
                   <SelectTrigger
                     id="category"
-                    className="data-placeholder:text-muted-foreground glass-card"
+                    variant="primary"
                     aria-required={true}
                     aria-invalid={!!fieldState.error}
                     data-invalid={!!fieldState.error}
@@ -143,7 +143,7 @@ export const CreateGameForm = () => {
                   max={10}
                   step={1}
                   disabled={loading}
-                  className="glass-card"
+                  variant="primary"
                   aria-invalid={fieldState.invalid}
                   {...field}
                 />
@@ -158,9 +158,9 @@ export const CreateGameForm = () => {
           />
         </FieldGroup>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="bg-primary/5 mt-4 pt-6 border-foreground border-t-4">
         <Button type="submit" disabled={loading} className="w-full">
-          {loading ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
+          {loading ? <Loader2 className="mr-2 w-6 h-6 animate-spin" /> : null}
           Crea partita
         </Button>
       </CardFooter>

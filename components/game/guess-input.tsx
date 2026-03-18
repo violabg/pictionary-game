@@ -32,18 +32,19 @@ export default function GuessInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex space-x-2">
+    <form onSubmit={handleSubmit} className="flex gap-2">
       <Input
         type="text"
         placeholder="Scrivi qui il tuo tentativo..."
         value={guess}
         onChange={(e) => setGuess(e.target.value)}
         disabled={disabled || isSubmitting}
-        className="grow glass-card"
+        className="grow"
+        variant="secondary"
       />
       <Button
         type="submit"
-        variant="gradient"
+        variant="default"
         disabled={disabled || !guess.trim() || isSubmitting}
       >
         {isSubmitting ? (

@@ -22,7 +22,7 @@ type CardDisplayProps = {
 // Phase 3: Optimized with React.memo to prevent unnecessary re-renders
 function CardDisplay({ card }: CardDisplayProps) {
   return (
-    <Card className="gradient-border glass-card">
+    <Card variant="primary">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">La tua parola da disegnare</CardTitle>
         <CardDescription>Non mostrarla agli altri giocatori!</CardDescription>

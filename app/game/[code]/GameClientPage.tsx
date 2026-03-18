@@ -57,11 +57,22 @@ export function GameClientPage({
 
   if (!game || !profile) {
     return (
-      <main className="flex flex-col flex-1 justify-center items-center py-8 container">
-        <h1 className="mb-4 font-bold text-2xl">Partita non trovata</h1>
-        <Button onClick={() => router.push("/gioca")} variant="outline">
-          Torna alla creazione del gioco
-        </Button>
+      <main className="flex flex-col flex-1 justify-center items-center py-12 min-h-[calc(100vh-64px)] container">
+        <div className="bg-card shadow-[8px_8px_0_0_var(--color-destructive)] p-8 border-4 border-foreground rounded-2xl w-full max-w-md text-center -rotate-2">
+          <h1 className="mb-6 font-display font-black text-destructive text-4xl uppercase tracking-tight">
+            Partita non trovata
+          </h1>
+          <p className="mb-8 font-bold text-foreground text-lg">
+            Il codice potrebbe essere errato o la partita è scaduta.
+          </p>
+          <Button
+            onClick={() => router.push("/gioca")}
+            variant="secondary"
+            className="py-6 w-full text-xl"
+          >
+            Torna alla Lobby
+          </Button>
+        </div>
       </main>
     );
   }

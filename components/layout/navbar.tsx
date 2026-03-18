@@ -29,6 +29,18 @@ export function Navbar() {
   const authActions = useAuthActions();
   const { isAuthenticated, isLoading } = useConvexAuth();
 
+  const isActiveNavItem = (href: string) => {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    if (href === "/gioca") {
+      return pathname === "/gioca" || pathname.startsWith("/game/");
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   const handleSignOut = async () => {
     await authActions.signOut();
     router.push("/auth/login");
@@ -41,12 +53,12 @@ export function Navbar() {
   ] as const;
 
   return (
-    <header className="border-b">
+    <header className="top-0 z-50 sticky bg-background shadow-[0_4px_0_0_var(--color-foreground)] border-foreground border-b-4">
       <div className="flex justify-between items-center h-16 container">
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="font-bold text-black text-gradient dark:text-white text-2xl !important"
+            className="font-bold text-black text-gradient dark:text-white text-2xl hover:scale-105 transition-transform !important"
           >
             <PictionAILogo
               height={40}
@@ -54,15 +66,15 @@ export function Navbar() {
             />
           </Link>
           {/* Desktop nav */}
-          <nav className="hidden md:flex gap-6">
+          <nav className="hidden md:flex gap-6 mt-1">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  pathname === item.href
+                className={`text-lg font-display uppercase tracking-widest font-bold transition-all hover:-translate-y-1 hover:text-primary ${
+                  isActiveNavItem(item.href)
                     ? "text-primary"
-                    : "text-muted-foreground"
+                    : "text-foreground"
                 }`}
               >
                 {item.name}
@@ -90,8 +102,8 @@ export function Navbar() {
                       key={item.href}
                       href={item.href}
                       className={`block px-4 py-2 rounded-md text-base font-medium transition-colors hover:bg-primary/10 hover:text-primary ${
-                        pathname === item.href
-                          ? "text-primary bg-primary/5"
+                        isActiveNavItem(item.href)
+                          ? "text-primary"
                           : "text-muted-foreground"
                       }`}
                     >
@@ -139,8 +151,9 @@ export function Navbar() {
               ) : (
                 <Link
                   className={`${buttonVariants({
-                    variant: "default",
-                  })}`}
+                    variant: "secondary",
+                    size: "sm",
+                  })} border-2`}
                   href="/auth/login"
                 >
                   Accedi

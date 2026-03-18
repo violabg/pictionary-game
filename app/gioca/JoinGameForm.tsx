@@ -74,14 +74,16 @@ export const JoinGameForm = () => {
       className="flex flex-col flex-1 gap-4"
       autoComplete="off"
     >
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 pt-6">
         <FieldGroup>
           <Field data-invalid={!!errors.gameCode}>
             <FieldLabel htmlFor="gameCode">Codice partita</FieldLabel>
             <Input
               id="gameCode"
-              placeholder="Enter 6-digit code"
-              maxLength={6}
+              placeholder="ES: ABCD"
+              maxLength={4}
+              variant="secondary"
+              className="font-display font-bold text-center uppercase tracking-[0.25em]"
               {...register("gameCode", {
                 onChange: (e) => {
                   e.target.value = e.target.value.toUpperCase();
@@ -94,10 +96,15 @@ export const JoinGameForm = () => {
           </Field>
         </FieldGroup>
       </CardContent>
-      <CardFooter>
-        <Button type="submit" disabled={loading || !isValid} className="w-full">
-          {loading ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
-          Unisciti
+      <CardFooter className="bg-secondary/5 mt-4 pt-6 border-foreground border-t-4">
+        <Button
+          type="submit"
+          disabled={loading || !isValid}
+          variant="secondary"
+          className="w-full"
+        >
+          {loading ? <Loader2 className="mr-2 w-6 h-6 animate-spin" /> : null}
+          Unisciti all&apos;azione
         </Button>
       </CardFooter>
     </form>

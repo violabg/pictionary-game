@@ -60,7 +60,7 @@ export function RightSidebar({
       )}
 
       {showTimeUp && timeRemaining === 0 && (
-        <Card className="gradient-border glass-card">
+        <Card variant="primary">
           <CardHeader className="pb-2">
             <CardTitle className="font-bold text-red-500 text-lg">
               Tempo scaduto!
@@ -77,7 +77,7 @@ export function RightSidebar({
 
       {isDrawer && currentTurn?.started_at && (
         <Button
-          variant="gradient"
+          variant="default"
           size="sm"
           onClick={onSelectWinner}
           className="flex items-center gap-2"

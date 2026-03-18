@@ -31,12 +31,12 @@ export default async function HistoryContent({
         },
         category: category && category !== "all" ? category : undefined,
       },
-      { token: await convexAuthNextjsToken() }
+      { token: await convexAuthNextjsToken() },
     ),
     fetchQuery(
       api.queries.history.getUserGameCount,
       category && category !== "all" ? { category } : {},
-      { token: await convexAuthNextjsToken() }
+      { token: await convexAuthNextjsToken() },
     ),
   ]);
 
@@ -63,7 +63,7 @@ export default async function HistoryContent({
           <AccordionItem
             key={game._id}
             value={game._id}
-            className="bg-card shadow-sm border rounded-lg overflow-hidden text-card-foreground"
+            className="bg-card shadow-[8px_8px_0_0_var(--color-primary)] hover:shadow-[10px_10px_0_0_var(--color-primary)] border-4 border-foreground rounded-2xl overflow-hidden text-card-foreground transition-all hover:-translate-y-1"
           >
             <GameHistoryCard
               game={{

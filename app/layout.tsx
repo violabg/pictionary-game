@@ -4,15 +4,17 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fredoka, Nunito } from "next/font/google";
 import type React from "react";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka" });
+const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito" });
 
 export const metadata: Metadata = {
   title: "PictionAi Game",
-  description: "A real-time multiplayer drawing and guessing game",
+  description:
+    "A real-time multiplayer drawing and guessing game powered by AI",
 };
 
 export default function RootLayout({
@@ -22,7 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <ConvexAuthNextjsServerProvider>
-      <html lang="en" suppressHydrationWarning>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${fredoka.variable} ${nunito.variable}`}
+      >
         <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
         <link
           rel="icon"
@@ -42,11 +48,11 @@ export default function RootLayout({
           href="/favicon/apple-touch-icon.png"
         />
         <link rel="manifest" href="/favicon/site.webmanifest" />
-        <body className={inter.className}>
+        <body className="font-sans antialiased">
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <ConvexClientProvider>
               <Navbar />
-              <div className="bg-linear-to-br from-background dark:from-background to-background/80 dark:to-background/50 min-h-screen">
+              <div className="bg-[radial-gradient(var(--color-muted)_1px,transparent_1px)] bg-background dark:bg-[radial-gradient(var(--color-muted)_1px,transparent_1px)] min-h-screen [background-size:24px_24px]">
                 {children}
                 <Toaster richColors />
               </div>

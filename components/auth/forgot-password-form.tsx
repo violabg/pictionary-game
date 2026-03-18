@@ -54,7 +54,7 @@ export function ForgotPasswordForm({
       formData.append("email", values.email);
       formData.append(
         "redirectUrl",
-        `${window.location.origin}/auth/update-password`
+        `${window.location.origin}/auth/update-password`,
       );
 
       // Call Convex Auth's reset password action
@@ -72,24 +72,24 @@ export function ForgotPasswordForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       {success ? (
-        <Card className="gradient-border glass-card">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Controlla la tua email</CardTitle>
+            <CardTitle>Controlla la tua email</CardTitle>
             <CardDescription>
               Istruzioni per il reset della password inviate
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-sm">
+            <p className="font-bold text-muted-foreground">
               Se ti sei registrato con email e password, riceverai una email per
               il reset della password.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="gradient-border glass-card">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Reimposta la password</CardTitle>
+            <CardTitle>Reimposta la password</CardTitle>
             <CardDescription>
               Inserisci la tua email e ti invieremo un link per reimpostare la
               password

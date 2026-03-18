@@ -49,24 +49,24 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   });
   const currentCardQuery = useQuery(
     api.queries.cards.getCurrentCard,
-    currentTurn?.card_id ? { game_id: gameId } : "skip"
+    currentTurn?.card_id ? { game_id: gameId } : "skip",
   );
 
   // Watch for guesses on current turn
   const turnGuesses = useQuery(
     api.queries.guesses.getTurnGuesses,
-    currentTurn?._id ? { turn_id: currentTurn._id } : "skip"
+    currentTurn?._id ? { turn_id: currentTurn._id } : "skip",
   );
 
   // Mutations and Actions
   const submitGuessAndCompleteTurnMutation = useMutation(
-    api.mutations.game.submitGuessAndCompleteTurn
+    api.mutations.game.submitGuessAndCompleteTurn,
   );
   const finalizeTurnCompletionMutation = useMutation(
-    api.mutations.game.finalizeTurnCompletion
+    api.mutations.game.finalizeTurnCompletion,
   );
   const validateGuessAction = useAction(
-    api.actions.validateGuess.validateGuess
+    api.actions.validateGuess.validateGuess,
   );
 
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
@@ -93,12 +93,12 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   // Memoized derived values
   const currentDrawer = useMemo(
     () => players?.find((p) => p.player_id === game?.current_drawer_id),
-    [players, game?.current_drawer_id]
+    [players, game?.current_drawer_id],
   );
 
   const currentPlayer = useMemo(
     () => players?.find((p) => p.player_id === profile?.user_id),
-    [players, profile?.user_id]
+    [players, profile?.user_id],
   );
 
   const sortedPlayers = useMemo(() => {
@@ -192,7 +192,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       currentTurn.winner_id
     ) {
       const winner = players?.find(
-        (p) => p.player_id === currentTurn.winner_id
+        (p) => p.player_id === currentTurn.winner_id,
       );
       if (winner && currentTurn.points_awarded !== undefined) {
         setModalState((prev) => ({
@@ -290,7 +290,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       gameId,
       validateGuessAction,
       submitGuessAndCompleteTurnMutation,
-    ]
+    ],
   );
 
   const handleSelectWinner = useCallback(
@@ -305,7 +305,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
         isTimerPaused: false,
       }));
     },
-    [currentTurn, isDrawer, drawerActions, timeRemaining]
+    [currentTurn, isDrawer, drawerActions, timeRemaining],
   );
 
   const handleOpenSelectWinner = useCallback(() => {
@@ -357,7 +357,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
 
       <div className="gap-4 grid grid-cols-1 lg:grid-cols-4">
         <div className="flex flex-col lg:col-span-3">
-          <div className="p-4 gradient-border rounded-lg glass-card grow">
+          <div className="bg-card shadow-[8px_8px_0_0_var(--color-primary)] p-4 border-4 border-foreground rounded-xl grow">
             {currentDrawer && (
               <DrawingCanvas
                 ref={drawingCanvasRef}
@@ -373,7 +373,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
             {isDrawer && !turnStarted && (
               <div className="flex justify-center mt-4">
                 <Button
-                  variant="gradient"
+                  variant="default"
                   size="lg"
                   onClick={drawerActions.handleStartTurn}
                   disabled={uiState.isStartingTurn}
@@ -414,7 +414,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       {modalState.showSelectWinner && (
         <SelectWinnerModal
           players={players.filter(
-            (p) => p.player_id !== game.current_drawer_id
+            (p) => p.player_id !== game.current_drawer_id,
           )}
           onSelectWinner={handleSelectWinner}
           onClose={handleCloseSelectWinner}

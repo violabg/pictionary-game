@@ -42,7 +42,7 @@ function GuessFeed({
 
   if (guesses.length === 0) {
     return (
-      <Card className="bg-muted/50 p-4 border-dashed">
+      <Card className="shadow-none p-4 border-4 border-foreground border-dashed text-center translate-y-0">
         <div className="text-muted-foreground text-sm text-center">
           In attesa di indovinelli...
         </div>

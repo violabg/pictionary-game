@@ -11,9 +11,9 @@ export function LoginButton() {
       {!isAuthenticated && (
         <Link
           className={`${buttonVariants({
-            variant: "outline",
+            variant: "secondary",
             size: "lg",
-          })}`}
+          })} w-full sm:w-auto h-16`}
           href="/auth/login"
         >
           Accedi

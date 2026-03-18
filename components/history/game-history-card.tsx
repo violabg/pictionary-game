@@ -99,7 +99,7 @@ export default function GameHistoryCard({
   const openImageModal = (
     url: string,
     title: string,
-    thumbnailElement: HTMLElement
+    thumbnailElement: HTMLElement,
   ) => {
     const thumbnailRect = thumbnailElement.getBoundingClientRect();
     setSelectedImage({ url, title, thumbnailRect });
@@ -131,16 +131,19 @@ export default function GameHistoryCard({
     }
 
     // Find player with highest score
-    return players.reduce((winner, player) => {
-      if (!winner || player.score > winner.score) {
-        return {
-          username: player.username,
-          avatar_url: player.avatar_url,
-          score: player.score,
-        };
-      }
-      return winner;
-    }, null as { username: string; avatar_url?: string; score: number } | null);
+    return players.reduce(
+      (winner, player) => {
+        if (!winner || player.score > winner.score) {
+          return {
+            username: player.username,
+            avatar_url: player.avatar_url,
+            score: player.score,
+          };
+        }
+        return winner;
+      },
+      null as { username: string; avatar_url?: string; score: number } | null,
+    );
   }, [players]);
 
   const turnsCount = turns.length;
@@ -316,7 +319,7 @@ export default function GameHistoryCard({
                           openImageModal(
                             turn.drawing_url!,
                             turn.card_word,
-                            e.currentTarget
+                            e.currentTarget,
                           )
                         }
                       >
@@ -351,7 +354,7 @@ export default function GameHistoryCard({
         >
           <Card
             ref={modalRef}
-            className="relative p-[2px] pt-8 gradient-border w-full min-w-[300px] max-w-[800px] glass-card"
+            className="relative pt-8 w-full min-w-[300px] max-w-[800px]"
             onClick={(e) => e.stopPropagation()}
             style={{
               transform:
@@ -369,19 +372,19 @@ export default function GameHistoryCard({
                       Math.min(800, Math.max(300, window.innerWidth * 0.8))
                     })`
                   : isClosing && selectedImage.thumbnailRect
-                  ? `translate(${
-                      selectedImage.thumbnailRect.left +
-                      selectedImage.thumbnailRect.width / 2 -
-                      window.innerWidth / 2
-                    }px, ${
-                      selectedImage.thumbnailRect.top +
-                      selectedImage.thumbnailRect.height / 2 -
-                      window.innerHeight / 2
-                    }px) scale(${
-                      selectedImage.thumbnailRect.width /
-                      Math.min(800, Math.max(300, window.innerWidth * 0.8))
-                    })`
-                  : "translate(0, 0) scale(1)",
+                    ? `translate(${
+                        selectedImage.thumbnailRect.left +
+                        selectedImage.thumbnailRect.width / 2 -
+                        window.innerWidth / 2
+                      }px, ${
+                        selectedImage.thumbnailRect.top +
+                        selectedImage.thumbnailRect.height / 2 -
+                        window.innerHeight / 2
+                      }px) scale(${
+                        selectedImage.thumbnailRect.width /
+                        Math.min(800, Math.max(300, window.innerWidth * 0.8))
+                      })`
+                    : "translate(0, 0) scale(1)",
               transition: isClosing
                 ? "transform 300ms cubic-bezier(0.4, 0.0, 1, 1)"
                 : "transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)",

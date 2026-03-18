@@ -54,7 +54,10 @@ export default function TurnWinnerBanner({
   }
 
   return (
-    <Card className="relative bg-linear-to-r from-yellow-400 via-amber-300 to-orange-400 shadow-2xl border-2 border-yellow-500 overflow-hidden text-black">
+    <Card
+      className="relative bg-gradient-to-r from-yellow-400 via-amber-300 to-orange-400 border-4 border-foreground text-black"
+      variant="primary"
+    >
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }

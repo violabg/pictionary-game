@@ -39,7 +39,7 @@ export interface DrawingCanvasRef {
 const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
   (
     { gameId, isDrawer, currentDrawer, turnStarted, turnId, onFirstStroke },
-    ref
+    ref,
   ) => {
     const currentDrawerId = currentDrawer.player_id;
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,7 +52,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     const [strokes, setStrokes] = useState<Stroke[]>([]); // Each stroke: { points: [{x, y}], color, width }
     const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
     const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
-      null
+      null,
     );
     const [isCanvasHovered, setIsCanvasHovered] = useState(false);
     const firstStrokeCalledRef = useRef(false); // Track if we've called onFirstStroke
@@ -65,7 +65,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     // Convex: live strokes for non-drawers
     const remote = useQuery(
       api.queries.drawings.getTurnStrokes,
-      !isDrawer && turnId ? { turn_id: turnId } : ("skip" as any)
+      !isDrawer && turnId ? { turn_id: turnId } : ("skip" as any),
     );
 
     // Throttled push to server while drawing
@@ -92,7 +92,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           }
         }, 100);
       },
-      [isDrawer, turnStarted, turnId, saveStrokes]
+      [isDrawer, turnStarted, turnId, saveStrokes],
     );
 
     // Expose capture function to parent component
@@ -106,13 +106,13 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         },
         getCanvas: () => canvasRef.current,
       }),
-      []
+      [],
     );
 
     // Utility: Normalize and denormalize points
     const normalizePoint = (
       point: { x: number; y: number },
-      canvas: HTMLCanvasElement
+      canvas: HTMLCanvasElement,
     ) => ({
       x: point.x / canvas.width,
       y: point.y / canvas.height,
@@ -120,7 +120,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
     const denormalizePoint = (
       point: { x: number; y: number },
-      canvas: HTMLCanvasElement
+      canvas: HTMLCanvasElement,
     ) => ({
       x: point.x * canvas.width,
       y: point.y * canvas.height,
@@ -132,7 +132,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       x2: number,
       y2: number,
       color: string,
-      width: number
+      width: number,
     ) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -173,7 +173,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     const startDrawing = (
       e:
         | React.MouseEvent<HTMLCanvasElement>
-        | React.TouchEvent<HTMLCanvasElement>
+        | React.TouchEvent<HTMLCanvasElement>,
     ) => {
       if (!isDrawer || !turnStarted) return;
       const canvas = canvasRef.current;
@@ -204,7 +204,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     const draw = (
       e:
         | React.MouseEvent<HTMLCanvasElement>
-        | React.TouchEvent<HTMLCanvasElement>
+        | React.TouchEvent<HTMLCanvasElement>,
     ) => {
       if (!isDrawing || !isDrawer || !turnStarted || !prevPointRef.current)
         return;
@@ -220,11 +220,11 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         normCurrent.x * canvas.width,
         normCurrent.y * canvas.height,
         tool === "brush" ? color : "#ffffff",
-        tool === "brush" ? lineWidth : eraserWidth
+        tool === "brush" ? lineWidth : eraserWidth,
       );
       // Add to current stroke
       setCurrentStroke((stroke: Stroke | null) =>
-        stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null
+        stroke ? { ...stroke, points: [...stroke.points, normCurrent] } : null,
       );
       // Schedule a throttled save including the in-progress stroke
       scheduleSave([
@@ -305,7 +305,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     const getPoint = (
       e:
         | React.MouseEvent<HTMLCanvasElement>
-        | React.TouchEvent<HTMLCanvasElement>
+        | React.TouchEvent<HTMLCanvasElement>,
     ) => {
       const canvas = canvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
@@ -447,7 +447,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
 
         <div className="relative bg-white border rounded-md aspect-4/3 overflow-hidden">
           {!turnStarted && (
-            <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/30 rounded-md pointer-events-none glass-card">
+            <div className="z-10 absolute inset-0 flex justify-center items-center bg-black/60 rounded-xl pointer-events-none">
               <p className="text-white text-lg">
                 {isDrawer
                   ? "Clicca 'Inizia il tuo turno' per iniziare a disegnare"
@@ -501,7 +501,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 DrawingCanvas.displayName = "DrawingCanvas";

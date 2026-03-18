@@ -37,7 +37,7 @@ const signUpSchema = z
       .max(20, "Username deve essere massimo 20 caratteri")
       .regex(
         /^[a-zA-Z0-9_-]+$/,
-        "Username può contenere solo lettere, numeri, underscore e trattini"
+        "Username può contenere solo lettere, numeri, underscore e trattini",
       ),
     email: z.string().email("Email non valida"),
     password: z.string().min(6, "Minimo 6 caratteri"),
@@ -62,7 +62,7 @@ export function SignUpForm({
   const router = useRouter();
   const { signIn } = useAuthActions();
   const initializeUserProfile = useMutation(
-    api.mutations.auth.initializeUserProfile
+    api.mutations.auth.initializeUserProfile,
   );
 
   const form = useForm<SignUpFormValues>({
@@ -136,9 +136,9 @@ export function SignUpForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="gradient-border glass-card">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Registrati</CardTitle>
+          <CardTitle>Registrati</CardTitle>
           <CardDescription>Crea un nuovo account per giocare</CardDescription>
         </CardHeader>
         <CardContent>
@@ -220,12 +220,13 @@ export function SignUpForm({
 
           <div className="flex flex-col gap-4">
             <Button
-              className="flex justify-center items-center gap-2 bg-background hover:bg-accent border border-input w-full text-black dark:text-white transition-colors hover:text-accent-foreground"
+              variant="outline"
+              className="gap-2 w-full"
               disabled={isPending}
               onClick={handleGitHubSignUp}
             >
-              <GithubIcon className="w-5 h-5" />
-              <span className="font-medium">
+              <GithubIcon className="flex-shrink-0 w-5 h-5" />
+              <span>
                 {isPending
                   ? "Registrazione in corso..."
                   : "Registrati con GitHub"}

@@ -64,7 +64,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
             </Button>
           }
         ></PopoverTrigger>
-        <PopoverContent className="p-2 w-64 glass-card">
+        <PopoverContent className="w-64">
           <div className="gap-2 grid grid-cols-4">
             {colors.map((c) => (
               <button
@@ -118,7 +118,7 @@ const ToolBar: React.FC<ToolBarProps> = ({
             </Button>
           }
         ></PopoverTrigger>
-        <PopoverContent className="p-2 w-64 glass-card">
+        <PopoverContent className="w-64">
           <div className="mt-2">
             <label className="text-sm">Dimensione Gomma</label>
             <input

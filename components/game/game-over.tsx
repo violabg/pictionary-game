@@ -47,7 +47,7 @@ export default function GameOver({ game, players }: GameOverProps) {
   return (
     <div className="flex justify-center items-center py-12 min-h-screen container">
       <Card
-        className="gradient-border w-full max-w-2xl glass-card"
+        className="bg-card shadow-[8px_8px_0_0_var(--color-primary)] border-4 border-foreground rounded-2xl w-full max-w-2xl overflow-hidden"
         ref={containerRef}
       >
         <ReactConfetti
@@ -74,7 +74,7 @@ export default function GameOver({ game, players }: GameOverProps) {
         <CardFooter className="flex justify-center gap-4">
           <Link href="/" className="w-full max-w-xs">
             <Button
-              variant="gradient"
+              variant="default"
               className="flex items-center gap-2 w-full"
             >
               <Home className="w-4 h-4" />

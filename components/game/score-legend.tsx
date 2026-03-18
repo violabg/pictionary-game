@@ -13,13 +13,13 @@ export default function ScoreLegend() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Card className="p-0 gradient-border glass-card">
+    <Card className="p-0" variant="primary">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger
           nativeButton={false}
           render={
-            <CardHeader className="hover:bg-accent/50 py-6 rounded-t-lg transition-colors cursor-pointer">
-              <CardTitle className="flex justify-between items-center font-semibold text-sm">
+            <CardHeader className="hover:bg-accent/50 py-4 cursor-pointer">
+              <CardTitle className="flex justify-between items-center font-bold text-sm">
                 <div className="flex items-center gap-2">
                   <InfoIcon className="w-4 h-4" />
                   Come si guadagnano i punti

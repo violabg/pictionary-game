@@ -24,10 +24,8 @@ export function GameHeader({
   return (
     <div className="flex justify-between items-center mb-4">
       <div className="flex justify-between items-center gap-2">
-        <Badge variant="outline" className="px-3 py-1 text-sm">
-          Categoria: {game.category}
-        </Badge>
-        <Badge className="px-3 py-1 text-white text-sm gradient-bg">
+        <Badge variant="outline">Categoria: {game.category}</Badge>
+        <Badge variant="default">
           Turno: {game.round} / {game.max_rounds}
         </Badge>
       </div>
@@ -44,8 +42,8 @@ export function GameHeader({
           {isDrawer
             ? "È il tuo turno di disegnare"
             : currentDrawer
-            ? `In attesa che ${currentDrawer.username} inizi`
-            : "In attesa..."}
+              ? `In attesa che ${currentDrawer.username} inizi`
+              : "In attesa..."}
         </div>
       )}
     </div>

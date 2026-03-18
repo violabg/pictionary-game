@@ -16,15 +16,15 @@ function PlayerList({ players, currentDrawerId }: PlayerListProps) {
   // Players are already sorted by parent component for performance
 
   return (
-    <Card className="gradient-border glass-card">
+    <Card variant="primary">
       <CardHeader className="pb-2">
-        <CardTitle className="text-gradient text-lg">Players</CardTitle>
+        <CardTitle className="text-lg">Players</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {players.map((player) => (
           <div
             key={player._id}
-            className="flex justify-between items-center p-2 border rounded-lg"
+            className="flex justify-between items-center bg-background p-2 border-2 border-foreground rounded-xl"
           >
             <div className="flex items-center gap-2">
               <PlayerAvatar

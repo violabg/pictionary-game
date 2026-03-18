@@ -1,18 +1,46 @@
-import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+const textareaVariants = cva(
+  "flex bg-background disabled:opacity-50 border-4 border-foreground rounded-xl outline-none focus-visible:outline-none w-full min-h-24 text-foreground placeholder:text-muted-foreground transition-all focus-visible:-translate-y-1 active:translate-y-0 disabled:cursor-not-allowed disabled:pointer-events-none",
+  {
+    variants: {
+      variant: {
+        default:
+          "shadow-[4px_4px_0_0_var(--color-primary)] focus-visible:shadow-[6px_6px_0_0_var(--color-primary)] active:shadow-none focus-visible:border-foreground aria-invalid:border-destructive",
+        primary:
+          "shadow-[4px_4px_0_0_var(--color-primary)] focus-visible:shadow-[6px_6px_0_0_var(--color-primary)] active:shadow-none focus-visible:border-foreground aria-invalid:border-destructive",
+        secondary:
+          "shadow-[4px_4px_0_0_var(--color-secondary)] focus-visible:shadow-[6px_6px_0_0_var(--color-secondary)] active:shadow-none focus-visible:border-foreground aria-invalid:border-destructive",
+      },
+      inputSize: {
+        default: "px-4 py-3 text-base font-bold",
+        sm: "px-3 py-2 text-sm font-bold",
+        lg: "px-5 py-4 text-lg font-bold",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      inputSize: "default",
+    },
+  },
+);
+
+export interface TextareaProps
+  extends
+    React.ComponentProps<"textarea">,
+    VariantProps<typeof textareaVariants> {}
+
+function Textarea({ className, variant, inputSize, ...props }: TextareaProps) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn(
-        "border-input dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 disabled:bg-input/50 dark:disabled:bg-input/80 rounded-lg border bg-transparent px-2.5 py-2 text-base transition-colors focus-visible:ring-[3px] aria-invalid:ring-[3px] md:text-sm placeholder:text-muted-foreground flex field-sizing-content min-h-16 w-full outline-none disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
+      className={cn(textareaVariants({ variant, inputSize, className }))}
       {...props}
     />
-  )
+  );
 }
 
-export { Textarea }
+export { Textarea, textareaVariants };
