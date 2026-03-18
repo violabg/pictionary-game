@@ -345,7 +345,7 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   }
 
   return (
-    <div className="flex flex-col py-0 min-h-screen container">
+    <div className="flex flex-col p-0 min-h-screen container">
       <GameHeader
         game={game}
         currentTurn={currentTurn}
