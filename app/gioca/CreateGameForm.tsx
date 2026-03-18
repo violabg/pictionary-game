@@ -82,7 +82,11 @@ export const CreateGameForm = () => {
   };
 
   return (
-    <form className="flex flex-col flex-1 gap-4" autoComplete="off">
+    <form
+      className="flex flex-col flex-1 gap-4"
+      autoComplete="off"
+      onSubmit={handleSubmit(handleCreateGame)}
+    >
       <CardContent className="flex-1 space-y-4">
         <FieldGroup>
           <Controller
