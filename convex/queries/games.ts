@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 
@@ -19,8 +20,8 @@ export const getGame = query({
         v.literal("finished")
       ),
       category: v.string(),
-      created_by: v.string(),
-      current_drawer_id: v.optional(v.string()),
+      created_by: v.id("users"),
+      current_drawer_id: v.optional(v.id("users")),
       current_card_id: v.optional(v.id("cards")),
       round: v.number(),
       max_rounds: v.number(),
@@ -52,8 +53,8 @@ export const getGameByCode = query({
         v.literal("finished")
       ),
       category: v.string(),
-      created_by: v.string(),
-      current_drawer_id: v.optional(v.string()),
+      created_by: v.id("users"),
+      current_drawer_id: v.optional(v.id("users")),
       current_card_id: v.optional(v.id("cards")),
       round: v.number(),
       max_rounds: v.number(),
@@ -77,12 +78,12 @@ export const getCurrentUserGame = query({
   args: {},
   returns: v.nullable(v.id("games")),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
 
     const player = await ctx.db
       .query("players")
-      .withIndex("by_player_id", (q) => q.eq("player_id", identity.subject))
+      .withIndex("by_player_id", (q) => q.eq("player_id", userId))
       .first();
 
     if (!player) return null;
@@ -117,12 +118,12 @@ export const getUserGames = query({
     })
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
 
     const games = await ctx.db
       .query("games")
-      .withIndex("by_created_by", (q) => q.eq("created_by", identity.subject))
+      .withIndex("by_created_by", (q) => q.eq("created_by", userId))
       .collect();
 
     return games.map((g) => ({

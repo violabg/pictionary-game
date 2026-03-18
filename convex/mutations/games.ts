@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { api, internal } from "../_generated/api";
 import {
   internalAction,
@@ -22,7 +22,7 @@ export const createGame = mutation({
   }),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     // Generate random 4-character code
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -34,13 +34,13 @@ export const createGame = mutation({
       .first();
 
     if (existingGame) {
-      throw new Error("Code collision, please try again");
+      throw new ConvexError("Code collision, please try again");
     }
 
     // Get user from users table
     const user = await ctx.db.get(userId);
     if (!user) {
-      throw new Error("User not found");
+      throw new ConvexError("User not found");
     }
 
     // Create game
@@ -88,7 +88,7 @@ export const joinGame = mutation({
   returns: v.id("games"),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     // Find game by code
     const game = await ctx.db
@@ -97,11 +97,11 @@ export const joinGame = mutation({
       .first();
 
     if (!game) {
-      throw new Error("Game not found");
+      throw new ConvexError("Game not found");
     }
 
     if (game.status !== "waiting") {
-      throw new Error("Game has already started or finished");
+      throw new ConvexError("Game has already started or finished");
     }
 
     // Check if already in game
@@ -119,7 +119,7 @@ export const joinGame = mutation({
     // Get user from users table
     const user = await ctx.db.get(userId);
     if (!user) {
-      throw new Error("User not found");
+      throw new ConvexError("User not found");
     }
 
     // Add player to game
@@ -149,16 +149,16 @@ export const startGame = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     const game = await ctx.db.get(args.game_id);
-    if (!game) throw new Error("Game not found");
+    if (!game) throw new ConvexError("Game not found");
 
     const isHost = await isGameHost(ctx, args.game_id, userId);
-    if (!isHost) throw new Error("Only host can start the game");
+    if (!isHost) throw new ConvexError("Only host can start the game");
 
     if (game.status !== "waiting") {
-      throw new Error("Game is not in waiting status");
+      throw new ConvexError("Game is not in waiting status");
     }
 
     // Get all players
@@ -168,7 +168,7 @@ export const startGame = mutation({
       .collect();
 
     if (players.length < 2) {
-      throw new Error("Need at least 2 players to start");
+      throw new ConvexError("Need at least 2 players to start");
     }
 
     // Check if cards are ready
@@ -178,7 +178,7 @@ export const startGame = mutation({
       .collect();
 
     if (cards.length === 0) {
-      throw new Error(
+      throw new ConvexError(
         "Le carte stanno ancora caricando. Attendi qualche secondo e riprova."
       );
     }
@@ -207,7 +207,7 @@ export const leaveGame = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     // Find and delete player record
     const player = await ctx.db
@@ -218,7 +218,7 @@ export const leaveGame = mutation({
       .first();
 
     if (!player) {
-      throw new Error("Player not in game");
+      throw new ConvexError("Player not in game");
     }
 
     // If host, delete the game

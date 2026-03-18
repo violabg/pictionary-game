@@ -1,5 +1,6 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
 
 /**
  * Get the current card for a turn
@@ -28,8 +29,8 @@ export const getCurrentCard = query({
     if (!card) return null;
 
     // Get current user to check if they're the drawer
-    const identity = await ctx.auth.getUserIdentity();
-    const isDrawer = identity && game.current_drawer_id === identity.subject;
+    const userId = await getAuthUserId(ctx);
+    const isDrawer = userId && game.current_drawer_id === userId;
 
     // Only return full card to drawer, others get placeholder
     if (isDrawer) {
@@ -127,15 +128,33 @@ export const getRecentCardsByCategory = query({
     })
   ),
   handler: async (ctx, args) => {
-    const limit = args.limit || 50;
+    const limit = args.limit ?? 50;
     const cards = await ctx.db
       .query("cards")
-      .filter((q) => q.eq(q.field("category"), args.category))
+      .withIndex("by_category", (q) => q.eq("category", args.category))
       .order("desc")
       .take(limit);
 
     return cards.map((c) => ({
       word: c.word,
     }));
+  },
+});
+
+/**
+ * Internal query to fetch a card by ID (used by submitGuess action)
+ */
+export const getCardById = internalQuery({
+  args: { card_id: v.id("cards") },
+  returns: v.nullable(
+    v.object({
+      word: v.string(),
+      category: v.string(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const card = await ctx.db.get(args.card_id);
+    if (!card) return null;
+    return { word: card.word, category: card.category };
   },
 });

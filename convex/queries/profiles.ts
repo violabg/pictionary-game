@@ -11,7 +11,7 @@ export const getCurrentUserProfile = query({
     v.object({
       _id: v.id("users"),
       _creationTime: v.number(),
-      user_id: v.string(), // Same as _id for compatibility
+      user_id: v.id("users"), // Same as _id for compatibility
       username: v.string(),
       email: v.string(),
       avatar_url: v.optional(v.string()), // Maps to image field

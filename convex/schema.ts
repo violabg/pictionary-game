@@ -27,8 +27,8 @@ export default defineSchema({
       v.literal("finished")
     ),
     category: v.string(),
-    created_by: v.string(),
-    current_drawer_id: v.optional(v.string()),
+    created_by: v.id("users"),
+    current_drawer_id: v.optional(v.id("users")),
     current_card_id: v.optional(v.id("cards")),
     round: v.number(),
     max_rounds: v.number(),
@@ -43,7 +43,7 @@ export default defineSchema({
 
   players: defineTable({
     game_id: v.id("games"),
-    player_id: v.string(),
+    player_id: v.id("users"),
     username: v.string(),
     avatar_url: v.optional(v.string()),
     score: v.number(),
@@ -64,12 +64,13 @@ export default defineSchema({
     created_at: v.number(),
   })
     .index("by_game_id", ["game_id"])
-    .index("by_game_and_unused", ["game_id", "is_used"]),
+    .index("by_game_and_unused", ["game_id", "is_used"])
+    .index("by_category", ["category"]),
 
   guesses: defineTable({
     game_id: v.id("games"),
     turn_id: v.id("turns"),
-    player_id: v.string(),
+    player_id: v.id("users"),
     guess_text: v.string(),
     is_correct: v.boolean(),
     is_fuzzy_match: v.boolean(),
@@ -82,7 +83,7 @@ export default defineSchema({
   drawings: defineTable({
     game_id: v.id("games"),
     card_id: v.id("cards"),
-    drawer_id: v.string(),
+    drawer_id: v.id("users"),
     turn_id: v.id("turns"),
     canvas_data: v.object({
       strokes: v.array(
@@ -108,7 +109,7 @@ export default defineSchema({
   turns: defineTable({
     game_id: v.id("games"),
     round: v.number(),
-    drawer_id: v.string(),
+    drawer_id: v.id("users"),
     card_id: v.id("cards"),
     status: v.union(
       v.literal("drawing"),
@@ -121,7 +122,7 @@ export default defineSchema({
     completed_at: v.optional(v.number()),
     correct_guesses: v.number(),
     // Scoring fields
-    winner_id: v.optional(v.string()),
+    winner_id: v.optional(v.id("users")),
     points_awarded: v.optional(v.number()),
     drawer_points_awarded: v.optional(v.number()),
   })

@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { MutationCtx, mutation } from "../_generated/server";
+import { internalMutation, mutation, MutationCtx } from "../_generated/server";
 import { canGuess } from "../lib/permissions";
 
 /**
@@ -17,8 +17,7 @@ async function updatePlayerStats(
     .collect();
 
   for (const player of players) {
-    // player.player_id is a string that represents a user ID
-    const userId = player.player_id as Id<"users">;
+    const userId = player.player_id;
     const user = await ctx.db.get(userId);
     if (user) {
       await ctx.db.patch(userId, {
@@ -37,12 +36,12 @@ async function updatePlayerStats(
  * - Updates player scores
  * - Rotates to next drawer if round is complete
  */
-export const submitGuessAndCompleteTurn = mutation({
+export const submitGuessAndCompleteTurn = internalMutation({
   args: {
     game_id: v.id("games"),
     turn_id: v.id("turns"),
     guess_text: v.string(),
-    isValidated: v.optional(v.boolean()), // Client-side validation result (for fuzzy matches)
+    isFuzzyMatch: v.boolean(),
   },
   returns: v.object({
     is_correct: v.boolean(),
@@ -51,20 +50,20 @@ export const submitGuessAndCompleteTurn = mutation({
   }),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     // Verify user can guess
     const canGuessResult = await canGuess(ctx, args.game_id, userId);
     if (!canGuessResult) {
-      throw new Error("You cannot guess (you are the drawer)");
+      throw new ConvexError("You cannot guess (you are the drawer)");
     }
 
     // Get game and turn
     const game = await ctx.db.get(args.game_id);
-    if (!game) throw new Error("Game not found");
+    if (!game) throw new ConvexError("Game not found");
 
     const turn = await ctx.db.get(args.turn_id);
-    if (!turn) throw new Error("Turn not found");
+    if (!turn) throw new ConvexError("Turn not found");
 
     // Validate turn status - prevent race conditions
     if (turn.status !== "drawing") {
@@ -95,14 +94,14 @@ export const submitGuessAndCompleteTurn = mutation({
 
     // Get the card
     const card = await ctx.db.get(turn.card_id);
-    if (!card) throw new Error("Card not found");
+    if (!card) throw new ConvexError("Card not found");
 
     // Check if guess is correct (exact match)
     const isCorrect =
       args.guess_text.toLowerCase().trim() === card.word.toLowerCase().trim();
 
-    // Accept client-side validation result for fuzzy matches
-    const isFuzzyMatch = (args.isValidated ?? false) && !isCorrect;
+    // isFuzzyMatch is computed server-side in the submitGuess action
+    const isFuzzyMatch = args.isFuzzyMatch && !isCorrect;
 
     // Record the guess
     await ctx.db.insert("guesses", {
@@ -199,22 +198,22 @@ export const finalizeTurnCompletion = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     const turn = await ctx.db.get(args.turn_id);
-    if (!turn) throw new Error("Turn not found");
+    if (!turn) throw new ConvexError("Turn not found");
 
     const game = await ctx.db.get(args.game_id);
-    if (!game) throw new Error("Game not found");
+    if (!game) throw new ConvexError("Game not found");
 
     // Only drawer can finalize (they uploaded the drawing)
     if (turn.drawer_id !== userId) {
-      throw new Error("Only drawer can finalize turn");
+      throw new ConvexError("Only drawer can finalize turn");
     }
 
     // Validate turn is in completing state
     if (turn.status !== "completing") {
-      throw new Error("Turn is not in completing state");
+      throw new ConvexError("Turn is not in completing state");
     }
 
     // Mark turn as completed
@@ -290,23 +289,23 @@ export const completeGameTurn = mutation({
     game_id: v.id("games"),
     turn_id: v.id("turns"),
     reason: v.union(v.literal("time_up"), v.literal("manual")),
-    winner_id: v.optional(v.string()),
+    winner_id: v.optional(v.id("users")),
     points_awarded: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     // Verify user is host
     const game = await ctx.db.get(args.game_id);
-    if (!game) throw new Error("Game not found");
+    if (!game) throw new ConvexError("Game not found");
     const turn = await ctx.db.get(args.turn_id);
-    if (!turn) throw new Error("Turn not found");
+    if (!turn) throw new ConvexError("Turn not found");
 
     // Validate turn status - prevent race conditions
     if (turn.status !== "drawing") {
-      throw new Error("Turn already completed or completing");
+      throw new ConvexError("Turn already completed or completing");
     }
 
     // Server-side timer validation: allow small tolerance for network latency
@@ -316,7 +315,7 @@ export const completeGameTurn = mutation({
       // Allow 2 second tolerance for network/client-server time skew
       const toleranceSec = 2;
       if (elapsedSec < turn.time_limit - toleranceSec) {
-        throw new Error(
+        throw new ConvexError(
           `Cannot complete turn: ${
             turn.time_limit - elapsedSec
           } seconds remaining`
@@ -328,7 +327,7 @@ export const completeGameTurn = mutation({
     const isHost = game.created_by === userId;
     const isDrawer = turn.drawer_id === userId;
     if (!isHost && !isDrawer)
-      throw new Error("Only host or drawer can complete turn");
+      throw new ConvexError("Only host or drawer can complete turn");
 
     // Mark turn as completing to prevent concurrent completions
     await ctx.db.patch(args.turn_id, {
@@ -475,12 +474,12 @@ export const startNewTurn = mutation({
   returns: v.id("turns"),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
     const game = await ctx.db.get(args.game_id);
-    if (!game) throw new Error("Game not found");
+    if (!game) throw new ConvexError("Game not found");
 
     const isDrawer = game.current_drawer_id === userId;
-    if (!isDrawer) throw new Error("Only current drawer can start turn");
+    if (!isDrawer) throw new ConvexError("Only current drawer can start turn");
 
     // Get next unused card
     const nextCard = await ctx.db
@@ -498,11 +497,11 @@ export const startNewTurn = mutation({
         .collect();
 
       if (totalCards.length === 0) {
-        throw new Error(
+        throw new ConvexError(
           "Le carte stanno ancora caricando. Attendi qualche secondo e riprova."
         );
       } else {
-        throw new Error(
+        throw new ConvexError(
           "Tutte le carte sono state utilizzate. Il gioco è terminato."
         );
       }
@@ -561,14 +560,14 @@ export const setTurnStartTime = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     const turn = await ctx.db.get(args.turn_id);
-    if (!turn) throw new Error("Turn not found");
+    if (!turn) throw new ConvexError("Turn not found");
 
     // Only drawer can set turn start time
     if (turn.drawer_id !== userId) {
-      throw new Error("Only drawer can set turn start time");
+      throw new ConvexError("Only drawer can set turn start time");
     }
 
     // Only set if not already set (idempotent - safe to call multiple times)

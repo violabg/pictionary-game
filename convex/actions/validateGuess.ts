@@ -3,7 +3,7 @@ import { groq } from "@ai-sdk/groq";
 import { generateText, Output } from "ai";
 import { v } from "convex/values";
 import { z } from "zod";
-import { action } from "../_generated/server";
+import { internalAction } from "../_generated/server";
 
 const schema = z.object({
   isAcceptable: z.boolean(),
@@ -24,7 +24,7 @@ const categoryInstructions: Record<string, string> = {
   Arte: "Considera stili artistici, tecniche e termini specifici del settore.",
 };
 
-export const validateGuess = action({
+export const validateGuess = internalAction({
   args: {
     guess: v.string(),
     correctAnswer: v.string(),

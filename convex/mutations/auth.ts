@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
 
 /**
@@ -14,10 +14,10 @@ export const initializeUserProfile = mutation({
   returns: v.id("users"),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     const user = await ctx.db.get(userId);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     // Initialize user profile fields if not already set
     await ctx.db.patch(userId, {

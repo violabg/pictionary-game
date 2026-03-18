@@ -9,6 +9,7 @@
  */
 
 import type * as actions_generateCards from "../actions/generateCards.js";
+import type * as actions_submitGuess from "../actions/submitGuess.js";
 import type * as actions_uploadDrawing from "../actions/uploadDrawing.js";
 import type * as actions_validateGuess from "../actions/validateGuess.js";
 import type * as auth from "../auth.js";
@@ -35,6 +36,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "actions/generateCards": typeof actions_generateCards;
+  "actions/submitGuess": typeof actions_submitGuess;
   "actions/uploadDrawing": typeof actions_uploadDrawing;
   "actions/validateGuess": typeof actions_validateGuess;
   auth: typeof auth;

@@ -7,7 +7,7 @@ import { MutationCtx, QueryCtx } from "../_generated/server";
 export const isGameHost = async (
   ctx: QueryCtx | MutationCtx,
   gameId: Id<"games">,
-  userId: string
+  userId: Id<"users">
 ): Promise<boolean> => {
   const game = await ctx.db.get(gameId);
   if (!game) return false;
@@ -20,7 +20,7 @@ export const isGameHost = async (
 export const isGamePlayer = async (
   ctx: QueryCtx | MutationCtx,
   gameId: Id<"games">,
-  userId: string
+  userId: Id<"users">
 ): Promise<boolean> => {
   const player = await ctx.db
     .query("players")
@@ -37,7 +37,7 @@ export const isGamePlayer = async (
 export const canGuess = async (
   ctx: QueryCtx | MutationCtx,
   gameId: Id<"games">,
-  userId: string
+  userId: Id<"users">
 ): Promise<boolean> => {
   const game = await ctx.db.get(gameId);
   if (!game) return false;
@@ -50,7 +50,7 @@ export const canGuess = async (
 export const isCurrentDrawer = async (
   ctx: QueryCtx | MutationCtx,
   gameId: Id<"games">,
-  userId: string
+  userId: Id<"users">
 ): Promise<boolean> => {
   const game = await ctx.db.get(gameId);
   if (!game) return false;

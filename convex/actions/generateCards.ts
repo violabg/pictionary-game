@@ -118,7 +118,7 @@ export const generateCards = action({
         limit: 50,
       }
     );
-    const recentWords = recentCards.map((card) => card.word);
+    const recentWords = recentCards.map((card: { word: string }) => card.word);
 
     // Try structured generation with Groq models; allow env override
     const candidateModels = (process.env.GROQ_MODELS || "")

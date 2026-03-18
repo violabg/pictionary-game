@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation } from "../_generated/server";
 
 // Types that mirror client-side structure (normalized points)
@@ -22,18 +22,18 @@ export const saveTurnStrokes = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) throw new ConvexError("Unauthorized");
 
     const turn = await ctx.db.get(args.turn_id);
-    if (!turn) throw new Error("Turn not found");
+    if (!turn) throw new ConvexError("Turn not found");
 
     // Only the current drawer can write strokes for this turn
     if (turn.drawer_id !== userId) {
-      throw new Error("Only drawer can update strokes");
+      throw new ConvexError("Only drawer can update strokes");
     }
 
     const game = await ctx.db.get(turn.game_id);
-    if (!game) throw new Error("Game not found");
+    if (!game) throw new ConvexError("Game not found");
 
     // Flatten strokes to point stream with strokeStart markers
     const now = Date.now();

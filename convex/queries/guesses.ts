@@ -11,7 +11,7 @@ export const getGameGuesses = query({
   returns: v.array(
     v.object({
       _id: v.id("guesses"),
-      player_id: v.string(),
+      player_id: v.id("users"),
       guess_text: v.string(),
       is_correct: v.boolean(),
       submitted_at: v.number(),
@@ -44,7 +44,7 @@ export const getTurnGuesses = query({
   returns: v.array(
     v.object({
       _id: v.id("guesses"),
-      player_id: v.string(),
+      player_id: v.id("users"),
       guess_text: v.string(),
       is_correct: v.boolean(),
       is_fuzzy_match: v.boolean(),
@@ -76,7 +76,7 @@ export const getTurnCorrectGuesses = query({
   args: {
     turn_id: v.id("turns"),
   },
-  returns: v.array(v.string()),
+  returns: v.array(v.id("users")),
   handler: async (ctx, args) => {
     const guesses = await ctx.db
       .query("guesses")

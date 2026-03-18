@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
@@ -29,7 +30,7 @@ export const getUserGameHistory = query({
             _id: v.id("turns"),
             game_id: v.id("games"),
             round: v.number(),
-            drawer_id: v.string(),
+            drawer_id: v.id("users"),
             drawer_username: v.string(),
             drawer_avatar_url: v.optional(v.string()),
             card_id: v.id("cards"),
@@ -45,7 +46,7 @@ export const getUserGameHistory = query({
             completed_at: v.optional(v.number()),
             correct_guesses: v.number(),
             guesses_count: v.number(),
-            winner_id: v.optional(v.string()),
+            winner_id: v.optional(v.id("users")),
             winner_username: v.optional(v.string()),
             winner_avatar_url: v.optional(v.string()),
             drawer_points_awarded: v.optional(v.number()),
@@ -58,7 +59,7 @@ export const getUserGameHistory = query({
           v.object({
             _id: v.id("players"),
             game_id: v.id("games"),
-            player_id: v.string(),
+            player_id: v.id("users"),
             username: v.string(),
             avatar_url: v.optional(v.string()),
             score: v.number(),
@@ -73,17 +74,14 @@ export const getUserGameHistory = query({
     continueCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
       return {
         page: [],
         isDone: true,
         continueCursor: null,
       };
     }
-
-    // Extract the user ID (first part before pipe if present)
-    const userId = identity.subject.split("|")[0];
 
     // Get all games where user participated (via players table)
     const memberships = await ctx.db
@@ -240,11 +238,8 @@ export const getUserGameCategories = query({
   args: {},
   returns: v.array(v.string()),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    // Extract the user ID (first part before pipe if present)
-    const userId = identity.subject.split("|")[0];
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
 
     // Find all games the user participated in
     const memberships = await ctx.db
@@ -273,11 +268,8 @@ export const getUserGameCount = query({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return 0;
-
-    // Extract the user ID (first part before pipe if present)
-    const userId = identity.subject.split("|")[0];
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return 0;
 
     // Get all games where user participated (via players table)
     const memberships = await ctx.db

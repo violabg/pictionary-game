@@ -59,14 +59,9 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
   );
 
   // Mutations and Actions
-  const submitGuessAndCompleteTurnMutation = useMutation(
-    api.mutations.game.submitGuessAndCompleteTurn,
-  );
+  const submitGuessAction = useAction(api.actions.submitGuess.submitGuess);
   const finalizeTurnCompletionMutation = useMutation(
     api.mutations.game.finalizeTurnCompletion,
-  );
-  const validateGuessAction = useAction(
-    api.actions.validateGuess.validateGuess,
   );
 
   const drawingCanvasRef = useRef<DrawingCanvasRef>(null);
@@ -230,32 +225,11 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       }
 
       try {
-        // Use currentCardQuery (available to all players for validation)
-        const correctAnswer = currentCardQuery?.word;
-        let isValidGuess = false;
-
-        // Check for exact match (case-insensitive)
-        const isExactMatch =
-          guess.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
-
-        if (isExactMatch) {
-          isValidGuess = true;
-        } else if (correctAnswer && game?.category) {
-          // Use AI validation action for non-exact matches
-          const validationResult = await validateGuessAction({
-            guess,
-            correctAnswer,
-            category: game.category,
-          });
-          isValidGuess = validationResult.isCorrect;
-        }
-
-        // Submit the guess to the backend
-        const result = await submitGuessAndCompleteTurnMutation({
+        // Submit the guess; exact-match and AI fuzzy validation are handled server-side
+        const result = await submitGuessAction({
           game_id: gameId,
           turn_id: currentTurn._id,
           guess_text: guess,
-          isValidated: isValidGuess,
         });
 
         if (!result.is_correct && !result.is_fuzzy_match) {
@@ -285,11 +259,8 @@ export default function GameBoard({ gameId, code }: GameBoardProps) {
       uiState.isCompletingTurn,
       isDrawer,
       currentTurn,
-      currentCardQuery?.word,
-      game?.category,
       gameId,
-      validateGuessAction,
-      submitGuessAndCompleteTurnMutation,
+      submitGuessAction,
     ],
   );
 
