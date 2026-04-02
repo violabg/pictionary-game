@@ -15,7 +15,7 @@ export const getInitials = (name?: string | null) => {
   );
 };
 
-export const LLM_MODEL = "moonshotai/kimi-k2-instruct-0905";
+export const LLM_MODEL = "openai/gpt-oss-120b";
 
 export const categories = [
   { label: "Animali", value: "Animali" },
